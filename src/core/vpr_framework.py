@@ -74,6 +74,12 @@ class VPRFramework(L.LightningModule):
         x = self.backbone(x)
         x = self.aggregator(x)
         return x
+
+    def _optimizer_param_groups(self):
+        return [
+            {"params": self.backbone.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
+            {"params": self.aggregator.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
+        ]
     
     def configure_optimizers(self):
         """
@@ -82,14 +88,11 @@ class VPRFramework(L.LightningModule):
         Returns:
             List of optimizers and schedulers that will be used by the Lightning trainer.
         """
-        optimizer_params = [
-            {"params": self.backbone.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
-            {"params": self.aggregator.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
-        ]
+        optimizer_params = self._optimizer_param_groups()
         
         if self.optimizer.lower() == "sgd":
             optimizer = torch.optim.SGD(
-                self.parameters(),
+                optimizer_params,
                 lr=self.lr,
                 momentum=0.9,
                 weight_decay=self.weight_decay,
@@ -281,3 +284,104 @@ class VPRFramework(L.LightningModule):
         if self.verbose:
             utils.display_recall_performance(list_of_recalls, dm.val_set_names)
         self.validation_step_outputs.clear()
+
+
+class VPRFrameworkDistill(VPRFramework):
+    def __init__(
+        self,
+        backbone,
+        aggregator,
+        loss_function,
+        lr=1e-4,
+        optimizer="adamw",
+        weight_decay=1e-3,
+        warmup_steps=1500,
+        milestones=[5, 10, 15],
+        lr_mult=0.25,
+        verbose=True,
+        config_dict=None,  # configuation to be saved with logs
+        distill_module=None,
+        lambda_global=0.1,
+        lambda_region=0.05,
+        distill_warmup_steps=1500,
+    ):
+        super().__init__(
+            backbone=backbone,
+            aggregator=aggregator,
+            loss_function=loss_function,
+            lr=lr,
+            optimizer=optimizer,
+            weight_decay=weight_decay,
+            warmup_steps=warmup_steps,
+            milestones=milestones,
+            lr_mult=lr_mult,
+            verbose=verbose,
+            config_dict=config_dict,
+        )
+        if distill_module is None:
+            raise ValueError("distill_module must be provided when distillation is enabled")
+
+        self.distill_module = distill_module
+        self.lambda_global = lambda_global
+        self.lambda_region = lambda_region
+        self.distill_warmup_steps = distill_warmup_steps
+
+    def _optimizer_param_groups(self):
+        optimizer_params = super()._optimizer_param_groups()
+        distill_trainable = [p for p in self.distill_module.parameters() if p.requires_grad]
+        if distill_trainable:
+            optimizer_params.append(
+                {"params": distill_trainable, "lr": self.lr, "weight_decay": self.weight_decay}
+            )
+        return optimizer_params
+
+    def training_step(self, batch, batch_idx):
+        """Training step with CLIP teacher distillation."""
+        # Unpack: batch may contain an augmented view
+        if len(batch) == 3:
+            images, images_aug, labels = batch
+        else:
+            images, labels = batch
+            images_aug = None
+
+        P, K, c, h, w = images.shape
+        images = images.view(P * K, c, h, w)
+        if images_aug is not None:
+            images_aug = images_aug.view(P * K, c, h, w)
+        labels = labels.view(-1)
+
+        # Student forward: backbone -> featmap, aggregator -> descriptor
+        featmap = self.backbone(images)
+        model_output = self.aggregator(featmap)
+
+        if isinstance(model_output, (tuple, list)):
+            descriptors = model_output[0]
+        else:
+            descriptors = model_output
+
+        # VPR loss
+        loss_vpr, batch_accuracy = self.compute_loss(descriptors, labels)
+
+        # Distillation losses
+        distill_out = self.distill_module(
+            images, images_aug, featmap, descriptors
+        )
+
+        # Linear warmup for distillation weights
+        if self.distill_warmup_steps > 0:
+            warmup_scale = min(1.0, float(self.trainer.global_step) / self.distill_warmup_steps)
+        else:
+            warmup_scale = 1.0
+
+        loss = (
+            loss_vpr
+            + warmup_scale * self.lambda_global * distill_out["loss_global"]
+            + warmup_scale * self.lambda_region * distill_out["loss_region"]
+        )
+
+        self.log("loss", loss, prog_bar=True, logger=True)
+        self.log("loss_vpr", loss_vpr, prog_bar=False, logger=True)
+        self.log("loss_global_distill", distill_out["loss_global"], prog_bar=False, logger=True)
+        self.log("loss_region_distill", distill_out["loss_region"], prog_bar=False, logger=True)
+        self.log("batch_acc", batch_accuracy, prog_bar=True, logger=True)
+        return loss

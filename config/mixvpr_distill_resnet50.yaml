@@ -1,0 +1,87 @@
+# ----------------------------------------------------------------------------
+# MixVPR + CLIP Teacher Distillation (ResNet-50 backbone)
+#
+# Distillation modes (for ablation):
+#   global_only    – L_vpr + λ_g · L_global
+#   region_no_gate – L_vpr + λ_g · L_global + λ_r · L_region  (no gate)
+#   region_gate    – L_vpr + λ_g · L_global + λ_r · L_region  (SG-SA gated, needs img_aug)
+# ----------------------------------------------------------------------------
+
+#---------------------------------------------------
+# Datamodule Configuration
+#---------------------------------------------------
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size: 
+    - 320
+    - 320
+  img_per_place: 4
+  batch_size: 100         # match baseline for fair ablation (reduce if OOM with teacher)
+  num_workers: 8
+  val_set_names:
+    - "msls-val"
+    - "pitts30k-val"
+
+#---------------------------------------------------
+# VPR Model Configuration
+#---------------------------------------------------
+backbone:
+  module: src.models.backbones
+  class: ResNet
+  params:
+    backbone_name: "resnet50"
+    pretrained: true
+    crop_last_block: true
+    num_unfrozen_blocks: 1
+
+aggregator:
+  module: src.models.aggregators
+  class: MixVPR
+  params:
+    in_channels:            # auto-filled from backbone.out_channels
+    in_h: 20
+    in_w: 20
+    out_channels: 512
+    mix_depth: 4
+    mlp_ratio: 1
+    out_rows: 4
+
+#---------------------------------------------------
+# Loss Function Configuration
+#---------------------------------------------------
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+#---------------------------------------------------
+# Distillation Configuration
+#---------------------------------------------------
+distillation:
+  enabled: true            # disabled for ablation — no teacher loaded, pure baseline speed
+  mode: "region_gate"       # "global_only" | "region_no_gate" | "region_gate"
+  teacher:
+    model_name: "ViT-B-16"
+    pretrained: "openai"
+  proj_dim:                 # null → defaults to backbone.out_channels (1024)
+  tau: 0.07                 # temperature for SG-SA softmax
+  lambda_global: 0.1         # weight for global distillation loss
+  lambda_region: 0.05         # weight for region distillation loss
+  distill_warmup_steps: 1500 # linear warmup steps for distillation weights (0→target)
+
+#---------------------------------------------------
+# Trainer Configuration
+#---------------------------------------------------
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 1500
+  max_epochs: 40
+  milestones:
+    - 10
+    - 20
+    - 30
+  lr_mult: 0.1

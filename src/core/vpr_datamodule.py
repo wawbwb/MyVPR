@@ -17,6 +17,7 @@ from src.dataloaders.train.gsv_cities import GSVCitiesDataset
 from src.utils import config_manager
 from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset
 from src.dataloaders.valid.pittsburgh import PittsburghDataset
+from src.dataloaders.valid.msls_condition import MSLSConditionDataset
 
 class VPRDataModule(L.LightningDataModule):
     """
@@ -53,6 +54,7 @@ class VPRDataModule(L.LightningDataModule):
         num_workers=4,
         batch_sampler=None,
         mean_std={"mean":[0.485, 0.456, 0.406], "std":[0.229, 0.224, 0.225]},
+        return_augmented=False,
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -67,6 +69,7 @@ class VPRDataModule(L.LightningDataModule):
         self.mean_std = mean_std
         self.random_sample_from_each_place = random_sample_from_each_place
         self.val_set_names = val_set_names
+        self.return_augmented = return_augmented
 
         # check that the training dataset exists
         # its path is defined in the config/data/config.yaml file
@@ -88,6 +91,18 @@ class VPRDataModule(L.LightningDataModule):
             T2.ToImage(),  # Convert to tensor, only needed if you had a PIL image
             T2.Resize(size=self.train_image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
             T2.RandAugment(num_ops=3, magnitude=15, interpolation=T2.InterpolationMode.BILINEAR),
+            T2.ToDtype(torch.float32, scale=True),
+            T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
+        ])
+
+        # Photometric-only augmentation for distillation (no geometric transforms)
+        # Shares the same resize as train_transform so tokens are spatially aligned
+        self.aug_transform = T2.Compose([
+            T2.ToImage(),
+            T2.Resize(size=self.train_image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
+            T2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+            T2.RandomGrayscale(p=0.2),
+            T2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
             T2.ToDtype(torch.float32, scale=True),
             T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
         ])
@@ -161,6 +176,8 @@ class VPRDataModule(L.LightningDataModule):
             random_sample_from_each_place=self.random_sample_from_each_place,
             transform=self.train_transform,
             hard_mining=hard_mining,
+            return_augmented=self.return_augmented,
+            aug_transform=self.aug_transform if self.return_augmented else None,
         )
     
     def _get_val_dataset(self, ds_name):  
@@ -171,6 +188,18 @@ class VPRDataModule(L.LightningDataModule):
             )
         elif "pitts30k" in ds_name.lower():
             return PittsburghDataset(
+                    dataset_path=self.val_set_paths[ds_name],
+                    input_transform=self.val_transform
+            )
+        elif "msls" in ds_name.lower() and "night" in ds_name.lower():
+            return MSLSConditionDataset(
+                    condition="night",
+                    dataset_path=self.val_set_paths[ds_name],
+                    input_transform=self.val_transform
+            )
+        elif "msls" in ds_name.lower() and "season" in ds_name.lower():
+            return MSLSConditionDataset(
+                    condition="season",
                     dataset_path=self.val_set_paths[ds_name],
                     input_transform=self.val_transform
             )

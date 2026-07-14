@@ -61,6 +61,8 @@ class GSVCitiesDataset(Dataset):
                  random_sample_from_each_place=True,
                  transform=default_transform,
                  hard_mining=False,
+                 return_augmented=False,
+                 aug_transform=None,
                  ):
         """
         Args:
@@ -100,6 +102,8 @@ class GSVCitiesDataset(Dataset):
         self.random_sample_from_each_place = random_sample_from_each_place
         self.transform = transform
         self.hard_mining = hard_mining
+        self.return_augmented = return_augmented
+        self.aug_transform = aug_transform
         # generate the dataframe contraining images metadata
         self.dataframe = self.__getdataframes()
         
@@ -148,20 +152,33 @@ class GSVCitiesDataset(Dataset):
             place = place[: self.img_per_place]
             
         imgs = []
+        imgs_aug = []
         for i, row in place.iterrows():
             img_name = self.get_img_name(row)
             img_path = self.base_path / 'Images' / row['city_id'] / img_name
             img = self.image_loader(img_path)
 
             if self.transform is not None:
-                img = self.transform(img)
-            imgs.append(img)
+                img_t = self.transform(img)
+            else:
+                img_t = img
+
+            if self.return_augmented:
+                # Photometric-only augmentation to preserve spatial alignment
+                aug_t = self.aug_transform if self.aug_transform is not None else self.transform
+                img_aug = aug_t(img)
+                imgs_aug.append(img_aug)
+
+            imgs.append(img_t)
 
         # NOTE: contrary to image classification where __getitem__ returns only one image 
         # in GSVCities, we return a place, which is a Tesor of K images (K=self.img_per_place)
         # this will return a Tensor of shape [K, channels, height, width]. This needs to be taken into account 
         # in the Dataloader (which will yield batches of shape [BS, K, channels, height, width])
-        return torch.stack(imgs), torch.tensor(place_id).repeat(self.img_per_place)
+        labels = torch.tensor(place_id).repeat(self.img_per_place)
+        if self.return_augmented:
+            return torch.stack(imgs), torch.stack(imgs_aug), labels
+        return torch.stack(imgs), labels
 
     def __len__(self):
         '''Denotes the total number of places (not images)'''

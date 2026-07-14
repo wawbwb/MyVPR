@@ -110,6 +110,9 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
             'lr_mult': 0.1,
             'max_epochs': 40,
         },
+        'distillation': {
+            'enabled': False,
+        },
     }
 
     # Helper function to update nested dictionaries

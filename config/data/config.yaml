@@ -2,3 +2,13 @@
 # this file is used to store the path to datasets used in this framework
 # it is meant to be filled by the download scripts that are provided in the
 # scripts folder
+
+datasets:
+  train:
+    gsv-cities: /home/wt/workspace/OpenVPRLab/datasets/gsv_cities
+    gsv-cities-light: /home/wt/workspace/OpenVPRLab/datasets/gsv_cities
+  val:
+    msls-val: /home/wt/workspace/OpenVPRLab/datasets/msls-val
+    msls-val-night: /home/wt/workspace/OpenVPRLab/datasets/msls-val
+    msls-val-season: /home/wt/workspace/OpenVPRLab/datasets/msls-val
+    pitts30k-val: /home/wt/workspace/OpenVPRLab/datasets/pitts30k-val

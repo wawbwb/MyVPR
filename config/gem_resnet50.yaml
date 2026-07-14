@@ -10,6 +10,7 @@
 #---------------------------------------------------
 datamodule:
   train_set_name: "gsv-cities-light" # use "gsv-cities" if you have downloaded the full dataset
+  cities: null  # null 或 "all" 表示使用所有城市
   train_image_size: 
     - 320
     - 320

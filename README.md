@@ -207,4 +207,80 @@ Tensorboard loggings will also be saved into the directory. Run the following co
 tensorboard --logdir ./logs/resnet18/ConvAP
 ```
 
+---
+
+## Quick Training Commands
+
+Here are ready-to-use commands for training different backbone and aggregator combinations:
+
+### ResNet Backbones
+
+```bash
+# GeM with ResNet50
+python run.py --train --config config/gem_resnet50.yaml
+
+# MixVPR with ResNet50
+python run.py --train --config config/mixvpr_resnet50.yaml
+
+# ConvAP with ResNet50
+python run.py --train --config config/convap_resnet50.yaml
+
+# BoQ with ResNet18
+python run.py --train --config config/boq_resnet18.yaml
+```
+
+### DINOv2 Backbones
+
+```bash
+# BoQ with DINOv2
+python run.py --train --config config/boq_dinov2.yaml
+
+# SALAD with DINOv2
+python run.py --train --config config/salad_dinov2.yaml
+```
+
+### CLIP Teacher Distillation
+
+MixVPR (ResNet-50) with frozen CLIP ViT-B/16 teacher distillation (SG-SA region + global loss):
+
+```bash
+# Full distillation training (region_gate mode, recommended)
+python run.py --config config/mixvpr_distill_resnet50.yaml
+
+# Monitor distillation experiment
+tensorboard --logdir ./logs/resnet50/MixVPR/
+```
+
+> **Ablation modes** can be switched in `config/mixvpr_distill_resnet50.yaml` via the `distillation.mode` field:
+> - `region_gate`    — full SG-SA gated distillation (L_vpr + λ_g·L_global + λ_r·L_region)
+> - `region_no_gate` — region distillation without augmentation gate
+> - `global_only`    — global distillation only (L_vpr + λ_g·L_global)
+
+### Custom Training Options
+
+You can override configuration parameters from the command line:
+
+```bash
+# Change batch size and learning rate
+python run.py --train --config config/gem_resnet50.yaml --batch_size 80 --lr 0.0001
+
+# Use specific cities for training
+python run.py --train --config config/mixvpr_resnet50.yaml --cities Bangkok London Paris
+
+# Fast development mode (1 train + 1 val iteration)
+python run.py --train --config config/gem_resnet50.yaml --dev
+```
+
+### Monitor Training
+
+View training progress and metrics in real-time:
+
+```bash
+# Monitor all experiments
+tensorboard --logdir ./logs/
+
+# Monitor specific backbone experiments
+tensorboard --logdir ./logs/resnet50/
+```
+
 ## More features, tutorials and methods to come soon...

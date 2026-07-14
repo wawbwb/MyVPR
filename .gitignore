@@ -27,3 +27,5 @@ logs/
 
 # Ignore the data config file changes
 config/data/config.yaml 
+
+datasets/

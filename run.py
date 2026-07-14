@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import RichProgressBar, ModelCheckpoint
 from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from lightning.pytorch.loggers import TensorBoardLogger
 from src.core.vpr_datamodule import VPRDataModule
-from src.core.vpr_framework import VPRFramework
+from src.core.vpr_framework import VPRFramework, VPRFrameworkDistill
 from src.losses.vpr_losses import VPRLossFunction
 
 from rich.traceback import install
@@ -71,6 +71,12 @@ def train(config):
     torch.backends.cuda.enable_flash_sdp(True)
 
     # let's create the VPR DataModule
+    # ── Distillation config ─────────────────────────────────────────
+    distill_cfg = config.get('distillation', {})
+    distill_enabled = distill_cfg.get('enabled', False)
+    distill_mode = distill_cfg.get('mode', 'region_gate')
+    return_augmented = distill_enabled and distill_mode == 'region_gate'
+
     datamodule = VPRDataModule(
         train_set_name=config['datamodule']['train_set_name'],
         cities=config['datamodule']['cities'], # if None or "all" then we use all cities
@@ -84,6 +90,7 @@ def train(config):
         mean_std=IMAGENET_MEAN_STD,
         val_set_names=config['datamodule']['val_set_names'],
         val_image_size=config['datamodule']['val_image_size'], # if None, the same as train_image_size
+        return_augmented=return_augmented,
     )
 
 
@@ -101,19 +108,75 @@ def train(config):
     aggregator = get_instance(config['aggregator']['module'], config['aggregator']['class'], config['aggregator']['params'])
     loss_function = get_instance(config['loss_function']['module'], config['loss_function']['class'], config['loss_function']['params'])
 
-    vpr_model = VPRFramework(
-        backbone=backbone,
-        aggregator=aggregator,
-        loss_function=loss_function,
-        optimizer=config['trainer']['optimizer'],
-        lr=config['trainer']['lr'],
-        weight_decay=config['trainer']['wd'],
-        warmup_steps=config['trainer']['warmup'],
-        milestones=config['trainer']['milestones'],
-        lr_mult=config['trainer']['lr_mult'],
-        verbose= not config["silent"],
-        config_dict=config, # pass the config to the framework in order to save it
-    )
+    # ── Build distillation module (if enabled) ──────────────────────
+    distill_module = None
+    lambda_global = 0.0
+    lambda_region = 0.0
+
+    if distill_enabled:
+        from src.models.clip_teacher import CLIPTeacherEncoder
+        from src.models.distillation import DistillationModule
+
+        teacher = CLIPTeacherEncoder(
+            model_name=distill_cfg.get('teacher', {}).get('model_name', 'ViT-B-16'),
+            pretrained=distill_cfg.get('teacher', {}).get('pretrained', 'openai'),
+            dynamic_categories=distill_cfg.get('dynamic_categories', None),
+        )
+
+        # Infer student global descriptor dimension via a dummy forward
+        agg_params = config['aggregator']['params']
+        with torch.no_grad():
+            _h = agg_params.get('in_h', 20)
+            _w = agg_params.get('in_w', 20)
+            _dummy = torch.randn(2, out_channels, _h, _w)
+            _outs = aggregator(_dummy)
+            student_global_dim = _outs[0].shape[1] if isinstance(_outs, (tuple, list)) else _outs.shape[1]
+
+        distill_module = DistillationModule(
+            teacher=teacher,
+            teacher_token_dim=teacher.token_dim,
+            teacher_global_dim=teacher.global_dim,
+            student_feat_channels=out_channels,
+            student_global_dim=student_global_dim,
+            proj_dim=distill_cfg.get('proj_dim', None),
+            tau=distill_cfg.get('tau', 0.07),
+            distill_mode=distill_mode,
+        )
+        lambda_global = distill_cfg.get('lambda_global', 0.1)
+        lambda_region = distill_cfg.get('lambda_region', 0.05)
+
+    if distill_enabled:
+        vpr_model = VPRFrameworkDistill(
+            backbone=backbone,
+            aggregator=aggregator,
+            loss_function=loss_function,
+            optimizer=config['trainer']['optimizer'],
+            lr=config['trainer']['lr'],
+            weight_decay=config['trainer']['wd'],
+            warmup_steps=config['trainer']['warmup'],
+            milestones=config['trainer']['milestones'],
+            lr_mult=config['trainer']['lr_mult'],
+            verbose= not config["silent"],
+            config_dict=config, # pass the config to the framework in order to save it
+            distill_module=distill_module,
+            lambda_global=lambda_global,
+            lambda_region=lambda_region,
+            distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
+        )
+    else:
+        vpr_model = VPRFramework(
+            backbone=backbone,
+            aggregator=aggregator,
+            loss_function=loss_function,
+            optimizer=config['trainer']['optimizer'],
+            lr=config['trainer']['lr'],
+            weight_decay=config['trainer']['wd'],
+            warmup_steps=config['trainer']['warmup'],
+            milestones=config['trainer']['milestones'],
+            lr_mult=config['trainer']['lr_mult'],
+            verbose= not config["silent"],
+            config_dict=config, # pass the config to the framework in order to save it
+        )
 
     if config["compile"]:
         vpr_model = torch.compile(vpr_model)
@@ -155,7 +218,7 @@ def train(config):
 
     trainer = Trainer(
         accelerator="gpu",
-        devices=[0],
+        devices=[1],
         logger=tensorboard_logger,
         num_sanity_val_steps=0, # is -1 to run one pass on all validation sets before training starts
         precision="16-mixed",

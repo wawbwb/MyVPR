@@ -14,7 +14,7 @@ datamodule:
     - 280
     - 280
   img_per_place: 4
-  batch_size: 160
+  batch_size: 40
   num_workers: 8
   val_image_size: 
     - 322
