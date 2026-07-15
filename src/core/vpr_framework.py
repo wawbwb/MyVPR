@@ -301,8 +301,10 @@ class VPRFrameworkDistill(VPRFramework):
         verbose=True,
         config_dict=None,  # configuation to be saved with logs
         distill_module=None,
+        spatial_attn_head=None,
         lambda_global=0.1,
         lambda_region=0.05,
+        lambda_attn=0.0,
         distill_warmup_steps=1500,
     ):
         super().__init__(
@@ -318,21 +320,68 @@ class VPRFrameworkDistill(VPRFramework):
             verbose=verbose,
             config_dict=config_dict,
         )
-        if distill_module is None:
-            raise ValueError("distill_module must be provided when distillation is enabled")
+        for name, value in (
+            ("lambda_global", lambda_global),
+            ("lambda_region", lambda_region),
+            ("lambda_attn", lambda_attn),
+        ):
+            if value < 0:
+                raise ValueError(f"{name} must be non-negative, got {value}")
+        if distill_module is None and any(
+            value > 0 for value in (lambda_global, lambda_region, lambda_attn)
+        ):
+            raise ValueError(
+                "distill_module is required when a distillation weight is non-zero"
+            )
+        if lambda_attn > 0 and spatial_attn_head is None:
+            raise ValueError(
+                "spatial_attn_head is required when lambda_attn is non-zero"
+            )
 
         self.distill_module = distill_module
+        self.spatial_attn_head = spatial_attn_head
         self.lambda_global = lambda_global
         self.lambda_region = lambda_region
+        self.lambda_attn = lambda_attn
         self.distill_warmup_steps = distill_warmup_steps
+
+    def _student_forward(self, images):
+        """Run the exact student path shared by train, validation and inference."""
+        featmap = self.backbone(images)
+        student_attn = None
+        if self.spatial_attn_head is not None:
+            featmap, student_attn = self.spatial_attn_head(featmap)
+        model_output = self.aggregator(featmap)
+        return model_output, featmap, student_attn
+
+    def forward(self, x):
+        model_output, _, _ = self._student_forward(x)
+        return model_output
 
     def _optimizer_param_groups(self):
         optimizer_params = super()._optimizer_param_groups()
-        distill_trainable = [p for p in self.distill_module.parameters() if p.requires_grad]
+        if self.distill_module is not None:
+            distill_trainable = [
+                p for p in self.distill_module.parameters() if p.requires_grad
+            ]
+        else:
+            distill_trainable = []
         if distill_trainable:
             optimizer_params.append(
                 {"params": distill_trainable, "lr": self.lr, "weight_decay": self.weight_decay}
             )
+        if self.spatial_attn_head is not None:
+            spatial_trainable = [
+                p for p in self.spatial_attn_head.parameters() if p.requires_grad
+            ]
+            if spatial_trainable:
+                optimizer_params.append(
+                    {
+                        "params": spatial_trainable,
+                        "lr": self.lr,
+                        "weight_decay": self.weight_decay,
+                    }
+                )
         return optimizer_params
 
     def training_step(self, batch, batch_idx):
@@ -350,9 +399,10 @@ class VPRFrameworkDistill(VPRFramework):
             images_aug = images_aug.view(P * K, c, h, w)
         labels = labels.view(-1)
 
-        # Student forward: backbone -> featmap, aggregator -> descriptor
-        featmap = self.backbone(images)
-        model_output = self.aggregator(featmap)
+        # Student forward: backbone -> optional spatial gate -> aggregator.
+        # ``forward`` uses this same helper, so validation/checkpoint inference
+        # cannot silently bypass the phase-C module.
+        model_output, featmap, student_attn = self._student_forward(images)
 
         if isinstance(model_output, (tuple, list)):
             descriptors = model_output[0]
@@ -362,10 +412,29 @@ class VPRFrameworkDistill(VPRFramework):
         # VPR loss
         loss_vpr, batch_accuracy = self.compute_loss(descriptors, labels)
 
-        # Distillation losses
-        distill_out = self.distill_module(
-            images, images_aug, featmap, descriptors
+        # Distillation losses. The lambda=0 architecture control skips CLIP
+        # entirely while retaining the exact same student inference path.
+        distillation_active = self.distill_module is not None and any(
+            value > 0
+            for value in (self.lambda_global, self.lambda_region, self.lambda_attn)
         )
+        if distillation_active:
+            distill_out = self.distill_module(
+                images,
+                images_aug,
+                featmap,
+                descriptors,
+                student_attn=(student_attn if self.lambda_attn > 0 else None),
+                compute_global=self.lambda_global > 0,
+                compute_region=self.lambda_region > 0,
+            )
+        else:
+            zero = loss_vpr.new_zeros(())
+            distill_out = {
+                "loss_global": zero,
+                "loss_region": zero,
+                "loss_attn": zero,
+            }
 
         # Linear warmup for distillation weights
         if self.distill_warmup_steps > 0:
@@ -377,11 +446,24 @@ class VPRFrameworkDistill(VPRFramework):
             loss_vpr
             + warmup_scale * self.lambda_global * distill_out["loss_global"]
             + warmup_scale * self.lambda_region * distill_out["loss_region"]
+            + warmup_scale * self.lambda_attn * distill_out["loss_attn"]
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
         self.log("loss_vpr", loss_vpr, prog_bar=False, logger=True)
         self.log("loss_global_distill", distill_out["loss_global"], prog_bar=False, logger=True)
         self.log("loss_region_distill", distill_out["loss_region"], prog_bar=False, logger=True)
+        self.log("loss_attn_distill", distill_out["loss_attn"], prog_bar=False, logger=True)
+        self.log("distill_warmup_scale", warmup_scale, prog_bar=False, logger=True)
+        if student_attn is not None:
+            attn_fp32 = student_attn.float().clamp_min(1e-8)
+            attn_entropy = -(attn_fp32 * attn_fp32.log()).sum(dim=-1).mean()
+            self.log("student_attn_entropy", attn_entropy, prog_bar=False, logger=True)
+            self.log(
+                "student_attn_peak",
+                attn_fp32.amax(dim=-1).mean(),
+                prog_bar=False,
+                logger=True,
+            )
         self.log("batch_acc", batch_accuracy, prog_bar=True, logger=True)
         return loss

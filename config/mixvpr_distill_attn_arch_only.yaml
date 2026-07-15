@@ -1,0 +1,74 @@
+# ----------------------------------------------------------------------------
+# Phase C architecture-only control.
+#
+#   L_total = L_vpr
+#
+# The student SpatialAttentionHead is enabled and retained at inference, but
+# lambda_kl=0 disables CLIP attention supervision. This separates gains from
+# the extra gating capacity from gains caused by CLIP semantic information.
+# Keep every other training setting identical to the C2/C3 runs.
+# ----------------------------------------------------------------------------
+
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size:
+    - 320
+    - 320
+  img_per_place: 4
+  batch_size: 100
+  num_workers: 8
+  val_set_names:
+    - "msls-val"
+    - "pitts30k-val"
+
+backbone:
+  module: src.models.backbones
+  class: ResNet
+  params:
+    backbone_name: "resnet50"
+    pretrained: true
+    crop_last_block: true
+    num_unfrozen_blocks: 1
+
+aggregator:
+  module: src.models.aggregators
+  class: MixVPR
+  params:
+    in_channels:
+    in_h: 20
+    in_w: 20
+    out_channels: 512
+    mix_depth: 4
+    mlp_ratio: 1
+    out_rows: 4
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+distillation:
+  enabled: false            # no teacher is instantiated for this control
+  mode: "global_only"
+  lambda_global: 0.0
+  lambda_region: 0.0
+  distill_warmup_steps: 1500
+  spatial_attn:
+    enabled: true
+    num_heads: 1
+    gate_strength: 1.0
+    lambda_kl: 0.0         # no CLIP supervision: architecture control
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 1500
+  max_epochs: 40
+  milestones:
+    - 10
+    - 20
+    - 30
+  lr_mult: 0.1

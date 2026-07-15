@@ -4,6 +4,8 @@
 # normalised global descriptor and the raw patch tokens.
 # ----------------------------------------------------------------------------
 
+from importlib.metadata import PackageNotFoundError, version
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,13 +22,29 @@ class CLIPTeacherEncoder(nn.Module):
 
     def __init__(
         self,
-        model_name="ViT-B-16",
+        model_name="ViT-B-16-quickgelu",
         pretrained="openai",
         hf_mirror="https://hf-mirror.com",
         dynamic_categories: list[str] | None = None,
     ):
         super().__init__()
         import os
+
+        try:
+            installed_version = version("open_clip_torch")
+        except PackageNotFoundError as exc:
+            raise ImportError(
+                "Phase C requires open_clip_torch==2.26.1. "
+                "Install the pinned project environment first."
+            ) from exc
+        if installed_version != "2.26.1":
+            raise RuntimeError(
+                "Phase C attention extraction is validated against "
+                "open_clip_torch==2.26.1, but found "
+                f"{installed_version}. Install the pinned version to keep "
+                "the teacher target reproducible."
+            )
+
         import open_clip
 
         # 使用镜像源（如未手动指定则自动设置）
@@ -91,29 +109,59 @@ class CLIPTeacherEncoder(nn.Module):
         return x
 
     # ------------------------------------------------------------------
-    def _run_last_block_with_attn(self, blk, x):
-        """Replicate a single open_clip ResidualAttentionBlock forward while
-        capturing the CLS-to-patch attention distribution.
+    @staticmethod
+    def _cls_to_patch_attention(blk, block_input, batch_first: bool):
+        """Recompute only the final block's CLS attention row.
 
-        Returns the block output and the per-head-averaged attention weights
-        of shape (B, L, L). The standard block calls ``self.attn`` with
-        ``need_weights=False``; here we force ``need_weights=True`` so we can
-        read out the attention map without altering the numerical result.
+        The actual residual block still runs through its original ``forward``
+        method. This side computation therefore cannot change the teacher
+        descriptor or patch tokens.
         """
-        ln_x = blk.ln_1(x)
-        attn_mask = getattr(blk, "attn_mask", None)
-        attn_out, attn_w = blk.attn(
-            ln_x, ln_x, ln_x,
-            need_weights=True,
-            average_attn_weights=True,
-            attn_mask=attn_mask,
+        attn = getattr(blk, "attn", None)
+        if (
+            attn is None
+            or not hasattr(attn, "in_proj_weight")
+            or attn.in_proj_weight is None
+            or not hasattr(attn, "num_heads")
+            or not hasattr(blk, "ln_1")
+        ):
+            raise RuntimeError(
+                "Unsupported OpenCLIP visual attention block. Phase C expects "
+                "the standard ViT block from open_clip_torch==2.26.1."
+            )
+
+        normalised = blk.ln_1(block_input)
+        if not batch_first:
+            normalised = normalised.transpose(0, 1)
+
+        qkv = F.linear(
+            normalised,
+            attn.in_proj_weight,
+            getattr(attn, "in_proj_bias", None),
         )
-        ls_1 = getattr(blk, "ls_1", None)
-        x = x + (ls_1(attn_out) if ls_1 is not None else attn_out)
-        ls_2 = getattr(blk, "ls_2", None)
-        mlp_out = blk.mlp(blk.ln_2(x))
-        x = x + (ls_2(mlp_out) if ls_2 is not None else mlp_out)
-        return x, attn_w
+        query, key, _ = qkv.chunk(3, dim=-1)
+        batch_size, sequence_length, embed_dim = query.shape
+        num_heads = attn.num_heads
+        if embed_dim % num_heads != 0:
+            raise RuntimeError(
+                f"Attention width {embed_dim} is not divisible by {num_heads} heads"
+            )
+        head_dim = embed_dim // num_heads
+
+        query_cls = query[:, 0].reshape(batch_size, num_heads, head_dim)
+        key = key.reshape(
+            batch_size, sequence_length, num_heads, head_dim
+        ).permute(0, 2, 1, 3)
+        logits = torch.einsum("bhd,bhld->bhl", query_cls, key)
+        logits = logits * (head_dim ** -0.5)
+        weights = logits.float().softmax(dim=-1)
+
+        # Drop CLS self-attention and condition the remainder on patch tokens.
+        # This is already a probability distribution: never softmax it again.
+        patch_attention = weights[:, :, 1:].mean(dim=1)
+        return patch_attention / patch_attention.sum(
+            dim=-1, keepdim=True
+        ).clamp_min(1e-8)
 
     # ------------------------------------------------------------------
     def _encode(self, x: torch.Tensor, return_attn: bool = False):
@@ -151,11 +199,13 @@ class CLIPTeacherEncoder(nn.Module):
             resblocks = transformer.resblocks
             for blk in resblocks[:-1]:
                 x = blk(x)
-            x, attn_w = self._run_last_block_with_attn(resblocks[-1], x)
+            last_block_input = x
+            x = resblocks[-1](x)
+            cls_attn = self._cls_to_patch_attention(
+                resblocks[-1], last_block_input, batch_first
+            )
             if not batch_first:
                 x = x.transpose(0, 1)  # → (B,N,D)
-            # attn_w: (B, L, L) — CLS query (row 0) attending to patch keys (cols 1:)
-            cls_attn = attn_w[:, 0, 1:]  # (B, num_patches)
 
         # ln_post is only on CLS in the original CLIP
         cls_out = v.ln_post(x[:, 0])

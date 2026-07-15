@@ -8,6 +8,69 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class SpatialAttentionHead(nn.Module):
+    """Lightweight student-only spatial gate used by phase C.
+
+    The head predicts one or more probability distributions over the backbone
+    grid.  Their mean is converted to a residual multiplicative gate whose
+    spatial mean is one.  Zero-initialising the projection makes the initial
+    gate exactly the identity, so enabling the module does not perturb a
+    pretrained VPR model before it has learned a useful attention map.
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        num_heads: int = 1,
+        gate_strength: float = 1.0,
+    ):
+        super().__init__()
+        if num_heads < 1:
+            raise ValueError("num_heads must be at least 1")
+        if not 0.0 <= gate_strength <= 1.0:
+            raise ValueError("gate_strength must be in [0, 1]")
+
+        self.num_heads = num_heads
+        self.gate_strength = float(gate_strength)
+        self.proj = nn.Conv2d(in_channels, num_heads, kernel_size=1)
+
+        # Uniform attention -> unit gate at initialisation.
+        nn.init.zeros_(self.proj.weight)
+        nn.init.zeros_(self.proj.bias)
+
+    def forward(
+        self, featmap: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return ``(weighted_featmap, attention_probabilities)``.
+
+        Args:
+            featmap: ``(B, C, H, W)`` student backbone features.
+
+        Returns:
+            weighted_featmap: ``(B, C, H, W)`` features passed to MixVPR.
+            attention: ``(B, num_heads, H*W)``; every head sums to one.
+        """
+        if featmap.ndim != 4:
+            raise ValueError(
+                f"featmap must have shape (B,C,H,W), got {tuple(featmap.shape)}"
+            )
+
+        logits = self.proj(featmap).flatten(2)
+        # Keep probabilities in fp32 under mixed precision. Casting them back
+        # here can underflow small cells to zero and remove their KL gradient.
+        attention = F.softmax(logits.float(), dim=-1)
+
+        spatial_size = attention.shape[-1]
+        mean_attention = attention.mean(dim=1).view(
+            featmap.shape[0], 1, featmap.shape[-2], featmap.shape[-1]
+        )
+        gate = (
+            (1.0 - self.gate_strength)
+            + self.gate_strength * spatial_size * mean_attention
+        ).to(featmap.dtype)
+        return featmap * gate, attention
+
+
 class DistillationModule(nn.Module):
     """Distillation head implementing SG-SA weighted region & global distillation.
 
@@ -136,6 +199,70 @@ class DistillationModule(nn.Module):
         return s_region, t_region
 
     # ------------------------------------------------------------------
+    # Phase-C attention distillation
+    # ------------------------------------------------------------------
+    @staticmethod
+    def attention_kl_loss(
+        student_attn: torch.Tensor,
+        teacher_cls_attn: torch.Tensor,
+        student_hw: tuple[int, int],
+        eps: float = 1e-8,
+    ) -> torch.Tensor:
+        """KL(teacher || student) on the student's spatial grid.
+
+        ``nn.MultiheadAttention`` has already applied softmax to the teacher
+        weights.  After removing the CLS self-attention entry we therefore
+        only clamp and re-normalise; applying softmax again would flatten the
+        14x14 teacher distribution.
+        """
+        if student_attn.ndim != 3:
+            raise ValueError(
+                "student_attn must have shape (B,num_heads,H*W), "
+                f"got {tuple(student_attn.shape)}"
+            )
+        if teacher_cls_attn.ndim != 2:
+            raise ValueError(
+                "teacher_cls_attn must have shape (B,num_patches), "
+                f"got {tuple(teacher_cls_attn.shape)}"
+            )
+        if student_attn.shape[0] != teacher_cls_attn.shape[0]:
+            raise ValueError("student and teacher attention batch sizes differ")
+
+        teacher_patches = teacher_cls_attn.shape[-1]
+        teacher_side = int(teacher_patches**0.5)
+        if teacher_side * teacher_side != teacher_patches:
+            raise ValueError(
+                "teacher patch count must form a square grid, "
+                f"got {teacher_patches}"
+            )
+
+        target_h, target_w = student_hw
+        if student_attn.shape[-1] != target_h * target_w:
+            raise ValueError(
+                "student attention size does not match student_hw: "
+                f"{student_attn.shape[-1]} vs {target_h}x{target_w}"
+            )
+
+        teacher = teacher_cls_attn.float().clamp_min(eps)
+        teacher = teacher / teacher.sum(dim=-1, keepdim=True).clamp_min(eps)
+        teacher = teacher.view(-1, 1, teacher_side, teacher_side)
+        teacher = F.interpolate(
+            teacher,
+            size=(target_h, target_w),
+            mode="bilinear",
+            align_corners=False,
+        ).flatten(1)
+        teacher = teacher.clamp_min(eps)
+        teacher = teacher / teacher.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+        student = student_attn.float().mean(dim=1).clamp_min(eps)
+        student = student / student.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+        return (
+            teacher * (teacher.log() - student.log())
+        ).sum(dim=-1).mean()
+
+    # ------------------------------------------------------------------
     # Forward
     # ------------------------------------------------------------------
     def forward(
@@ -144,6 +271,9 @@ class DistillationModule(nn.Module):
         images_aug: torch.Tensor | None,
         student_featmap: torch.Tensor,
         student_global: torch.Tensor,
+        student_attn: torch.Tensor | None = None,
+        compute_global: bool = True,
+        compute_region: bool = True,
     ) -> dict[str, torch.Tensor]:
         """
         Args:
@@ -151,31 +281,45 @@ class DistillationModule(nn.Module):
             images_aug      : (B,3,H,W) augmented view (can be None)
             student_featmap : (B,C,Hs,Ws) backbone feature map
             student_global  : (B,D_s) aggregator descriptor
+            student_attn    : optional (B,num_heads,Hs*Ws) phase-C map
+            compute_global  : skip the global branch when its lambda is zero
+            compute_region  : skip the region branch when its lambda is zero
 
         Returns:
-            dict  with keys ``loss_global`` and ``loss_region``
+            dict with ``loss_global``, ``loss_region`` and ``loss_attn``.
         """
         # ---- teacher (frozen) ----
         with torch.no_grad():
             self.teacher.eval()
-            t_global, t_tokens = self.teacher(images)
+            if student_attn is not None:
+                t_global, t_tokens, teacher_cls_attn = self.teacher(
+                    images, return_attn=True
+                )
+            else:
+                t_global, t_tokens = self.teacher(images)
+                teacher_cls_attn = None
             t_tokens_aug = None
             semantic_mask = None
-            if self.use_gate and images_aug is not None:
+            if compute_region and self.use_gate and images_aug is not None:
                 _, t_tokens_aug = self.teacher(images_aug)
-            if self.use_semantic_gate:
+            if compute_region and self.use_semantic_gate:
                 semantic_mask = self.teacher.compute_semantic_mask(t_tokens)
 
         result: dict[str, torch.Tensor] = {}
 
         # ---- global distillation ----
-        s_global_proj = F.normalize(
-            self.student_global_proj(student_global), dim=-1
-        )
-        result["loss_global"] = (s_global_proj - t_global).pow(2).sum(dim=-1).mean()
+        if compute_global:
+            s_global_proj = F.normalize(
+                self.student_global_proj(student_global), dim=-1
+            )
+            result["loss_global"] = (
+                s_global_proj - t_global
+            ).pow(2).sum(dim=-1).mean()
+        else:
+            result["loss_global"] = student_global.new_zeros(())
 
         # ---- region distillation ----
-        if self.use_region:
+        if self.use_region and compute_region:
             t_tokens_proj = self.token_proj(t_tokens)  # (B, N, proj_dim)
             w = self.compute_sgsa_weights(
                 t_tokens_proj, t_global, t_tokens, t_tokens_aug, semantic_mask
@@ -190,6 +334,15 @@ class DistillationModule(nn.Module):
             result["loss_region"] = torch.tensor(
                 0.0, device=student_global.device
             )
+
+        if student_attn is not None:
+            result["loss_attn"] = self.attention_kl_loss(
+                student_attn=student_attn,
+                teacher_cls_attn=teacher_cls_attn,
+                student_hw=student_featmap.shape[-2:],
+            )
+        else:
+            result["loss_attn"] = student_global.new_zeros(())
 
         return result
 

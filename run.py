@@ -75,7 +75,42 @@ def train(config):
     distill_cfg = config.get('distillation', {})
     distill_enabled = distill_cfg.get('enabled', False)
     distill_mode = distill_cfg.get('mode', 'region_gate')
-    return_augmented = distill_enabled and distill_mode == 'region_gate'
+    spatial_cfg = distill_cfg.get('spatial_attn', {})
+    spatial_attn_enabled = bool(spatial_cfg.get('enabled', False))
+    lambda_attn = float(spatial_cfg.get('lambda_kl', 0.0))
+    lambda_global = float(
+        distill_cfg.get('lambda_global', 0.1 if distill_enabled else 0.0)
+    )
+    lambda_region = float(
+        distill_cfg.get('lambda_region', 0.05 if distill_enabled else 0.0)
+    )
+
+    for name, value in (
+        ('lambda_global', lambda_global),
+        ('lambda_region', lambda_region),
+        ('spatial_attn.lambda_kl', lambda_attn),
+    ):
+        if value < 0:
+            raise ValueError(f"distillation.{name} must be non-negative")
+    if lambda_attn > 0 and not spatial_attn_enabled:
+        raise ValueError(
+            "lambda_kl is non-zero but distillation.spatial_attn.enabled is false"
+        )
+    if lambda_attn > 0 and not distill_enabled:
+        raise ValueError(
+            "CLIP attention supervision requires distillation.enabled=true"
+        )
+    if not distill_enabled and (lambda_global > 0 or lambda_region > 0):
+        raise ValueError(
+            "Non-zero global/region weights require distillation.enabled=true"
+        )
+
+    teacher_required = distill_enabled and any(
+        value > 0 for value in (lambda_global, lambda_region, lambda_attn)
+    )
+    return_augmented = (
+        teacher_required and lambda_region > 0 and distill_mode == 'region_gate'
+    )
 
     datamodule = VPRDataModule(
         train_set_name=config['datamodule']['train_set_name'],
@@ -108,17 +143,30 @@ def train(config):
     aggregator = get_instance(config['aggregator']['module'], config['aggregator']['class'], config['aggregator']['params'])
     loss_function = get_instance(config['loss_function']['module'], config['loss_function']['class'], config['loss_function']['params'])
 
+    # The phase-C student head is an inference-time component, so it is kept
+    # separate from the teacher/distillation projections. This also permits a
+    # lambda=0 architecture control without running CLIP.
+    spatial_attn_head = None
+    if spatial_attn_enabled:
+        from src.models.distillation import SpatialAttentionHead
+
+        spatial_attn_head = SpatialAttentionHead(
+            in_channels=out_channels,
+            num_heads=int(spatial_cfg.get('num_heads', 1)),
+            gate_strength=float(spatial_cfg.get('gate_strength', 1.0)),
+        )
+
     # ── Build distillation module (if enabled) ──────────────────────
     distill_module = None
-    lambda_global = 0.0
-    lambda_region = 0.0
 
-    if distill_enabled:
+    if teacher_required:
         from src.models.clip_teacher import CLIPTeacherEncoder
         from src.models.distillation import DistillationModule
 
         teacher = CLIPTeacherEncoder(
-            model_name=distill_cfg.get('teacher', {}).get('model_name', 'ViT-B-16'),
+            model_name=distill_cfg.get('teacher', {}).get(
+                'model_name', 'ViT-B-16-quickgelu'
+            ),
             pretrained=distill_cfg.get('teacher', {}).get('pretrained', 'openai'),
             dynamic_categories=distill_cfg.get('dynamic_categories', None),
         )
@@ -142,10 +190,8 @@ def train(config):
             tau=distill_cfg.get('tau', 0.07),
             distill_mode=distill_mode,
         )
-        lambda_global = distill_cfg.get('lambda_global', 0.1)
-        lambda_region = distill_cfg.get('lambda_region', 0.05)
 
-    if distill_enabled:
+    if teacher_required or spatial_attn_enabled:
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
             aggregator=aggregator,
@@ -159,8 +205,10 @@ def train(config):
             verbose= not config["silent"],
             config_dict=config, # pass the config to the framework in order to save it
             distill_module=distill_module,
+            spatial_attn_head=spatial_attn_head,
             lambda_global=lambda_global,
             lambda_region=lambda_region,
+            lambda_attn=lambda_attn,
             distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
         )
     else:
@@ -214,14 +262,18 @@ def train(config):
     progress_bar_cb = CustomRichProgressBar(config["display_theme"])    
     model_summary_cb = CustomRRichModelSummary(config["display_theme"])    
     data_summary_cb = DatamoduleSummary(config["display_theme"])
-     
+
+    # Teacher construction and the descriptor-dimension probe consume random
+    # numbers only in supervised runs. Reset here so C0 and C2/C3 see the same
+    # sampler/augmentation RNG stream for a given seed.
+    seed_everything(config["seed"], workers=True)
 
     trainer = Trainer(
-        accelerator="gpu",
-        devices=[1],
+        accelerator=config['trainer'].get('accelerator', 'gpu'),
+        devices=config['trainer'].get('devices', [1]),
         logger=tensorboard_logger,
         num_sanity_val_steps=0, # is -1 to run one pass on all validation sets before training starts
-        precision="16-mixed",
+        precision=config['trainer'].get('precision', '16-mixed'),
         max_epochs=config['trainer']['max_epochs'],
         check_val_every_n_epoch=1,
         callbacks=[

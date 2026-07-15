@@ -13,12 +13,18 @@ General launch pattern (same as the A/B phases you already ran):
 python run.py --train --config config/<file>.yaml
 ```
 
-Optional overrides: `--batch_size 80`, `--lr 0.0001`, `--seed 1`. Results
+Optional overrides: `--batch_size 80`, `--lr 0.0001`, `--seed 1`,
+`--devices 0`. Results
 (Recall@K) print per epoch; checkpoints land under
 `logs/<backbone>/MixVPR/version_*/` and hyperparameters in that version's
 `hparams.yaml`. The metric monitored for the best checkpoint is `msls-val/R1`.
 
-> Before starting, smoke-test the new code path once:
+> Before starting, smoke-test the new code path once (no dataset required):
+> ```bash
+> pytest -q tests/test_phase_c_attention.py
+> python scripts/smoke_phase_c.py
+> ```
+> Then run one real data batch:
 > ```bash
 > python run.py --dev --config config/mixvpr_distill_attn_kl.yaml
 > ```
@@ -32,11 +38,18 @@ Always compare against your **verified baseline** (Exp #1, MSLS R@1 = 87.70).
 
 ## Phase C — Local Semantic Attention Distillation
 
+**C0 — architecture-only control (student gate, no CLIP teacher)**
+```bash
+python run.py --train --config config/mixvpr_distill_attn_arch_only.yaml
+```
+This separates gains from the extra 1x1 spatial-gating capacity from gains due
+to CLIP supervision. The C configs deliberately use `lambda_global=0`, so the
+first C conclusion is about local semantic information only.
+
 **C2 — student attention head + CLIP attention KL**
 ```bash
 python run.py --train --config config/mixvpr_distill_attn_kl.yaml
 ```
-Set `distillation.lambda_global` to your best B2/B3 value first.
 
 **C3 — sweep `lambda_kl` ∈ {0.01, 0.05, 0.1, 0.2}**
 ```bash
@@ -46,7 +59,8 @@ python run.py --train --config config/mixvpr_distill_attn_kl_l0.1.yaml
 python run.py --train --config config/mixvpr_distill_attn_kl_l0.2.yaml
 ```
 Pick the `lambda_kl` that maximises MSLS R@1 without hurting Pitts30k. Use it in
-all later phases (edit `spatial_attn.lambda_kl`).
+later phases (edit `spatial_attn.lambda_kl`). Only after this pure-local sweep
+should you run a separate global+local combination with the best B-stage value.
 
 ---
 

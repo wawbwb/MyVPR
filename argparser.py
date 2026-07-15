@@ -44,6 +44,9 @@ def parse_args() -> Dict[str, Any]:
     parser.add_argument('--milestones', nargs='+', type=int, help='Milestones for learning rate scheduler')
     parser.add_argument('--lr_mult', type=float, help='Learning rate multiplier for scheduler')
     parser.add_argument('--max_epochs', type=int, help='Maximum number of epochs')
+    parser.add_argument('--accelerator', type=str, help='Lightning accelerator (for example gpu or cpu)')
+    parser.add_argument('--devices', nargs='+', type=int, help='Lightning device indices, for example --devices 0')
+    parser.add_argument('--precision', type=str, help='Lightning precision, for example 16-mixed or 32-true')
 
     args = parser.parse_args()
 
@@ -109,6 +112,9 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
             'milestones': [10, 20, 30],
             'lr_mult': 0.1,
             'max_epochs': 40,
+            'accelerator': "gpu",
+            'devices': [1],
+            'precision': "16-mixed",
         },
         'distillation': {
             'enabled': False,
@@ -169,6 +175,12 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
         config['trainer']['lr_mult'] = arg_dict['lr_mult']
     if arg_dict['max_epochs'] is not None:
         config['trainer']['max_epochs'] = arg_dict['max_epochs']
+    if arg_dict['accelerator'] is not None:
+        config['trainer']['accelerator'] = arg_dict['accelerator']
+    if arg_dict['devices'] is not None:
+        config['trainer']['devices'] = arg_dict['devices']
+    if arg_dict['precision'] is not None:
+        config['trainer']['precision'] = arg_dict['precision']
 
     # Update other general config
     if arg_dict['seed'] is not None:

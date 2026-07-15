@@ -29,6 +29,7 @@ from tqdm import tqdm
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.dataloaders.valid.msls_condition import MSLSConditionDataset
+from src.models.distillation import SpatialAttentionHead
 from src.utils.metrics import compute_recall_performance
 
 
@@ -40,15 +41,24 @@ IMAGENET_MEAN_STD = {"mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]
 
 
 class InferenceModel(torch.nn.Module):
-    """Minimal inference wrapper: backbone -> aggregator."""
+    """Student-only inference wrapper used by both baseline and phase C.
 
-    def __init__(self, backbone, aggregator):
+    The CLIP teacher is intentionally absent at inference.  A phase-C model
+    keeps only its learned spatial gate and follows
+    ``backbone -> spatial gate -> aggregator``.
+    """
+
+    def __init__(self, backbone, aggregator, spatial_attn_head=None):
         super().__init__()
         self.backbone = backbone
         self.aggregator = aggregator
+        self.spatial_attn_head = spatial_attn_head
 
     def forward(self, x):
-        output = self.aggregator(self.backbone(x))
+        featmap = self.backbone(x)
+        if self.spatial_attn_head is not None:
+            featmap, _ = self.spatial_attn_head(featmap)
+        output = self.aggregator(featmap)
         if isinstance(output, (tuple, list)):
             return output[0]
         return output
@@ -91,14 +101,44 @@ def build_transform():
     )
 
 
-def strip_prefix_if_needed(state_dict, prefix):
-    if not any(k.startswith(prefix) for k in state_dict):
+def get_spatial_attn_config(config):
+    """Read the phase-C inference config while keeping old checkpoints valid."""
+    # Current experiment configs store the head below ``distillation``.  The
+    # top-level fallback makes exported/inference-only configs easy to support.
+    distill_cfg = config.get("distillation", {}) or {}
+    return config.get("spatial_attn", distill_cfg.get("spatial_attn", {})) or {}
+
+
+def extract_required_submodule_state(state_dict, prefix, module_name):
+    """Extract a submodule and fail before evaluation if it was not saved."""
+    submodule_state = OrderedDict(
+        (key[len(prefix):], value)
+        for key, value in state_dict.items()
+        if key.startswith(prefix)
+    )
+    if not submodule_state:
+        raise RuntimeError(
+            f"Checkpoint enables {module_name}, but contains no weights with "
+            f"the required prefix {prefix!r}. Refusing to evaluate a different "
+            "backbone -> aggregator model silently."
+        )
+    return submodule_state
+
+
+def strip_compiled_model_prefix(state_dict):
+    """Canonicalise checkpoints saved from ``torch.compile(model)``."""
+    compiled_prefix = "_orig_mod."
+    if not any(key.startswith(compiled_prefix) for key in state_dict):
         return state_dict
-    out = OrderedDict()
-    for k, v in state_dict.items():
-        if k.startswith(prefix):
-            out[k[len(prefix):]] = v
-    return out
+    return OrderedDict(
+        (
+            key[len(compiled_prefix):]
+            if key.startswith(compiled_prefix)
+            else key,
+            value,
+        )
+        for key, value in state_dict.items()
+    )
 
 
 def load_inference_model_from_ckpt(ckpt_path, device):
@@ -120,25 +160,51 @@ def load_inference_model_from_ckpt(ckpt_path, device):
         agg_params,
     )
 
-    model = InferenceModel(backbone=backbone, aggregator=aggregator)
+    spatial_cfg = get_spatial_attn_config(config)
+    spatial_attn_head = None
+    if spatial_cfg.get("enabled", False):
+        spatial_attn_head = SpatialAttentionHead(
+            in_channels=backbone.out_channels,
+            num_heads=spatial_cfg.get("num_heads", 1),
+            gate_strength=spatial_cfg.get("gate_strength", 1.0),
+        )
 
-    full_state_dict = checkpoint["state_dict"]
-    backbone_state = strip_prefix_if_needed(full_state_dict, "backbone.")
-    aggregator_state = strip_prefix_if_needed(full_state_dict, "aggregator.")
+    model = InferenceModel(
+        backbone=backbone,
+        aggregator=aggregator,
+        spatial_attn_head=spatial_attn_head,
+    )
 
-    missing_b, unexpected_b = model.backbone.load_state_dict(backbone_state, strict=False)
-    missing_a, unexpected_a = model.aggregator.load_state_dict(aggregator_state, strict=False)
+    full_state_dict = strip_compiled_model_prefix(checkpoint["state_dict"])
+    backbone_state = extract_required_submodule_state(
+        full_state_dict, prefix="backbone.", module_name="backbone"
+    )
+    aggregator_state = extract_required_submodule_state(
+        full_state_dict, prefix="aggregator.", module_name="aggregator"
+    )
 
-    if missing_b or unexpected_b or missing_a or unexpected_a:
-        print("[WARN] state_dict mismatch details:")
-        if missing_b:
-            print(f"  backbone missing keys: {len(missing_b)}")
-        if unexpected_b:
-            print(f"  backbone unexpected keys: {len(unexpected_b)}")
-        if missing_a:
-            print(f"  aggregator missing keys: {len(missing_a)}")
-        if unexpected_a:
-            print(f"  aggregator unexpected keys: {len(unexpected_a)}")
+    try:
+        model.backbone.load_state_dict(backbone_state, strict=True)
+        model.aggregator.load_state_dict(aggregator_state, strict=True)
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Checkpoint backbone/aggregator weights do not match its saved "
+            f"configuration: {exc}"
+        ) from exc
+
+    if model.spatial_attn_head is not None:
+        spatial_state = extract_required_submodule_state(
+            full_state_dict,
+            prefix="spatial_attn_head.",
+            module_name="SpatialAttentionHead",
+        )
+        try:
+            model.spatial_attn_head.load_state_dict(spatial_state, strict=True)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "SpatialAttentionHead is enabled, but its checkpoint weights "
+                f"do not match the configured head: {exc}"
+            ) from exc
 
     model = model.to(device)
     model.eval()

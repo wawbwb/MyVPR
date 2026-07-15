@@ -1,10 +1,11 @@
 # ----------------------------------------------------------------------------
 # Phase C2 — Local Semantic Attention Distillation (CLIP CLS→patch KL).
 #
-#   L_total = L_vpr + lambda_global * L_global + lambda_kl * L_attn
+#   L_total = L_vpr + lambda_kl * L_attn
 #
 # A learnable 1x1-Conv SpatialAttentionHead on the 20x20 backbone features
-# predicts a spatial distribution, supervised by CLIP ViT-B-16's last-layer
+# predicts a spatial distribution, supervised by CLIP ViT-B-16-quickgelu's
+# last-layer
 # CLS-to-patch attention via KL divergence. The student attention reweights the
 # feature map (mean multiplier 1.0) BEFORE MixVPR, and is RETAINED at inference
 # (CLIP is discarded). distill_mode="global_only" disables the SG-SA region
@@ -55,16 +56,17 @@ distillation:
   enabled: true
   mode: "global_only"        # no SG-SA region branch — isolate the C-phase head
   teacher:
-    model_name: "ViT-B-16"
+    model_name: "ViT-B-16-quickgelu"
     pretrained: "openai"
   proj_dim:
   tau: 0.07
-  lambda_global: 0.05        # set to your best B2/B3 value
+  lambda_global: 0.0         # pure local: no global CLIP distillation
   lambda_region: 0.0
   distill_warmup_steps: 1500
   spatial_attn:
     enabled: true
     num_heads: 1
+    gate_strength: 1.0
     lambda_kl: 0.05          # C3 sweep value
 
 trainer:
