@@ -22,7 +22,7 @@ class CLIPTeacherEncoder(nn.Module):
 
     def __init__(
         self,
-        model_name="ViT-B-16-quickgelu",
+        model_name="ViT-B-16",
         pretrained="openai",
         hf_mirror="https://hf-mirror.com",
         dynamic_categories: list[str] | None = None,

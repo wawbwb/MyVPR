@@ -4,7 +4,7 @@
 #   L_total = L_vpr + lambda_kl * L_attn
 #
 # A learnable 1x1-Conv SpatialAttentionHead on the 20x20 backbone features
-# predicts a spatial distribution, supervised by CLIP ViT-B-16-quickgelu's
+# predicts a spatial distribution, supervised by CLIP ViT-B-16's
 # last-layer
 # CLS-to-patch attention via KL divergence. The student attention reweights the
 # feature map (mean multiplier 1.0) BEFORE MixVPR, and is RETAINED at inference
@@ -56,7 +56,7 @@ distillation:
   enabled: true
   mode: "global_only"        # no SG-SA region branch — isolate the C-phase head
   teacher:
-    model_name: "ViT-B-16-quickgelu"
+    model_name: "ViT-B-16"
     pretrained: "openai"
   proj_dim:
   tau: 0.07

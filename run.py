@@ -165,7 +165,7 @@ def train(config):
 
         teacher = CLIPTeacherEncoder(
             model_name=distill_cfg.get('teacher', {}).get(
-                'model_name', 'ViT-B-16-quickgelu'
+                'model_name', 'ViT-B-16'
             ),
             pretrained=distill_cfg.get('teacher', {}).get('pretrained', 'openai'),
             dynamic_categories=distill_cfg.get('dynamic_categories', None),

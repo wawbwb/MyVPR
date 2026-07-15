@@ -19,7 +19,7 @@ from src.models.distillation import DistillationModule, SpatialAttentionHead
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     teacher = CLIPTeacherEncoder(
-        model_name="ViT-B-16-quickgelu",
+        model_name="ViT-B-16",
         pretrained="openai",
     ).to(device)
     teacher.eval()
