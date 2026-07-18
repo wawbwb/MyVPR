@@ -1,0 +1,80 @@
+# Positive-only ablation for VPR-conditioned CLIP Semantic Reliability.
+# It keeps the complete training/inference path of the main method but removes
+# different-place semantic commonness from the teacher target.
+
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size:
+    - 320
+    - 320
+  img_per_place: 4
+  batch_size: 100
+  num_workers: 8
+  val_set_names:
+    - "msls-val"
+    - "pitts30k-val"
+
+backbone:
+  module: src.models.backbones
+  class: ResNet
+  params:
+    backbone_name: "resnet50"
+    pretrained: true
+    crop_last_block: true
+    num_unfrozen_blocks: 1
+
+aggregator:
+  module: src.models.aggregators
+  class: MixVPR
+  params:
+    in_channels:
+    in_h: 20
+    in_w: 20
+    out_channels: 512
+    mix_depth: 4
+    mlp_ratio: 1
+    out_rows: 4
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+distillation:
+  enabled: true
+  mode: "global_only"
+  teacher:
+    model_name: "ViT-B-16"
+    pretrained: "openai"
+  proj_dim:
+  tau: 0.07
+  lambda_global: 0.0
+  lambda_region: 0.0
+  distill_warmup_steps: 1500
+  spatial_attn:
+    enabled: true
+    num_heads: 1
+    gate_strength: 1.0
+    target: "semantic_reliability"
+    lambda_kl: 0.01
+    detach_backbone_for_kl: true
+    semantic_reliability:
+      temperature: 0.10
+      negative_topk: 1
+      positive_weight: 1.0
+      negative_weight: 0.0
+      pair_chunk_size: 32
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 1500
+  max_epochs: 40
+  milestones:
+    - 10
+    - 20
+    - 30
+  lr_mult: 0.1

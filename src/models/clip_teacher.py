@@ -236,6 +236,27 @@ class CLIPTeacherEncoder(nn.Module):
 
     # ------------------------------------------------------------------
     @torch.no_grad()
+    def project_patch_tokens(self, t_tokens: torch.Tensor) -> torch.Tensor:
+        """Project raw ViT patch tokens into CLIP's joint semantic space.
+
+        The returned patch embeddings are L2-normalised and detached.  They
+        are used only to construct training targets; CLIP is never part of the
+        student inference path.
+        """
+        self.visual.eval()
+        patch_proj = self.visual.ln_post(t_tokens)
+        if hasattr(self.visual, "proj") and self.visual.proj is not None:
+            patch_proj = patch_proj @ self.visual.proj
+
+        # Normalise in fp32 so small positive-vs-negative reliability margins
+        # are not lost under mixed precision, then release the large tensor in
+        # its original dtype. Pairwise matching promotes chunks back to fp32.
+        output_dtype = patch_proj.dtype
+        patch_proj = F.normalize(patch_proj.float(), dim=-1)
+        return patch_proj.to(output_dtype)
+
+    # ------------------------------------------------------------------
+    @torch.no_grad()
     def compute_semantic_mask(self, t_tokens: torch.Tensor) -> torch.Tensor:
         """Compute per-patch suppression mask based on dynamic category similarity.
 
@@ -259,12 +280,7 @@ class CLIPTeacherEncoder(nn.Module):
                 device=t_tokens.device, dtype=t_tokens.dtype,
             )
 
-        v = self.visual
-        # Project patch tokens to the same space as text embeddings
-        patch_proj = v.ln_post(t_tokens)  # (B, N, D_token)
-        if hasattr(v, "proj") and v.proj is not None:
-            patch_proj = patch_proj @ v.proj  # (B, N, D_global)
-        patch_proj = F.normalize(patch_proj, dim=-1)  # (B, N, D_global)
+        patch_proj = self.project_patch_tokens(t_tokens)
 
         # Cosine similarity to each dynamic category: (B, N, K)
         sim = torch.einsum("bnd,kd->bnk", patch_proj, self.dynamic_text_feats)

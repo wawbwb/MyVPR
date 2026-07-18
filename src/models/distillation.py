@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.models.semantic_reliability import VPRSemanticReliabilityTarget
+
 
 class SpatialAttentionHead(nn.Module):
     """Lightweight student-only spatial gate used by phase C.
@@ -97,6 +99,12 @@ class DistillationModule(nn.Module):
         proj_dim: int | None = None,
         tau: float = 0.07,
         distill_mode: str = "region_gate",
+        attention_target: str = "clip_attention",
+        reliability_temperature: float = 0.1,
+        reliability_negative_topk: int = 1,
+        reliability_positive_weight: float = 1.0,
+        reliability_negative_weight: float = 1.0,
+        reliability_pair_chunk_size: int = 32,
     ):
         super().__init__()
         self.teacher = teacher
@@ -105,6 +113,31 @@ class DistillationModule(nn.Module):
         self.use_gate = distill_mode == "region_gate"
         self.use_semantic_gate = distill_mode == "region_semantic_gate"
         self.use_region = distill_mode != "global_only"
+
+        target_aliases = {
+            "cls_attention": "clip_attention",
+            "clip_attention": "clip_attention",
+            "vpr_reliability": "semantic_reliability",
+            "vpr_semantic_reliability": "semantic_reliability",
+            "semantic_reliability": "semantic_reliability",
+        }
+        try:
+            self.attention_target = target_aliases[attention_target]
+        except KeyError as exc:
+            raise ValueError(
+                "attention_target must be one of: clip_attention, "
+                "semantic_reliability"
+            ) from exc
+
+        self.semantic_reliability_target = None
+        if self.attention_target == "semantic_reliability":
+            self.semantic_reliability_target = VPRSemanticReliabilityTarget(
+                temperature=reliability_temperature,
+                negative_topk=reliability_negative_topk,
+                positive_weight=reliability_positive_weight,
+                negative_weight=reliability_negative_weight,
+                pair_chunk_size=reliability_pair_chunk_size,
+            )
 
         if proj_dim is None:
             proj_dim = student_feat_channels
@@ -207,13 +240,14 @@ class DistillationModule(nn.Module):
         teacher_cls_attn: torch.Tensor,
         student_hw: tuple[int, int],
         eps: float = 1e-8,
+        valid_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """KL(teacher || student) on the student's spatial grid.
+        """KL(target || student) on the student's spatial grid.
 
-        ``nn.MultiheadAttention`` has already applied softmax to the teacher
-        weights.  After removing the CLS self-attention entry we therefore
-        only clamp and re-normalise; applying softmax again would flatten the
-        14x14 teacher distribution.
+        ``teacher_cls_attn`` is retained as the parameter name for backwards
+        compatibility, but it may now contain either CLIP CLS attention or a
+        VPR-conditioned semantic reliability distribution. Both inputs are
+        already probabilities, so applying softmax here would flatten them.
         """
         if student_attn.ndim != 3:
             raise ValueError(
@@ -227,6 +261,10 @@ class DistillationModule(nn.Module):
             )
         if student_attn.shape[0] != teacher_cls_attn.shape[0]:
             raise ValueError("student and teacher attention batch sizes differ")
+        if valid_mask is not None:
+            valid_mask = valid_mask.reshape(-1)
+            if valid_mask.numel() != student_attn.shape[0]:
+                raise ValueError("valid_mask must have one value per batch item")
 
         teacher_patches = teacher_cls_attn.shape[-1]
         teacher_side = int(teacher_patches**0.5)
@@ -258,9 +296,16 @@ class DistillationModule(nn.Module):
         student = student_attn.float().mean(dim=1).clamp_min(eps)
         student = student / student.sum(dim=-1, keepdim=True).clamp_min(eps)
 
-        return (
+        per_sample = (
             teacher * (teacher.log() - student.log())
-        ).sum(dim=-1).mean()
+        ).sum(dim=-1)
+        if valid_mask is None:
+            return per_sample.mean()
+
+        weights = valid_mask.to(per_sample.dtype)
+        # A short final batch can contain only one place. Return a graph-
+        # connected zero rather than mean(empty)=NaN in that case.
+        return (per_sample * weights).sum() / weights.sum().clamp_min(1.0)
 
     # ------------------------------------------------------------------
     # Forward
@@ -272,6 +317,7 @@ class DistillationModule(nn.Module):
         student_featmap: torch.Tensor,
         student_global: torch.Tensor,
         student_attn: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
         compute_global: bool = True,
         compute_region: bool = True,
     ) -> dict[str, torch.Tensor]:
@@ -282,6 +328,7 @@ class DistillationModule(nn.Module):
             student_featmap : (B,C,Hs,Ws) backbone feature map
             student_global  : (B,D_s) aggregator descriptor
             student_attn    : optional (B,num_heads,Hs*Ws) phase-C map
+            labels          : place labels, required by semantic reliability
             compute_global  : skip the global branch when its lambda is zero
             compute_region  : skip the region branch when its lambda is zero
 
@@ -289,15 +336,43 @@ class DistillationModule(nn.Module):
             dict with ``loss_global``, ``loss_region`` and ``loss_attn``.
         """
         # ---- teacher (frozen) ----
+        reliability_valid = None
+        reliability_stats: dict[str, torch.Tensor] = {}
         with torch.no_grad():
             self.teacher.eval()
-            if student_attn is not None:
+            needs_cls_attention = (
+                student_attn is not None
+                and self.attention_target == "clip_attention"
+            )
+            if needs_cls_attention:
                 t_global, t_tokens, teacher_cls_attn = self.teacher(
                     images, return_attn=True
                 )
             else:
                 t_global, t_tokens = self.teacher(images)
                 teacher_cls_attn = None
+
+            if (
+                student_attn is not None
+                and self.attention_target == "semantic_reliability"
+            ):
+                if labels is None:
+                    raise ValueError(
+                        "labels are required for semantic reliability attention"
+                    )
+                if not hasattr(self.teacher, "project_patch_tokens"):
+                    raise RuntimeError(
+                        "semantic reliability requires a teacher with "
+                        "project_patch_tokens()"
+                    )
+                patch_embeddings = self.teacher.project_patch_tokens(t_tokens)
+                teacher_cls_attn, reliability_valid, reliability_stats = (
+                    self.semantic_reliability_target(
+                        patch_embeddings=patch_embeddings,
+                        global_embeddings=t_global,
+                        labels=labels,
+                    )
+                )
             t_tokens_aug = None
             semantic_mask = None
             if compute_region and self.use_gate and images_aug is not None:
@@ -306,6 +381,7 @@ class DistillationModule(nn.Module):
                 semantic_mask = self.teacher.compute_semantic_mask(t_tokens)
 
         result: dict[str, torch.Tensor] = {}
+        result.update(reliability_stats)
 
         # ---- global distillation ----
         if compute_global:
@@ -340,6 +416,7 @@ class DistillationModule(nn.Module):
                 student_attn=student_attn,
                 teacher_cls_attn=teacher_cls_attn,
                 student_hw=student_featmap.shape[-2:],
+                valid_mask=reliability_valid,
             )
         else:
             result["loss_attn"] = student_global.new_zeros(())

@@ -1,5 +1,9 @@
 # Experiment Guide — Phases C–F
 
+> **Status (2026-07-18): this C–F plan is archived.** Do not run the D1/D2
+> commands below. The active route and commands are documented in
+> `doc/VPR_SEMANTIC_RELIABILITY.md`.
+
 Run everything from the project root with the `openvpr` conda environment:
 
 ```bash

@@ -306,6 +306,7 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_region=0.05,
         lambda_attn=0.0,
         distill_warmup_steps=1500,
+        detach_backbone_for_attn=False,
     ):
         super().__init__(
             backbone=backbone,
@@ -337,6 +338,10 @@ class VPRFrameworkDistill(VPRFramework):
             raise ValueError(
                 "spatial_attn_head is required when lambda_attn is non-zero"
             )
+        if detach_backbone_for_attn and spatial_attn_head is None:
+            raise ValueError(
+                "detach_backbone_for_attn requires spatial_attn_head"
+            )
 
         self.distill_module = distill_module
         self.spatial_attn_head = spatial_attn_head
@@ -344,18 +349,29 @@ class VPRFrameworkDistill(VPRFramework):
         self.lambda_region = lambda_region
         self.lambda_attn = lambda_attn
         self.distill_warmup_steps = distill_warmup_steps
+        self.detach_backbone_for_attn = bool(detach_backbone_for_attn)
 
     def _student_forward(self, images):
         """Run the exact student path shared by train, validation and inference."""
-        featmap = self.backbone(images)
+        raw_featmap = self.backbone(images)
+        featmap = raw_featmap
         student_attn = None
         if self.spatial_attn_head is not None:
             featmap, student_attn = self.spatial_attn_head(featmap)
         model_output = self.aggregator(featmap)
-        return model_output, featmap, student_attn
+        return model_output, featmap, student_attn, raw_featmap
+
+    def _attention_for_distillation(self, raw_featmap, student_attn):
+        """Optionally stop the reliability KL from directly moving backbone."""
+        if student_attn is None or self.lambda_attn <= 0:
+            return None
+        if not self.detach_backbone_for_attn:
+            return student_attn
+        _, detached_attention = self.spatial_attn_head(raw_featmap.detach())
+        return detached_attention
 
     def forward(self, x):
-        model_output, _, _ = self._student_forward(x)
+        model_output, _, _, _ = self._student_forward(x)
         return model_output
 
     def _optimizer_param_groups(self):
@@ -402,7 +418,7 @@ class VPRFrameworkDistill(VPRFramework):
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
         # cannot silently bypass the phase-C module.
-        model_output, featmap, student_attn = self._student_forward(images)
+        model_output, featmap, student_attn, raw_featmap = self._student_forward(images)
 
         if isinstance(model_output, (tuple, list)):
             descriptors = model_output[0]
@@ -419,12 +435,16 @@ class VPRFrameworkDistill(VPRFramework):
             for value in (self.lambda_global, self.lambda_region, self.lambda_attn)
         )
         if distillation_active:
+            distill_student_attn = self._attention_for_distillation(
+                raw_featmap, student_attn
+            )
             distill_out = self.distill_module(
                 images,
                 images_aug,
                 featmap,
                 descriptors,
-                student_attn=(student_attn if self.lambda_attn > 0 else None),
+                student_attn=distill_student_attn,
+                labels=labels,
                 compute_global=self.lambda_global > 0,
                 compute_region=self.lambda_region > 0,
             )
@@ -455,6 +475,30 @@ class VPRFrameworkDistill(VPRFramework):
         self.log("loss_region_distill", distill_out["loss_region"], prog_bar=False, logger=True)
         self.log("loss_attn_distill", distill_out["loss_attn"], prog_bar=False, logger=True)
         self.log("distill_warmup_scale", warmup_scale, prog_bar=False, logger=True)
+        self.log(
+            "effective_lambda_attn",
+            loss_vpr.new_tensor(warmup_scale * self.lambda_attn),
+            prog_bar=False,
+            logger=True,
+        )
+        for metric_name in (
+            "reliability_pos_sim",
+            "reliability_neg_sim",
+            "reliability_margin",
+            "reliability_positive_margin_frac",
+            "reliability_target_entropy_norm",
+            "reliability_target_peak",
+            "reliability_target_top20_mass",
+            "reliability_hard_negative_place_sim",
+            "reliability_valid_anchor_frac",
+        ):
+            if metric_name in distill_out:
+                self.log(
+                    metric_name,
+                    distill_out[metric_name],
+                    prog_bar=False,
+                    logger=True,
+                )
         if student_attn is not None:
             attn_fp32 = student_attn.float().clamp_min(1e-8)
             attn_entropy = -(attn_fp32 * attn_fp32.log()).sum(dim=-1).mean()
@@ -465,5 +509,14 @@ class VPRFrameworkDistill(VPRFramework):
                 prog_bar=False,
                 logger=True,
             )
+            mean_attention = attn_fp32.mean(dim=1)
+            spatial_size = mean_attention.shape[-1]
+            gate_strength = self.spatial_attn_head.gate_strength
+            gate = (
+                (1.0 - gate_strength)
+                + gate_strength * spatial_size * mean_attention
+            )
+            self.log("student_gate_std", gate.std(), prog_bar=False, logger=True)
+            self.log("student_gate_max", gate.amax(), prog_bar=False, logger=True)
         self.log("batch_acc", batch_accuracy, prog_bar=True, logger=True)
         return loss

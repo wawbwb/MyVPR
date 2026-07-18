@@ -78,6 +78,11 @@ def train(config):
     spatial_cfg = distill_cfg.get('spatial_attn', {})
     spatial_attn_enabled = bool(spatial_cfg.get('enabled', False))
     lambda_attn = float(spatial_cfg.get('lambda_kl', 0.0))
+    attention_target = str(spatial_cfg.get('target', 'clip_attention'))
+    reliability_cfg = spatial_cfg.get('semantic_reliability', {}) or {}
+    detach_backbone_for_attn = bool(
+        spatial_cfg.get('detach_backbone_for_kl', False)
+    )
     lambda_global = float(
         distill_cfg.get('lambda_global', 0.1 if distill_enabled else 0.0)
     )
@@ -99,6 +104,45 @@ def train(config):
     if lambda_attn > 0 and not distill_enabled:
         raise ValueError(
             "CLIP attention supervision requires distillation.enabled=true"
+        )
+    valid_attention_targets = {
+        'cls_attention',
+        'clip_attention',
+        'vpr_reliability',
+        'vpr_semantic_reliability',
+        'semantic_reliability',
+    }
+    if attention_target not in valid_attention_targets:
+        raise ValueError(
+            "distillation.spatial_attn.target must be clip_attention or "
+            "semantic_reliability"
+        )
+    semantic_reliability_active = (
+        lambda_attn > 0
+        and attention_target
+        in {
+            'vpr_reliability',
+            'vpr_semantic_reliability',
+            'semantic_reliability',
+        }
+    )
+    if semantic_reliability_active:
+        if int(config['datamodule']['img_per_place']) < 2:
+            raise ValueError(
+                "semantic reliability requires datamodule.img_per_place >= 2"
+            )
+        if int(config['datamodule']['batch_size']) < 2:
+            raise ValueError(
+                "semantic reliability requires at least two places per batch"
+            )
+        if config.get('compile', False):
+            raise ValueError(
+                "semantic reliability uses dynamic pair mining and does not "
+                "support --compile; run without that flag"
+            )
+    if detach_backbone_for_attn and not spatial_attn_enabled:
+        raise ValueError(
+            "detach_backbone_for_kl requires spatial_attn.enabled=true"
         )
     if not distill_enabled and (lambda_global > 0 or lambda_region > 0):
         raise ValueError(
@@ -189,6 +233,22 @@ def train(config):
             proj_dim=distill_cfg.get('proj_dim', None),
             tau=distill_cfg.get('tau', 0.07),
             distill_mode=distill_mode,
+            attention_target=attention_target,
+            reliability_temperature=float(
+                reliability_cfg.get('temperature', 0.1)
+            ),
+            reliability_negative_topk=int(
+                reliability_cfg.get('negative_topk', 1)
+            ),
+            reliability_positive_weight=float(
+                reliability_cfg.get('positive_weight', 1.0)
+            ),
+            reliability_negative_weight=float(
+                reliability_cfg.get('negative_weight', 1.0)
+            ),
+            reliability_pair_chunk_size=int(
+                reliability_cfg.get('pair_chunk_size', 32)
+            ),
         )
 
     if teacher_required or spatial_attn_enabled:
@@ -210,6 +270,7 @@ def train(config):
             lambda_region=lambda_region,
             lambda_attn=lambda_attn,
             distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
+            detach_backbone_for_attn=detach_backbone_for_attn,
         )
     else:
         vpr_model = VPRFramework(

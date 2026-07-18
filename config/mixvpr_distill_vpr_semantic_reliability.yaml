@@ -1,0 +1,93 @@
+# ----------------------------------------------------------------------------
+# VPR-conditioned CLIP Semantic Reliability
+#
+#   L_total = L_vpr + lambda_kl * KL(q_reliability || p_student)
+#
+# q_reliability is not a single-image CLIP saliency map. For every CLIP patch:
+#   1) positive stability = mean best match in other views of the same place;
+#   2) negative commonness = best match in the most CLIP-similar other place;
+#   3) reliability = positive stability - negative commonness.
+# Patch matching is position independent. CLIP and target construction are used
+# only during training; inference keeps the lightweight student spatial gate.
+# ----------------------------------------------------------------------------
+
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size:
+    - 320
+    - 320
+  img_per_place: 4
+  batch_size: 100          # places per batch; actual image batch is 100 x 4
+  num_workers: 8
+  val_set_names:
+    - "msls-val"
+    - "pitts30k-val"
+
+backbone:
+  module: src.models.backbones
+  class: ResNet
+  params:
+    backbone_name: "resnet50"
+    pretrained: true
+    crop_last_block: true
+    num_unfrozen_blocks: 1
+
+aggregator:
+  module: src.models.aggregators
+  class: MixVPR
+  params:
+    in_channels:
+    in_h: 20
+    in_w: 20
+    out_channels: 512
+    mix_depth: 4
+    mlp_ratio: 1
+    out_rows: 4
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+distillation:
+  enabled: true
+  mode: "global_only"      # disable the legacy SG-SA region branch
+  teacher:
+    # Keep the model identifier validated by this repository's pinned
+    # open_clip_torch==2.26.1 environment.
+    model_name: "ViT-B-16"
+    pretrained: "openai"
+  proj_dim:
+  tau: 0.07
+  lambda_global: 0.0
+  lambda_region: 0.0
+  distill_warmup_steps: 1500
+  spatial_attn:
+    enabled: true
+    num_heads: 1
+    gate_strength: 1.0
+    target: "semantic_reliability"
+    lambda_kl: 0.01
+    # KL updates the spatial head, while the VPR loss remains responsible for
+    # updating the backbone through the gated retrieval path.
+    detach_backbone_for_kl: true
+    semantic_reliability:
+      temperature: 0.10
+      negative_topk: 1     # top CLIP-similar different-place prototype
+      positive_weight: 1.0
+      negative_weight: 1.0
+      pair_chunk_size: 32  # bounds temporary patch-to-patch correlation memory
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 1500
+  max_epochs: 40
+  milestones:
+    - 10
+    - 20
+    - 30
+  lr_mult: 0.1
