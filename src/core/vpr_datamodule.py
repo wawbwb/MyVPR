@@ -55,6 +55,7 @@ class VPRDataModule(L.LightningDataModule):
         batch_sampler=None,
         mean_std={"mean":[0.485, 0.456, 0.406], "std":[0.229, 0.224, 0.225]},
         return_augmented=False,
+        return_metadata=False,
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -70,6 +71,7 @@ class VPRDataModule(L.LightningDataModule):
         self.random_sample_from_each_place = random_sample_from_each_place
         self.val_set_names = val_set_names
         self.return_augmented = return_augmented
+        self.return_metadata = return_metadata
 
         # check that the training dataset exists
         # its path is defined in the config/data/config.yaml file
@@ -178,28 +180,30 @@ class VPRDataModule(L.LightningDataModule):
             hard_mining=hard_mining,
             return_augmented=self.return_augmented,
             aug_transform=self.aug_transform if self.return_augmented else None,
+            return_metadata=self.return_metadata,
         )
     
     def _get_val_dataset(self, ds_name):  
-        if "msls" in ds_name.lower():
-            return MapillarySLSDataset(
-                    dataset_path=self.val_set_paths[ds_name],
-                    input_transform=self.val_transform
-            )
-        elif "pitts30k" in ds_name.lower():
-            return PittsburghDataset(
-                    dataset_path=self.val_set_paths[ds_name],
-                    input_transform=self.val_transform
-            )
-        elif "msls" in ds_name.lower() and "night" in ds_name.lower():
+        ds_name_lower = ds_name.lower()
+        if "msls" in ds_name_lower and "night" in ds_name_lower:
             return MSLSConditionDataset(
                     condition="night",
                     dataset_path=self.val_set_paths[ds_name],
                     input_transform=self.val_transform
             )
-        elif "msls" in ds_name.lower() and "season" in ds_name.lower():
+        elif "msls" in ds_name_lower and "season" in ds_name_lower:
             return MSLSConditionDataset(
                     condition="season",
+                    dataset_path=self.val_set_paths[ds_name],
+                    input_transform=self.val_transform
+            )
+        elif "msls" in ds_name_lower:
+            return MapillarySLSDataset(
+                    dataset_path=self.val_set_paths[ds_name],
+                    input_transform=self.val_transform
+            )
+        elif "pitts30k" in ds_name_lower:
+            return PittsburghDataset(
                     dataset_path=self.val_set_paths[ds_name],
                     input_transform=self.val_transform
             )

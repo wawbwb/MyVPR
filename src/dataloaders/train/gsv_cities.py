@@ -63,6 +63,7 @@ class GSVCitiesDataset(Dataset):
                  hard_mining=False,
                  return_augmented=False,
                  aug_transform=None,
+                 return_metadata=False,
                  ):
         """
         Args:
@@ -72,6 +73,11 @@ class GSVCitiesDataset(Dataset):
             random_sample_from_each_place (bool): Whether to sample images randomly from each place.
             transform (callable): Optional transform to apply on images.
             hard_mining (bool): Whether you are performing hard negative mining or not.
+            return_augmented (bool): Whether to return a second, augmented image tensor.
+            aug_transform (callable): Transform used for the augmented images.
+            return_metadata (bool): Whether to append per-image metadata to the
+                returned tuple. Metadata currently contains ``coordinates`` in
+                ``(latitude, longitude)`` order with shape ``[K, 2]``.
         """
         super().__init__()
         
@@ -104,6 +110,7 @@ class GSVCitiesDataset(Dataset):
         self.hard_mining = hard_mining
         self.return_augmented = return_augmented
         self.aug_transform = aug_transform
+        self.return_metadata = return_metadata
         # generate the dataframe contraining images metadata
         self.dataframe = self.__getdataframes()
         
@@ -176,8 +183,23 @@ class GSVCitiesDataset(Dataset):
         # this will return a Tensor of shape [K, channels, height, width]. This needs to be taken into account 
         # in the Dataloader (which will yield batches of shape [BS, K, channels, height, width])
         labels = torch.tensor(place_id).repeat(self.img_per_place)
+        metadata = None
+        if self.return_metadata:
+            # Preserve the exact order of the sampled rows/images. float64
+            # avoids discarding GPS precision while adding negligible memory
+            # compared with the corresponding image tensors.
+            coordinates = torch.as_tensor(
+                place.loc[:, ['lat', 'lon']].to_numpy(dtype='float64'),
+                dtype=torch.float64,
+            )
+            metadata = {'coordinates': coordinates}
+
         if self.return_augmented:
+            if self.return_metadata:
+                return torch.stack(imgs), torch.stack(imgs_aug), labels, metadata
             return torch.stack(imgs), torch.stack(imgs_aug), labels
+        if self.return_metadata:
+            return torch.stack(imgs), labels, metadata
         return torch.stack(imgs), labels
 
     def __len__(self):

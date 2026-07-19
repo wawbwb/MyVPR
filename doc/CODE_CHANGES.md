@@ -1,8 +1,9 @@
 # 代码变更 — 语义先验蒸馏框架 (阶段 C–F)
 
-> **Status (2026-07-18): archived historical record.** The D1/D2/E/F
-> descriptions below are not the active implementation. Use
-> `doc/VPR_SEMANTIC_RELIABILITY.md` for the current method and commands.
+> **Status (2026-07-19): archived historical record.** The C/D/E/F routes and
+> semantic-reliability spatial target have both been stopped. The active
+> CLIP semantic-alias implementation and commands are documented in
+> `doc/CLIP_SEMANTIC_ALIAS.md`.
 
 本文档记录了为整合 CLIP 语义先验蒸馏计划剩余实验（阶段 C、D、E、F）所做的所有代码更改。所有更改都是**附加的且由配置驱动的**：现有的 A/B 阶段配置保持不变继续工作，每一个新功能都通过 YAML 进行切换。您无需编辑 Python 代码即可运行以下任何实验。
 

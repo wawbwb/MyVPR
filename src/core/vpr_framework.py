@@ -14,6 +14,7 @@ from torchvision import transforms as T
 from torchvision.transforms import v2 as T2
 import src.utils as utils
 import yaml
+from collections.abc import Mapping
 
 class VPRFramework(L.LightningModule):
     def __init__(
@@ -305,6 +306,7 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_global=0.1,
         lambda_region=0.05,
         lambda_attn=0.0,
+        lambda_alias=0.0,
         distill_warmup_steps=1500,
         detach_backbone_for_attn=False,
     ):
@@ -325,11 +327,13 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_global", lambda_global),
             ("lambda_region", lambda_region),
             ("lambda_attn", lambda_attn),
+            ("lambda_alias", lambda_alias),
         ):
             if value < 0:
                 raise ValueError(f"{name} must be non-negative, got {value}")
         if distill_module is None and any(
-            value > 0 for value in (lambda_global, lambda_region, lambda_attn)
+            value > 0
+            for value in (lambda_global, lambda_region, lambda_attn, lambda_alias)
         ):
             raise ValueError(
                 "distill_module is required when a distillation weight is non-zero"
@@ -348,6 +352,7 @@ class VPRFrameworkDistill(VPRFramework):
         self.lambda_global = lambda_global
         self.lambda_region = lambda_region
         self.lambda_attn = lambda_attn
+        self.lambda_alias = lambda_alias
         self.distill_warmup_steps = distill_warmup_steps
         self.detach_backbone_for_attn = bool(detach_backbone_for_attn)
 
@@ -400,20 +405,43 @@ class VPRFrameworkDistill(VPRFramework):
                 )
         return optimizer_params
 
+    @staticmethod
+    def _unpack_distillation_batch(batch):
+        """Unpack legacy, augmented and metadata-aware training batches."""
+        metadata = None
+        images_aug = None
+        if len(batch) == 2:
+            images, labels = batch
+        elif len(batch) == 3:
+            if isinstance(batch[-1], Mapping):
+                images, labels, metadata = batch
+            else:
+                images, images_aug, labels = batch
+        elif len(batch) == 4 and isinstance(batch[-1], Mapping):
+            images, images_aug, labels, metadata = batch
+        else:
+            raise ValueError(
+                "unexpected training batch; expected (images, labels), "
+                "(images, images_aug, labels), or either tuple plus metadata"
+            )
+        return images, images_aug, labels, metadata
+
     def training_step(self, batch, batch_idx):
         """Training step with CLIP teacher distillation."""
-        # Unpack: batch may contain an augmented view
-        if len(batch) == 3:
-            images, images_aug, labels = batch
-        else:
-            images, labels = batch
-            images_aug = None
+        images, images_aug, labels, metadata = self._unpack_distillation_batch(
+            batch
+        )
 
         P, K, c, h, w = images.shape
         images = images.view(P * K, c, h, w)
         if images_aug is not None:
             images_aug = images_aug.view(P * K, c, h, w)
         labels = labels.view(-1)
+        coordinates = None
+        if metadata is not None:
+            coordinates = metadata.get("coordinates")
+            if coordinates is not None:
+                coordinates = coordinates.reshape(P * K, 2)
 
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
@@ -432,7 +460,12 @@ class VPRFrameworkDistill(VPRFramework):
         # entirely while retaining the exact same student inference path.
         distillation_active = self.distill_module is not None and any(
             value > 0
-            for value in (self.lambda_global, self.lambda_region, self.lambda_attn)
+            for value in (
+                self.lambda_global,
+                self.lambda_region,
+                self.lambda_attn,
+                self.lambda_alias,
+            )
         )
         if distillation_active:
             distill_student_attn = self._attention_for_distillation(
@@ -445,6 +478,7 @@ class VPRFrameworkDistill(VPRFramework):
                 descriptors,
                 student_attn=distill_student_attn,
                 labels=labels,
+                coordinates=coordinates,
                 compute_global=self.lambda_global > 0,
                 compute_region=self.lambda_region > 0,
             )
@@ -454,6 +488,7 @@ class VPRFrameworkDistill(VPRFramework):
                 "loss_global": zero,
                 "loss_region": zero,
                 "loss_attn": zero,
+                "loss_alias": zero,
             }
 
         # Linear warmup for distillation weights
@@ -467,6 +502,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_global * distill_out["loss_global"]
             + warmup_scale * self.lambda_region * distill_out["loss_region"]
             + warmup_scale * self.lambda_attn * distill_out["loss_attn"]
+            + warmup_scale * self.lambda_alias * distill_out["loss_alias"]
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -474,10 +510,22 @@ class VPRFrameworkDistill(VPRFramework):
         self.log("loss_global_distill", distill_out["loss_global"], prog_bar=False, logger=True)
         self.log("loss_region_distill", distill_out["loss_region"], prog_bar=False, logger=True)
         self.log("loss_attn_distill", distill_out["loss_attn"], prog_bar=False, logger=True)
+        self.log(
+            "loss_semantic_alias",
+            distill_out["loss_alias"],
+            prog_bar=False,
+            logger=True,
+        )
         self.log("distill_warmup_scale", warmup_scale, prog_bar=False, logger=True)
         self.log(
             "effective_lambda_attn",
             loss_vpr.new_tensor(warmup_scale * self.lambda_attn),
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "effective_lambda_alias",
+            loss_vpr.new_tensor(warmup_scale * self.lambda_alias),
             prog_bar=False,
             logger=True,
         )
@@ -496,6 +544,14 @@ class VPRFrameworkDistill(VPRFramework):
                 self.log(
                     metric_name,
                     distill_out[metric_name],
+                    prog_bar=False,
+                    logger=True,
+                )
+        for metric_name, metric_value in distill_out.items():
+            if metric_name.startswith("semantic_alias_"):
+                self.log(
+                    metric_name,
+                    metric_value,
                     prog_bar=False,
                     logger=True,
                 )

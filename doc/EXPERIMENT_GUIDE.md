@@ -1,8 +1,9 @@
 # Experiment Guide — Phases C–F
 
-> **Status (2026-07-18): this C–F plan is archived.** Do not run the D1/D2
-> commands below. The active route and commands are documented in
-> `doc/VPR_SEMANTIC_RELIABILITY.md`.
+> **Status (2026-07-19): this C–F plan is archived.** Do not run the C/D
+> commands below. Semantic reliability also failed (best MSLS R@1 86.49).
+> The active route and commands are documented in
+> `doc/CLIP_SEMANTIC_ALIAS.md`.
 
 Run everything from the project root with the `openvpr` conda environment:
 

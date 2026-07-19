@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.models.semantic_reliability import VPRSemanticReliabilityTarget
+from src.models.semantic_alias import CLIPSemanticAliasLoss
 
 
 class SpatialAttentionHead(nn.Module):
@@ -105,6 +106,12 @@ class DistillationModule(nn.Module):
         reliability_positive_weight: float = 1.0,
         reliability_negative_weight: float = 1.0,
         reliability_pair_chunk_size: int = 32,
+        semantic_alias_enabled: bool = False,
+        semantic_alias_selection: str = "clip",
+        semantic_alias_negative_topk: int = 1,
+        semantic_alias_min_geo_distance_m: float = 50.0,
+        semantic_alias_student_margin: float = 0.2,
+        semantic_alias_loss_temperature: float = 0.05,
     ):
         super().__init__()
         self.teacher = teacher
@@ -137,6 +144,16 @@ class DistillationModule(nn.Module):
                 positive_weight=reliability_positive_weight,
                 negative_weight=reliability_negative_weight,
                 pair_chunk_size=reliability_pair_chunk_size,
+            )
+
+        self.semantic_alias_loss = None
+        if semantic_alias_enabled:
+            self.semantic_alias_loss = CLIPSemanticAliasLoss(
+                selection=semantic_alias_selection,
+                negative_topk=semantic_alias_negative_topk,
+                min_geo_distance_m=semantic_alias_min_geo_distance_m,
+                student_margin=semantic_alias_student_margin,
+                loss_temperature=semantic_alias_loss_temperature,
             )
 
         if proj_dim is None:
@@ -318,6 +335,7 @@ class DistillationModule(nn.Module):
         student_global: torch.Tensor,
         student_attn: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
+        coordinates: torch.Tensor | None = None,
         compute_global: bool = True,
         compute_region: bool = True,
     ) -> dict[str, torch.Tensor]:
@@ -329,11 +347,13 @@ class DistillationModule(nn.Module):
             student_global  : (B,D_s) aggregator descriptor
             student_attn    : optional (B,num_heads,Hs*Ws) phase-C map
             labels          : place labels, required by semantic reliability
+            coordinates     : (B,2) latitude/longitude for alias filtering
             compute_global  : skip the global branch when its lambda is zero
             compute_region  : skip the region branch when its lambda is zero
 
         Returns:
-            dict with ``loss_global``, ``loss_region`` and ``loss_attn``.
+            dict with the requested global, region, attention and semantic-
+            alias losses.
         """
         # ---- teacher (frozen) ----
         reliability_valid = None
@@ -420,6 +440,26 @@ class DistillationModule(nn.Module):
             )
         else:
             result["loss_attn"] = student_global.new_zeros(())
+
+        # CLIP is deliberately used only to select semantically confusable,
+        # geographically safe negative places.  The loss itself is computed
+        # between student VPR descriptors; it never fits a CLIP feature or
+        # similarity target.
+        if self.semantic_alias_loss is not None:
+            if labels is None or coordinates is None:
+                raise ValueError(
+                    "labels and coordinates are required for semantic-alias mining"
+                )
+            alias_loss, alias_stats = self.semantic_alias_loss(
+                student_descriptors=student_global,
+                clip_embeddings=t_global,
+                labels=labels,
+                coordinates=coordinates,
+            )
+            result["loss_alias"] = alias_loss
+            result.update(alias_stats)
+        else:
+            result["loss_alias"] = student_global.new_zeros(())
 
         return result
 

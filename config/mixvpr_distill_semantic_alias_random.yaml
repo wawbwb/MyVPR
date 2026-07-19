@@ -1,0 +1,86 @@
+# ----------------------------------------------------------------------------
+# Random-pair control for CLIP semantic-alias mining.
+#
+# This file differs from mixvpr_distill_semantic_alias.yaml only in selection.
+# It uses the same valid negative pool, top-k count, auxiliary loss and training
+# settings, but chooses negatives randomly instead of ranking them with CLIP.
+# Any gain shared by both runs is therefore not evidence for CLIP semantics.
+# ----------------------------------------------------------------------------
+
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size:
+    - 320
+    - 320
+  img_per_place: 4
+  batch_size: 100
+  num_workers: 8
+  val_set_names:
+    - "msls-val"
+    - "pitts30k-val"
+
+backbone:
+  module: src.models.backbones
+  class: ResNet
+  params:
+    backbone_name: "resnet50"
+    pretrained: true
+    crop_last_block: true
+    num_unfrozen_blocks: 1
+
+aggregator:
+  module: src.models.aggregators
+  class: MixVPR
+  params:
+    in_channels:
+    in_h: 20
+    in_w: 20
+    out_channels: 512
+    mix_depth: 4
+    mlp_ratio: 1
+    out_rows: 4
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+distillation:
+  enabled: true
+  mode: "global_only"
+  teacher:
+    model_name: "ViT-B-16"
+    pretrained: "openai"
+  proj_dim:
+  tau: 0.07
+
+  # Keep these controls identical to the CLIP-selected main experiment.
+  lambda_global: 0.0
+  lambda_region: 0.0
+  distill_warmup_steps: 1500
+  spatial_attn:
+    enabled: false
+    lambda_kl: 0.0
+
+  semantic_alias:
+    enabled: true
+    selection: "random"
+    lambda: 0.05
+    negative_topk: 1
+    min_geo_distance_m: 50.0
+    student_margin: 0.2
+    loss_temperature: 0.05
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 1500
+  max_epochs: 40
+  milestones:
+    - 10
+    - 20
+    - 30
+  lr_mult: 0.1

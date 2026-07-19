@@ -1,5 +1,11 @@
 # VPR-conditioned CLIP Semantic Reliability
 
+> **状态（2026-07-19）：该路线已停止，仅保留用于复现。** 最新 40 epoch
+> 实验的 MSLS R@1 最佳为 86.49，后 20 epoch 均值为 86.23；相对 C0
+> 分别下降 1.08 和 0.96 个点，而 Pitts30k 基本持平。这是稳定的低平台，
+> 不再继续扫描 KL、temperature 或 positive-only。当前路线见
+> `doc/CLIP_SEMANTIC_ALIAS.md`。
+
 本路线替代旧的 Phase C（直接复制 CLIP CLS-to-patch attention）以及原计划的
 D1/D2。旧 D1/D2 配置不再作为后续实验路线。
 

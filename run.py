@@ -89,11 +89,32 @@ def train(config):
     lambda_region = float(
         distill_cfg.get('lambda_region', 0.05 if distill_enabled else 0.0)
     )
+    semantic_alias_cfg = distill_cfg.get('semantic_alias', {}) or {}
+    semantic_alias_enabled = bool(
+        semantic_alias_cfg.get('enabled', False)
+    )
+    lambda_alias = float(semantic_alias_cfg.get('lambda', 0.0))
+    semantic_alias_selection = str(
+        semantic_alias_cfg.get('selection', 'clip')
+    ).lower()
+    semantic_alias_topk = int(
+        semantic_alias_cfg.get('negative_topk', 1)
+    )
+    semantic_alias_min_distance = float(
+        semantic_alias_cfg.get('min_geo_distance_m', 50.0)
+    )
+    semantic_alias_margin = float(
+        semantic_alias_cfg.get('student_margin', 0.2)
+    )
+    semantic_alias_temperature = float(
+        semantic_alias_cfg.get('loss_temperature', 0.05)
+    )
 
     for name, value in (
         ('lambda_global', lambda_global),
         ('lambda_region', lambda_region),
         ('spatial_attn.lambda_kl', lambda_attn),
+        ('semantic_alias.lambda', lambda_alias),
     ):
         if value < 0:
             raise ValueError(f"distillation.{name} must be non-negative")
@@ -149,8 +170,50 @@ def train(config):
             "Non-zero global/region weights require distillation.enabled=true"
         )
 
+    semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
+    if lambda_alias > 0 and not semantic_alias_enabled:
+        raise ValueError(
+            "semantic_alias.lambda is non-zero but semantic_alias.enabled is false"
+        )
+    if semantic_alias_active and not distill_enabled:
+        raise ValueError(
+            "CLIP semantic-alias mining requires distillation.enabled=true"
+        )
+    if semantic_alias_selection not in {'clip', 'random', 'shuffled'}:
+        raise ValueError(
+            "distillation.semantic_alias.selection must be clip, random, "
+            "or shuffled"
+        )
+    if semantic_alias_topk < 1:
+        raise ValueError(
+            "distillation.semantic_alias.negative_topk must be at least 1"
+        )
+    if semantic_alias_min_distance < 0:
+        raise ValueError(
+            "distillation.semantic_alias.min_geo_distance_m must be non-negative"
+        )
+    if not -1.0 <= semantic_alias_margin <= 1.0:
+        raise ValueError(
+            "distillation.semantic_alias.student_margin must be in [-1, 1]"
+        )
+    if semantic_alias_temperature <= 0:
+        raise ValueError(
+            "distillation.semantic_alias.loss_temperature must be positive"
+        )
+    if semantic_alias_active:
+        if int(config['datamodule']['batch_size']) < 2:
+            raise ValueError(
+                "semantic-alias mining requires at least two places per batch"
+            )
+        if config.get('compile', False):
+            raise ValueError(
+                "semantic-alias mining uses dynamic pair selection and does not "
+                "support --compile; run without that flag"
+            )
+
     teacher_required = distill_enabled and any(
-        value > 0 for value in (lambda_global, lambda_region, lambda_attn)
+        value > 0
+        for value in (lambda_global, lambda_region, lambda_attn, lambda_alias)
     )
     return_augmented = (
         teacher_required and lambda_region > 0 and distill_mode == 'region_gate'
@@ -170,6 +233,7 @@ def train(config):
         val_set_names=config['datamodule']['val_set_names'],
         val_image_size=config['datamodule']['val_image_size'], # if None, the same as train_image_size
         return_augmented=return_augmented,
+        return_metadata=semantic_alias_active,
     )
 
 
@@ -249,7 +313,17 @@ def train(config):
             reliability_pair_chunk_size=int(
                 reliability_cfg.get('pair_chunk_size', 32)
             ),
+            semantic_alias_enabled=semantic_alias_active,
+            semantic_alias_selection=semantic_alias_selection,
+            semantic_alias_negative_topk=semantic_alias_topk,
+            semantic_alias_min_geo_distance_m=semantic_alias_min_distance,
+            semantic_alias_student_margin=semantic_alias_margin,
+            semantic_alias_loss_temperature=semantic_alias_temperature,
         )
+        # Alias/attention-only runs never execute the global projection.
+        # Freeze it so DDP does not see an unused trainable parameter.
+        if lambda_global <= 0:
+            distill_module.student_global_proj.requires_grad_(False)
 
     if teacher_required or spatial_attn_enabled:
         vpr_model = VPRFrameworkDistill(
@@ -269,6 +343,7 @@ def train(config):
             lambda_global=lambda_global,
             lambda_region=lambda_region,
             lambda_attn=lambda_attn,
+            lambda_alias=lambda_alias,
             distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
             detach_backbone_for_attn=detach_backbone_for_attn,
         )
