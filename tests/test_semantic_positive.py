@@ -62,6 +62,25 @@ class _RecordingTeacher(nn.Module):
         return globals_, tokens
 
 
+class _ChunkRecordingTeacher(nn.Module):
+    """Encode globals from image contents while recording every chunk."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.batch_sizes: list[int] = []
+        self.seen_markers: list[int] = []
+
+    def forward(self, images: torch.Tensor, return_attn: bool = False):
+        assert not return_attn
+        self.batch_sizes.append(images.shape[0])
+        self.seen_markers.extend(
+            images[:, 2, 0, 0].detach().cpu().to(torch.int64).tolist()
+        )
+        globals_ = F.normalize(images[:, :2, 0, 0], dim=-1)
+        tokens = images.new_zeros(images.shape[0], 1, 2)
+        return globals_, tokens
+
+
 def test_distillation_module_uses_clean_view_without_teacher_gradient() -> None:
     teacher = _RecordingTeacher()
     module = DistillationModule(
@@ -102,6 +121,45 @@ def test_distillation_module_uses_clean_view_without_teacher_gradient() -> None:
     assert student_descriptors.grad is not None
     assert student_descriptors.grad.abs().sum() > 0
     assert teacher.scale.grad is None
+
+
+def test_distillation_module_chunks_clean_teacher_encoding_in_order() -> None:
+    student_descriptors, clip_embeddings, labels = _controlled_batch()
+    teacher = _ChunkRecordingTeacher()
+    module = DistillationModule(
+        teacher=teacher,
+        teacher_token_dim=2,
+        teacher_global_dim=2,
+        student_feat_channels=1,
+        student_global_dim=2,
+        distill_mode="global_only",
+        semantic_positive_enabled=True,
+        semantic_positive_selection="clip",
+        semantic_positive_teacher_chunk_size=4,
+    )
+
+    teacher_images = torch.zeros(6, 3, 2, 2)
+    teacher_images[:, :2, 0, 0] = clip_embeddings
+    teacher_images[:, 2, 0, 0] = torch.arange(6)
+    output = module(
+        images=torch.zeros(6, 3, 8, 8),
+        images_aug=None,
+        student_featmap=torch.randn(6, 1, 2, 2),
+        student_global=student_descriptors,
+        labels=labels,
+        teacher_images=teacher_images,
+        compute_global=False,
+        compute_region=False,
+    )
+
+    expected_loss, expected_stats = CLIPSemanticPositiveLoss(
+        selection="clip"
+    )(student_descriptors, clip_embeddings, labels)
+    assert teacher.batch_sizes == [4, 2]
+    assert teacher.seen_markers == list(range(6))
+    torch.testing.assert_close(output["loss_positive"], expected_loss)
+    for key, expected_value in expected_stats.items():
+        torch.testing.assert_close(output[key], expected_value)
 
 
 def test_clip_selection_loss_gradient_and_metadata_stats() -> None:

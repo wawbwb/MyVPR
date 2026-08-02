@@ -70,6 +70,7 @@ distillation:
     selection: "student"
     lambda: 0.05
     positive_topk: 1
+    teacher_chunk_size: 64
 
 trainer:
   optimizer: adamw

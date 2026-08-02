@@ -3,6 +3,8 @@
 # region vectors, and loss computation.
 # ----------------------------------------------------------------------------
 
+import operator
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -116,6 +118,7 @@ class DistillationModule(nn.Module):
         semantic_positive_enabled: bool = False,
         semantic_positive_selection: str = "clip",
         semantic_positive_topk: int = 1,
+        semantic_positive_teacher_chunk_size: int = 64,
     ):
         super().__init__()
         self.teacher = teacher
@@ -162,10 +165,29 @@ class DistillationModule(nn.Module):
 
         self.semantic_positive_loss = None
         if semantic_positive_enabled:
+            if isinstance(semantic_positive_teacher_chunk_size, bool):
+                raise TypeError(
+                    "semantic_positive_teacher_chunk_size must be an integer"
+                )
+            try:
+                semantic_positive_teacher_chunk_size = operator.index(
+                    semantic_positive_teacher_chunk_size
+                )
+            except TypeError as exc:
+                raise TypeError(
+                    "semantic_positive_teacher_chunk_size must be an integer"
+                ) from exc
+            if semantic_positive_teacher_chunk_size < 1:
+                raise ValueError(
+                    "semantic_positive_teacher_chunk_size must be at least 1"
+                )
             self.semantic_positive_loss = CLIPSemanticPositiveLoss(
                 selection=semantic_positive_selection,
                 positive_topk=semantic_positive_topk,
             )
+        self.semantic_positive_teacher_chunk_size = (
+            semantic_positive_teacher_chunk_size
+        )
 
         if proj_dim is None:
             proj_dim = student_feat_channels
@@ -338,6 +360,27 @@ class DistillationModule(nn.Module):
     # ------------------------------------------------------------------
     # Forward
     # ------------------------------------------------------------------
+    def _encode_semantic_positive_global(
+        self, teacher_images: torch.Tensor
+    ) -> torch.Tensor:
+        """Encode clean views in bounded chunks and retain only CLIP globals.
+
+        A normal GSV-Cities batch contains 100 places x 4 views. Encoding all
+        400 clean views at once keeps the student graph alive while allocating
+        a second full CLIP image/activation batch, which exceeds 24 GB GPUs.
+        Chunking changes neither the frozen teacher output nor pair selection.
+        """
+        chunks = []
+        chunk_size = self.semantic_positive_teacher_chunk_size
+        for start in range(0, teacher_images.shape[0], chunk_size):
+            stop = min(start + chunk_size, teacher_images.shape[0])
+            global_chunk, token_chunk = self.teacher(teacher_images[start:stop])
+            chunks.append(global_chunk)
+            # Patch tokens are not used by semantic-positive mining. Release
+            # the final transformer state before encoding the next chunk.
+            del token_chunk
+        return torch.cat(chunks, dim=0)
+
     def forward(
         self,
         images: torch.Tensor,
@@ -400,11 +443,22 @@ class DistillationModule(nn.Module):
         reliability_stats: dict[str, torch.Tensor] = {}
         with torch.no_grad():
             self.teacher.eval()
+            semantic_positive_only = (
+                self.semantic_positive_loss is not None
+                and self.semantic_alias_loss is None
+                and not compute_global
+                and not compute_region
+                and student_attn is None
+            )
             needs_cls_attention = (
                 student_attn is not None
                 and self.attention_target == "clip_attention"
             )
-            if needs_cls_attention:
+            if semantic_positive_only:
+                t_global = self._encode_semantic_positive_global(teacher_input)
+                t_tokens = None
+                teacher_cls_attn = None
+            elif needs_cls_attention:
                 t_global, t_tokens, teacher_cls_attn = self.teacher(
                     teacher_input, return_attn=True
                 )

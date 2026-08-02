@@ -25,9 +25,11 @@ view，学生仍使用原 A2 的增强图像；二者来自同一批采样图像
 | `shuffled` | 打乱 batch 内 CLIP pair score 与真实图像对的对应关系 |
 | `student` | 选择当前 VPR 描述符相似度最低的同地点对 |
 
-初始设置固定为 `lambda=0.05`、`positive_topk=1`、100 places × 4 images、20 epoch。
-旧的 global/region/attention distillation 和 semantic alias 均显式关闭。首轮不要扫描
-lambda、top-k 或其他超参数，也不要使用 `--compile`。
+初始设置固定为 `lambda=0.05`、`positive_topk=1`、`teacher_chunk_size=64`、
+100 places × 4 images、20 epoch。CLIP 将 400 张 clean view 分成最多 64 张一块进行冻结
+前向，只保留全局向量；分块不改变选样结果。旧的 global/region/attention distillation 和
+semantic alias 均显式关闭。首轮不要扫描 lambda、top-k 或其他超参数，也不要使用
+`--compile`。
 
 ## TensorBoard 指标
 
@@ -66,35 +68,27 @@ pytest -q tests/test_semantic_positive.py tests/test_semantic_alias.py \
   tests/test_semantic_reliability.py tests/test_phase_c_attention.py
 ```
 
-建议先分别进行单 batch 冒烟测试：
-
-```bash
-for mode in random shuffled student clip; do
-  python run.py --train --dev \
-    --config "config/mixvpr_distill_semantic_positive_${mode}.yaml" \
-    --seed 42 --devices 0 --precision 32-true
-done
-```
-
-冒烟测试全部通过后，按相同 seed 完成四组 20 epoch 实验：
+测试通过后直接按相同 seed 完成四组 20 epoch 正式实验。统一显式使用
+`--precision 16-mixed`，不要再运行此前的 `--dev --precision 32-true` 命令：
 
 ```bash
 python run.py --train --config config/mixvpr_distill_semantic_positive_random.yaml \
-  --seed 42 --devices 0
+  --seed 42 --devices 0 --precision 16-mixed
 python run.py --train --config config/mixvpr_distill_semantic_positive_shuffled.yaml \
-  --seed 42 --devices 0
+  --seed 42 --devices 0 --precision 16-mixed
 python run.py --train --config config/mixvpr_distill_semantic_positive_student.yaml \
-  --seed 42 --devices 0
+  --seed 42 --devices 0 --precision 16-mixed
 python run.py --train --config config/mixvpr_distill_semantic_positive_clip.yaml \
-  --seed 42 --devices 0
+  --seed 42 --devices 0 --precision 16-mixed
 ```
 
 配置默认已经是 20 epoch。若服务器通过 `CUDA_VISIBLE_DEVICES` 只暴露一张物理显卡，
 命令仍使用逻辑设备 `--devices 0`。
 
-clean teacher view 会增加主机预取内存和约 241 MB 的单 batch GPU 输入。若 DataLoader
-因主机内存不足被系统终止，四组命令统一追加 `--num_workers 4`（仍不足时用 2）；不要只
-修改某一组，也不要首先改变 batch size。
+clean teacher view 会增加主机预取内存和约 241 MB 的单 batch GPU 输入；CLIP 前向由
+`teacher_chunk_size=64` 限制峰值显存。若仍然发生 CUDA OOM，四份配置统一把该值降为
+`32`，不要改变 batch size；若 DataLoader 因主机内存不足被系统终止，四组命令统一追加
+`--num_workers 4`（仍不足时用 2）。任何资源调整都必须对四组保持一致。
 
 ## 判读与停止条件
 

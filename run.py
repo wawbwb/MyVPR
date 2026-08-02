@@ -134,6 +134,21 @@ def train(config):
         raise TypeError(
             "distillation.semantic_positive.positive_topk must be an integer"
         ) from exc
+    raw_teacher_chunk_size = semantic_positive_cfg.get(
+        'teacher_chunk_size', 64
+    )
+    if isinstance(raw_teacher_chunk_size, bool):
+        raise TypeError(
+            "distillation.semantic_positive.teacher_chunk_size must be an integer"
+        )
+    try:
+        semantic_positive_teacher_chunk_size = operator.index(
+            raw_teacher_chunk_size
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "distillation.semantic_positive.teacher_chunk_size must be an integer"
+        ) from exc
 
     for name, value in (
         ('lambda_global', lambda_global),
@@ -261,6 +276,10 @@ def train(config):
     if semantic_positive_topk < 1:
         raise ValueError(
             "distillation.semantic_positive.positive_topk must be at least 1"
+        )
+    if semantic_positive_teacher_chunk_size < 1:
+        raise ValueError(
+            "distillation.semantic_positive.teacher_chunk_size must be at least 1"
         )
     if semantic_positive_active:
         if int(config['datamodule']['img_per_place']) < 2:
@@ -405,6 +424,9 @@ def train(config):
             semantic_positive_enabled=semantic_positive_active,
             semantic_positive_selection=semantic_positive_selection,
             semantic_positive_topk=semantic_positive_topk,
+            semantic_positive_teacher_chunk_size=(
+                semantic_positive_teacher_chunk_size
+            ),
         )
         # Alias/attention-only runs never execute the global projection.
         # Freeze it so DDP does not see an unused trainable parameter.
