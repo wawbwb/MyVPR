@@ -6,6 +6,8 @@
 # Licensed under the MIT License. See LICENSE file in the project root.
 # ----------------------------------------------------------------------------
 
+import math
+
 import numpy as np
 import torch
 import lightning as L
@@ -307,6 +309,7 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_region=0.05,
         lambda_attn=0.0,
         lambda_alias=0.0,
+        lambda_positive=0.0,
         distill_warmup_steps=1500,
         detach_backbone_for_attn=False,
     ):
@@ -328,12 +331,21 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_region", lambda_region),
             ("lambda_attn", lambda_attn),
             ("lambda_alias", lambda_alias),
+            ("lambda_positive", lambda_positive),
         ):
-            if value < 0:
-                raise ValueError(f"{name} must be non-negative, got {value}")
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(
+                    f"{name} must be finite and non-negative, got {value}"
+                )
         if distill_module is None and any(
             value > 0
-            for value in (lambda_global, lambda_region, lambda_attn, lambda_alias)
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+            )
         ):
             raise ValueError(
                 "distill_module is required when a distillation weight is non-zero"
@@ -353,6 +365,7 @@ class VPRFrameworkDistill(VPRFramework):
         self.lambda_region = lambda_region
         self.lambda_attn = lambda_attn
         self.lambda_alias = lambda_alias
+        self.lambda_positive = lambda_positive
         self.distill_warmup_steps = distill_warmup_steps
         self.detach_backbone_for_attn = bool(detach_backbone_for_attn)
 
@@ -438,10 +451,32 @@ class VPRFrameworkDistill(VPRFramework):
             images_aug = images_aug.view(P * K, c, h, w)
         labels = labels.view(-1)
         coordinates = None
+        teacher_images = None
+        years = None
+        months = None
+        headings = None
         if metadata is not None:
             coordinates = metadata.get("coordinates")
             if coordinates is not None:
                 coordinates = coordinates.reshape(P * K, 2)
+            teacher_images = metadata.get("teacher_images")
+            if teacher_images is not None:
+                if teacher_images.ndim != 5 or teacher_images.shape[:2] != (P, K):
+                    raise ValueError(
+                        "metadata.teacher_images must have shape (P,K,3,H,W)"
+                    )
+                teacher_images = teacher_images.reshape(
+                    P * K, *teacher_images.shape[2:]
+                )
+            years = metadata.get("years")
+            months = metadata.get("months")
+            headings = metadata.get("headings")
+            if years is not None:
+                years = years.reshape(P * K)
+            if months is not None:
+                months = months.reshape(P * K)
+            if headings is not None:
+                headings = headings.reshape(P * K)
 
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
@@ -465,6 +500,7 @@ class VPRFrameworkDistill(VPRFramework):
                 self.lambda_region,
                 self.lambda_attn,
                 self.lambda_alias,
+                self.lambda_positive,
             )
         )
         if distillation_active:
@@ -479,6 +515,10 @@ class VPRFrameworkDistill(VPRFramework):
                 student_attn=distill_student_attn,
                 labels=labels,
                 coordinates=coordinates,
+                teacher_images=teacher_images,
+                years=years,
+                months=months,
+                headings=headings,
                 compute_global=self.lambda_global > 0,
                 compute_region=self.lambda_region > 0,
             )
@@ -489,6 +529,7 @@ class VPRFrameworkDistill(VPRFramework):
                 "loss_region": zero,
                 "loss_attn": zero,
                 "loss_alias": zero,
+                "loss_positive": zero,
             }
 
         # Linear warmup for distillation weights
@@ -503,6 +544,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_region * distill_out["loss_region"]
             + warmup_scale * self.lambda_attn * distill_out["loss_attn"]
             + warmup_scale * self.lambda_alias * distill_out["loss_alias"]
+            + warmup_scale * self.lambda_positive * distill_out["loss_positive"]
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -516,6 +558,12 @@ class VPRFrameworkDistill(VPRFramework):
             prog_bar=False,
             logger=True,
         )
+        self.log(
+            "loss_semantic_positive",
+            distill_out["loss_positive"],
+            prog_bar=False,
+            logger=True,
+        )
         self.log("distill_warmup_scale", warmup_scale, prog_bar=False, logger=True)
         self.log(
             "effective_lambda_attn",
@@ -526,6 +574,12 @@ class VPRFrameworkDistill(VPRFramework):
         self.log(
             "effective_lambda_alias",
             loss_vpr.new_tensor(warmup_scale * self.lambda_alias),
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "effective_lambda_positive",
+            loss_vpr.new_tensor(warmup_scale * self.lambda_positive),
             prog_bar=False,
             logger=True,
         )
@@ -549,6 +603,13 @@ class VPRFrameworkDistill(VPRFramework):
                 )
         for metric_name, metric_value in distill_out.items():
             if metric_name.startswith("semantic_alias_"):
+                self.log(
+                    metric_name,
+                    metric_value,
+                    prog_bar=False,
+                    logger=True,
+                )
+            elif metric_name.startswith("semantic_positive_"):
                 self.log(
                     metric_name,
                     metric_value,

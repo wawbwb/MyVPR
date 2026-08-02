@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from src.models.semantic_reliability import VPRSemanticReliabilityTarget
 from src.models.semantic_alias import CLIPSemanticAliasLoss
+from src.models.semantic_positive import CLIPSemanticPositiveLoss
 
 
 class SpatialAttentionHead(nn.Module):
@@ -112,6 +113,9 @@ class DistillationModule(nn.Module):
         semantic_alias_min_geo_distance_m: float = 50.0,
         semantic_alias_student_margin: float = 0.2,
         semantic_alias_loss_temperature: float = 0.05,
+        semantic_positive_enabled: bool = False,
+        semantic_positive_selection: str = "clip",
+        semantic_positive_topk: int = 1,
     ):
         super().__init__()
         self.teacher = teacher
@@ -154,6 +158,13 @@ class DistillationModule(nn.Module):
                 min_geo_distance_m=semantic_alias_min_geo_distance_m,
                 student_margin=semantic_alias_student_margin,
                 loss_temperature=semantic_alias_loss_temperature,
+            )
+
+        self.semantic_positive_loss = None
+        if semantic_positive_enabled:
+            self.semantic_positive_loss = CLIPSemanticPositiveLoss(
+                selection=semantic_positive_selection,
+                positive_topk=semantic_positive_topk,
             )
 
         if proj_dim is None:
@@ -336,6 +347,10 @@ class DistillationModule(nn.Module):
         student_attn: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
         coordinates: torch.Tensor | None = None,
+        teacher_images: torch.Tensor | None = None,
+        years: torch.Tensor | None = None,
+        months: torch.Tensor | None = None,
+        headings: torch.Tensor | None = None,
         compute_global: bool = True,
         compute_region: bool = True,
     ) -> dict[str, torch.Tensor]:
@@ -348,14 +363,39 @@ class DistillationModule(nn.Module):
             student_attn    : optional (B,num_heads,Hs*Ws) phase-C map
             labels          : place labels, required by semantic reliability
             coordinates     : (B,2) latitude/longitude for alias filtering
+            teacher_images  : deterministic clean views for semantic-positive
+                CLIP pair selection
+            years/months/headings: optional per-image condition diagnostics
             compute_global  : skip the global branch when its lambda is zero
             compute_region  : skip the region branch when its lambda is zero
 
         Returns:
-            dict with the requested global, region, attention and semantic-
-            alias losses.
+            dict with the requested global, region, attention, semantic-alias
+            and semantic-positive losses.
         """
         # ---- teacher (frozen) ----
+        if self.semantic_positive_loss is not None:
+            if teacher_images is None:
+                raise ValueError(
+                    "clean teacher_images are required for semantic-positive mining"
+                )
+            if (
+                teacher_images.ndim != 4
+                or teacher_images.shape[0] != images.shape[0]
+                or teacher_images.shape[1] != 3
+            ):
+                raise ValueError(
+                    "teacher_images must have shape (B,3,H,W) with the same "
+                    "batch size as images"
+                )
+            if not teacher_images.is_floating_point():
+                raise TypeError("teacher_images must be floating point")
+            if teacher_images.device != images.device:
+                raise ValueError("teacher_images and images must be on the same device")
+            teacher_input = teacher_images
+        else:
+            teacher_input = images
+
         reliability_valid = None
         reliability_stats: dict[str, torch.Tensor] = {}
         with torch.no_grad():
@@ -366,10 +406,10 @@ class DistillationModule(nn.Module):
             )
             if needs_cls_attention:
                 t_global, t_tokens, teacher_cls_attn = self.teacher(
-                    images, return_attn=True
+                    teacher_input, return_attn=True
                 )
             else:
-                t_global, t_tokens = self.teacher(images)
+                t_global, t_tokens = self.teacher(teacher_input)
                 teacher_cls_attn = None
 
             if (
@@ -460,6 +500,27 @@ class DistillationModule(nn.Module):
             result.update(alias_stats)
         else:
             result["loss_alias"] = student_global.new_zeros(())
+
+        # CLIP disagreement is interpreted as a nuisance only after place
+        # labels establish that two views depict the same location.  CLIP
+        # selects the pair; the optimized loss remains student-to-student.
+        if self.semantic_positive_loss is not None:
+            if labels is None:
+                raise ValueError(
+                    "labels are required for semantic-positive mining"
+                )
+            positive_loss, positive_stats = self.semantic_positive_loss(
+                student_descriptors=student_global,
+                clip_embeddings=t_global,
+                labels=labels,
+                years=years,
+                months=months,
+                headings=headings,
+            )
+            result["loss_positive"] = positive_loss
+            result.update(positive_stats)
+        else:
+            result["loss_positive"] = student_global.new_zeros(())
 
         return result
 

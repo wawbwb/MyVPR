@@ -6,6 +6,9 @@
 # Licensed under the MIT License. See LICENSE file in the project root.
 # ----------------------------------------------------------------------------
 
+import math
+import operator
+
 import torch
 import yaml
 import importlib
@@ -109,15 +112,40 @@ def train(config):
     semantic_alias_temperature = float(
         semantic_alias_cfg.get('loss_temperature', 0.05)
     )
+    semantic_positive_cfg = distill_cfg.get('semantic_positive', {}) or {}
+    semantic_positive_enabled = bool(
+        semantic_positive_cfg.get('enabled', False)
+    )
+    raw_lambda_positive = semantic_positive_cfg.get('lambda', 0.0)
+    if isinstance(raw_lambda_positive, bool):
+        raise TypeError("distillation.semantic_positive.lambda must be numeric")
+    lambda_positive = float(raw_lambda_positive)
+    semantic_positive_selection = str(
+        semantic_positive_cfg.get('selection', 'clip')
+    ).lower()
+    raw_positive_topk = semantic_positive_cfg.get('positive_topk', 1)
+    if isinstance(raw_positive_topk, bool):
+        raise TypeError(
+            "distillation.semantic_positive.positive_topk must be an integer"
+        )
+    try:
+        semantic_positive_topk = operator.index(raw_positive_topk)
+    except TypeError as exc:
+        raise TypeError(
+            "distillation.semantic_positive.positive_topk must be an integer"
+        ) from exc
 
     for name, value in (
         ('lambda_global', lambda_global),
         ('lambda_region', lambda_region),
         ('spatial_attn.lambda_kl', lambda_attn),
         ('semantic_alias.lambda', lambda_alias),
+        ('semantic_positive.lambda', lambda_positive),
     ):
-        if value < 0:
-            raise ValueError(f"distillation.{name} must be non-negative")
+        if not math.isfinite(value) or value < 0:
+            raise ValueError(
+                f"distillation.{name} must be finite and non-negative"
+            )
     if lambda_attn > 0 and not spatial_attn_enabled:
         raise ValueError(
             "lambda_kl is non-zero but distillation.spatial_attn.enabled is false"
@@ -211,9 +239,63 @@ def train(config):
                 "support --compile; run without that flag"
             )
 
+    semantic_positive_active = (
+        semantic_positive_enabled and lambda_positive > 0
+    )
+    if lambda_positive > 0 and not semantic_positive_enabled:
+        raise ValueError(
+            "semantic_positive.lambda is non-zero but "
+            "semantic_positive.enabled is false"
+        )
+    if semantic_positive_active and not distill_enabled:
+        raise ValueError(
+            "CLIP semantic-positive mining requires distillation.enabled=true"
+        )
+    if semantic_positive_selection not in {
+        'clip', 'random', 'shuffled', 'student'
+    }:
+        raise ValueError(
+            "distillation.semantic_positive.selection must be clip, random, "
+            "shuffled, or student"
+        )
+    if semantic_positive_topk < 1:
+        raise ValueError(
+            "distillation.semantic_positive.positive_topk must be at least 1"
+        )
+    if semantic_positive_active:
+        if int(config['datamodule']['img_per_place']) < 2:
+            raise ValueError(
+                "semantic-positive mining requires img_per_place >= 2"
+            )
+        if config.get('compile', False):
+            raise ValueError(
+                "semantic-positive mining uses dynamic pair selection and "
+                "does not support --compile"
+            )
+        if spatial_attn_enabled or any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+            )
+        ):
+            raise ValueError(
+                "semantic-positive experiments must disable global/region/"
+                "attention distillation, spatial attention and semantic alias "
+                "so the CLIP pair-selection effect remains isolated"
+            )
+
     teacher_required = distill_enabled and any(
         value > 0
-        for value in (lambda_global, lambda_region, lambda_attn, lambda_alias)
+        for value in (
+            lambda_global,
+            lambda_region,
+            lambda_attn,
+            lambda_alias,
+            lambda_positive,
+        )
     )
     return_augmented = (
         teacher_required and lambda_region > 0 and distill_mode == 'region_gate'
@@ -233,7 +315,8 @@ def train(config):
         val_set_names=config['datamodule']['val_set_names'],
         val_image_size=config['datamodule']['val_image_size'], # if None, the same as train_image_size
         return_augmented=return_augmented,
-        return_metadata=semantic_alias_active,
+        return_metadata=semantic_alias_active or semantic_positive_active,
+        return_teacher_view=semantic_positive_active,
     )
 
 
@@ -319,6 +402,9 @@ def train(config):
             semantic_alias_min_geo_distance_m=semantic_alias_min_distance,
             semantic_alias_student_margin=semantic_alias_margin,
             semantic_alias_loss_temperature=semantic_alias_temperature,
+            semantic_positive_enabled=semantic_positive_active,
+            semantic_positive_selection=semantic_positive_selection,
+            semantic_positive_topk=semantic_positive_topk,
         )
         # Alias/attention-only runs never execute the global projection.
         # Freeze it so DDP does not see an unused trainable parameter.
@@ -344,6 +430,7 @@ def train(config):
             lambda_region=lambda_region,
             lambda_attn=lambda_attn,
             lambda_alias=lambda_alias,
+            lambda_positive=lambda_positive,
             distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
             detach_backbone_for_attn=detach_backbone_for_attn,
         )

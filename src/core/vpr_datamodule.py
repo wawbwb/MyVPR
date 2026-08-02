@@ -56,6 +56,8 @@ class VPRDataModule(L.LightningDataModule):
         mean_std={"mean":[0.485, 0.456, 0.406], "std":[0.229, 0.224, 0.225]},
         return_augmented=False,
         return_metadata=False,
+        return_teacher_view=False,
+        teacher_image_size=(224, 224),
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -72,6 +74,12 @@ class VPRDataModule(L.LightningDataModule):
         self.val_set_names = val_set_names
         self.return_augmented = return_augmented
         self.return_metadata = return_metadata
+        self.return_teacher_view = return_teacher_view
+        self.teacher_image_size = teacher_image_size
+        if self.return_teacher_view and not self.return_metadata:
+            raise ValueError(
+                "return_teacher_view requires return_metadata"
+            )
 
         # check that the training dataset exists
         # its path is defined in the config/data/config.yaml file
@@ -105,6 +113,20 @@ class VPRDataModule(L.LightningDataModule):
             T2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
             T2.RandomGrayscale(p=0.2),
             T2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
+            T2.ToDtype(torch.float32, scale=True),
+            T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
+        ])
+
+        # Frozen CLIP pair selection must observe the unaugmented photograph.
+        # Keep ImageNet normalisation because CLIPTeacherEncoder performs the
+        # ImageNet -> CLIP conversion internally.
+        self.teacher_transform = T2.Compose([
+            T2.ToImage(),
+            T2.Resize(
+                size=self.teacher_image_size,
+                interpolation=T2.InterpolationMode.BICUBIC,
+                antialias=True,
+            ),
             T2.ToDtype(torch.float32, scale=True),
             T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
         ])
@@ -181,6 +203,10 @@ class VPRDataModule(L.LightningDataModule):
             return_augmented=self.return_augmented,
             aug_transform=self.aug_transform if self.return_augmented else None,
             return_metadata=self.return_metadata,
+            return_teacher_view=self.return_teacher_view,
+            teacher_transform=(
+                self.teacher_transform if self.return_teacher_view else None
+            ),
         )
     
     def _get_val_dataset(self, ds_name):  

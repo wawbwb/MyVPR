@@ -1,9 +1,9 @@
 # 代码变更 — 语义先验蒸馏框架 (阶段 C–F)
 
-> **Status (2026-07-19): archived historical record.** The C/D/E/F routes and
-> semantic-reliability spatial target have both been stopped. The active
-> CLIP semantic-alias implementation and commands are documented in
-> `doc/CLIP_SEMANTIC_ALIAS.md`.
+> **Status (updated 2026-08-02): historical record.** The C/D/E/F,
+> semantic-reliability and semantic-alias routes have been stopped. The active
+> CLIP semantic-positive implementation and commands are documented in
+> `doc/CLIP_SEMANTIC_POSITIVE.md`.
 
 本文档记录了为整合 CLIP 语义先验蒸馏计划剩余实验（阶段 C、D、E、F）所做的所有代码更改。所有更改都是**附加的且由配置驱动的**：现有的 A/B 阶段配置保持不变继续工作，每一个新功能都通过 YAML 进行切换。您无需编辑 Python 代码即可运行以下任何实验。
 
@@ -100,3 +100,43 @@ distillation:
 - **Lambda 占位符：** C/D/E 阶段的配置文件提供了合理的默认值，但包含 `# set to your best ...` 的注释提示 — 请在运行 E 阶段之前填入您在 B2/B3/C3 中跑出的最佳参数。
 - **GPU 设备：** `run.py` 中硬编码了 `devices=[1]`。如果您在不同的 GPU 上进行训练，请修改该处代码。
 - **内存溢出 (OOM)：** 教师模型会增加显存消耗；如果需要，请减小 `batch_size`（例如从 100 降至 80），或者在命令行中传入 `--batch_size 80`。
+
+---
+
+## 5. 2026-08-02：CLIP Semantic Positive
+
+> 当前实验路线已从异地点 semantic-alias 负样本切换为同地点
+> CLIP-disagreement 困难正样本。完整说明与命令见
+> `doc/CLIP_SEMANTIC_POSITIVE.md`。
+
+本次方法不拟合 CLIP 描述符。冻结 CLIP 只在每个已知地点内部选择语义相似度最低的
+图像对，学生在原生 VPR 描述符空间最小化所选 pair 的 `1 - cosine`。验证和推理路径
+不使用 CLIP，A2 的 ResNet-50 + MixVPR 结构保持不变。
+
+主要变更：
+
+- 新增 `src/models/semantic_positive.py`：实现 `clip`、`random`、`shuffled`、
+  `student` 四种同地点 pair 选择方式，以及无 margin 的正样本描述符损失和完整诊断量；
+- 扩展 GSV-Cities dataset/datamodule：为 CLIP 单独返回无 RandAugment 的确定性 clean
+  teacher view，并按同一采样顺序提供 year、month、heading 元数据；默认关闭时不改变旧
+  batch 接口；
+- 扩展 `DistillationModule` 与 `VPRFrameworkDistill`：路由 clean teacher view，加入
+  `loss_positive`、`lambda_positive`、warmup 和 `semantic_positive_*` TensorBoard 指标；
+- 扩展 `run.py`：解析并校验 `distillation.semantic_positive`，禁止与旧蒸馏目标、
+  semantic alias 或 `--compile` 同时启用；
+- 新增四份 20 epoch 配置：
+  `config/mixvpr_distill_semantic_positive_{clip,random,shuffled,student}.yaml`。
+  四份配置除 `selection` 外完全一致，固定 `lambda=0.05`、`positive_topk=1`、
+  100 places × 4 images，并显式关闭全部旧目标；
+- 新增 `doc/CLIP_SEMANTIC_POSITIVE.md`：记录方法、诊断指标、测试/运行命令及停止条件。
+
+新的配置块为：
+
+```yaml
+distillation:
+  semantic_positive:
+    enabled: true
+    selection: "clip"  # clip | random | shuffled | student
+    lambda: 0.05
+    positive_topk: 1
+```

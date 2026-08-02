@@ -64,6 +64,8 @@ class GSVCitiesDataset(Dataset):
                  return_augmented=False,
                  aug_transform=None,
                  return_metadata=False,
+                 return_teacher_view=False,
+                 teacher_transform=None,
                  ):
         """
         Args:
@@ -76,8 +78,12 @@ class GSVCitiesDataset(Dataset):
             return_augmented (bool): Whether to return a second, augmented image tensor.
             aug_transform (callable): Transform used for the augmented images.
             return_metadata (bool): Whether to append per-image metadata to the
-                returned tuple. Metadata currently contains ``coordinates`` in
-                ``(latitude, longitude)`` order with shape ``[K, 2]``.
+                returned tuple. Metadata contains coordinates and optional
+                condition diagnostics in the exact sampled-image order.
+            return_teacher_view (bool): Add a deterministic, clean image tensor
+                to metadata for frozen-teacher pair selection.
+            teacher_transform (callable): Deterministic transform for the clean
+                teacher view. Required when ``return_teacher_view`` is true.
         """
         super().__init__()
         
@@ -111,6 +117,17 @@ class GSVCitiesDataset(Dataset):
         self.return_augmented = return_augmented
         self.aug_transform = aug_transform
         self.return_metadata = return_metadata
+        self.return_teacher_view = return_teacher_view
+        self.teacher_transform = teacher_transform
+        if self.return_teacher_view and not self.return_metadata:
+            raise ValueError(
+                "return_teacher_view requires return_metadata so the legacy "
+                "training tuple remains unambiguous"
+            )
+        if self.return_teacher_view and self.teacher_transform is None:
+            raise ValueError(
+                "teacher_transform is required when return_teacher_view is true"
+            )
         # generate the dataframe contraining images metadata
         self.dataframe = self.__getdataframes()
         
@@ -160,6 +177,7 @@ class GSVCitiesDataset(Dataset):
             
         imgs = []
         imgs_aug = []
+        imgs_teacher = []
         for i, row in place.iterrows():
             img_name = self.get_img_name(row)
             img_path = self.base_path / 'Images' / row['city_id'] / img_name
@@ -175,6 +193,11 @@ class GSVCitiesDataset(Dataset):
                 aug_t = self.aug_transform if self.aug_transform is not None else self.transform
                 img_aug = aug_t(img)
                 imgs_aug.append(img_aug)
+
+            if self.return_teacher_view:
+                # This path must stay deterministic.  CLIP disagreement should
+                # describe the sampled photographs, not RandAugment artefacts.
+                imgs_teacher.append(self.teacher_transform(img))
 
             imgs.append(img_t)
 
@@ -192,7 +215,24 @@ class GSVCitiesDataset(Dataset):
                 place.loc[:, ['lat', 'lon']].to_numpy(dtype='float64'),
                 dtype=torch.float64,
             )
-            metadata = {'coordinates': coordinates}
+            def numeric_metadata(column):
+                if column not in place.columns:
+                    return torch.full(
+                        (self.img_per_place,), float('nan'), dtype=torch.float32
+                    )
+                return torch.as_tensor(
+                    place.loc[:, column].to_numpy(dtype='float32'),
+                    dtype=torch.float32,
+                )
+
+            metadata = {
+                'coordinates': coordinates,
+                'years': numeric_metadata('year'),
+                'months': numeric_metadata('month'),
+                'headings': numeric_metadata('northdeg'),
+            }
+            if self.return_teacher_view:
+                metadata['teacher_images'] = torch.stack(imgs_teacher)
 
         if self.return_augmented:
             if self.return_metadata:
