@@ -1,0 +1,48 @@
+# BoQ visual control for semantic-region experiments.
+# It differs from boq_dinov2.yaml only by using spatially preserving
+# photometric augmentation, so cached semantic maps have a fair baseline.
+datamodule:
+  train_set_name: "gsv-cities"
+  train_image_size: [280, 280]
+  val_image_size: [280, 280]
+  augmentation_mode: "photometric"
+  img_per_place: 4
+  batch_size: 40
+  num_workers: 8
+  val_set_names: ["msls-val", "pitts30k-val"]
+
+backbone:
+  module: src.models.backbones
+  class: DinoV2
+  params:
+    backbone_name: "dinov2_vitb14"
+    num_unfrozen_blocks: 2
+
+aggregator:
+  module: src.models.aggregators
+  class: BoQ
+  params:
+    in_channels:
+    proj_channels: 384
+    num_queries: 64
+    num_layers: 2
+    row_dim: 32
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 3900
+  max_epochs: 40
+  milestones: [10, 20, 30]
+  lr_mult: 0.1
+  accelerator: gpu
+  devices: [1]
+  precision: "16-mixed"

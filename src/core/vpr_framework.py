@@ -312,6 +312,9 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_positive=0.0,
         distill_warmup_steps=1500,
         detach_backbone_for_attn=False,
+        semantic_region_gate=None,
+        semantic_region_target=None,
+        lambda_semantic_region=0.0,
     ):
         super().__init__(
             backbone=backbone,
@@ -332,6 +335,7 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_attn", lambda_attn),
             ("lambda_alias", lambda_alias),
             ("lambda_positive", lambda_positive),
+            ("lambda_semantic_region", lambda_semantic_region),
         ):
             if not math.isfinite(value) or value < 0:
                 raise ValueError(
@@ -368,16 +372,50 @@ class VPRFrameworkDistill(VPRFramework):
         self.lambda_positive = lambda_positive
         self.distill_warmup_steps = distill_warmup_steps
         self.detach_backbone_for_attn = bool(detach_backbone_for_attn)
+        self.semantic_region_gate = semantic_region_gate
+        self.semantic_region_target = semantic_region_target
+        self.lambda_semantic_region = float(lambda_semantic_region)
+        if self.lambda_semantic_region > 0 and (
+            self.semantic_region_gate is None or self.semantic_region_target is None
+        ):
+            raise ValueError(
+                "semantic region gate and target are required when its lambda is non-zero"
+            )
+
+    @staticmethod
+    def _split_backbone_output(backbone_output):
+        """Return local feature map and a function restoring the backbone output."""
+        if isinstance(backbone_output, tuple):
+            if not backbone_output or not torch.is_tensor(backbone_output[0]):
+                raise ValueError("backbone tuple must start with a local feature map")
+            return backbone_output[0], lambda local: (local, *backbone_output[1:])
+        if isinstance(backbone_output, list):
+            if not backbone_output or not torch.is_tensor(backbone_output[0]):
+                raise ValueError("backbone list must start with a local feature map")
+            return backbone_output[0], lambda local: [local, *backbone_output[1:]]
+        return backbone_output, lambda local: local
 
     def _student_forward(self, images):
         """Run the exact student path shared by train, validation and inference."""
-        raw_featmap = self.backbone(images)
+        backbone_output = self.backbone(images)
+        raw_featmap, restore_output = self._split_backbone_output(backbone_output)
         featmap = raw_featmap
         student_attn = None
+        semantic_score = None
+        semantic_gate = None
+        if self.semantic_region_gate is not None:
+            featmap, semantic_score, semantic_gate = self.semantic_region_gate(featmap)
         if self.spatial_attn_head is not None:
             featmap, student_attn = self.spatial_attn_head(featmap)
-        model_output = self.aggregator(featmap)
-        return model_output, featmap, student_attn, raw_featmap
+        model_output = self.aggregator(restore_output(featmap))
+        return (
+            model_output,
+            featmap,
+            student_attn,
+            raw_featmap,
+            semantic_score,
+            semantic_gate,
+        )
 
     def _attention_for_distillation(self, raw_featmap, student_attn):
         """Optionally stop the reliability KL from directly moving backbone."""
@@ -389,7 +427,7 @@ class VPRFrameworkDistill(VPRFramework):
         return detached_attention
 
     def forward(self, x):
-        model_output, _, _, _ = self._student_forward(x)
+        model_output, _, _, _, _, _ = self._student_forward(x)
         return model_output
 
     def _optimizer_param_groups(self):
@@ -412,6 +450,18 @@ class VPRFrameworkDistill(VPRFramework):
                 optimizer_params.append(
                     {
                         "params": spatial_trainable,
+                        "lr": self.lr,
+                        "weight_decay": self.weight_decay,
+                    }
+                )
+        if self.semantic_region_gate is not None:
+            semantic_trainable = [
+                p for p in self.semantic_region_gate.parameters() if p.requires_grad
+            ]
+            if semantic_trainable:
+                optimizer_params.append(
+                    {
+                        "params": semantic_trainable,
                         "lr": self.lr,
                         "weight_decay": self.weight_decay,
                     }
@@ -481,7 +531,14 @@ class VPRFrameworkDistill(VPRFramework):
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
         # cannot silently bypass the phase-C module.
-        model_output, featmap, student_attn, raw_featmap = self._student_forward(images)
+        (
+            model_output,
+            featmap,
+            student_attn,
+            raw_featmap,
+            semantic_score,
+            semantic_gate,
+        ) = self._student_forward(images)
 
         if isinstance(model_output, (tuple, list)):
             descriptors = model_output[0]
@@ -490,6 +547,39 @@ class VPRFrameworkDistill(VPRFramework):
 
         # VPR loss
         loss_vpr, batch_accuracy = self.compute_loss(descriptors, labels)
+
+        semantic_region_stats = {}
+        semantic_batch_valid = P >= 2 and K >= 2
+        if self.lambda_semantic_region > 0 and semantic_batch_valid:
+            semantic_indices = None
+            semantic_weights = None
+            semantic_confidence = None
+            if metadata is not None:
+                semantic_indices = metadata.get("semantic_indices")
+                semantic_weights = metadata.get("semantic_weights")
+                semantic_confidence = metadata.get("semantic_confidence")
+                if semantic_indices is not None:
+                    semantic_indices = semantic_indices.flatten(0, 1)
+                if semantic_weights is not None:
+                    semantic_weights = semantic_weights.flatten(0, 1)
+                if semantic_confidence is not None:
+                    semantic_confidence = semantic_confidence.flatten(0, 1)
+            semantic_target, semantic_region_stats = self.semantic_region_target(
+                featmap=raw_featmap,
+                place_count=P,
+                views_per_place=K,
+                semantic_indices=semantic_indices,
+                semantic_weights=semantic_weights,
+                semantic_confidence=semantic_confidence,
+            )
+            # Target supervision trains the small gate only. The VPR loss is
+            # solely responsible for moving DINO through the gated path.
+            detached_score = self.semantic_region_gate.predict(raw_featmap.detach())
+            loss_semantic_region = F.smooth_l1_loss(
+                detached_score, semantic_target
+            )
+        else:
+            loss_semantic_region = loss_vpr.new_zeros(())
 
         # Distillation losses. The lambda=0 architecture control skips CLIP
         # entirely while retaining the exact same student inference path.
@@ -545,6 +635,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_attn * distill_out["loss_attn"]
             + warmup_scale * self.lambda_alias * distill_out["loss_alias"]
             + warmup_scale * self.lambda_positive * distill_out["loss_positive"]
+            + warmup_scale * self.lambda_semantic_region * loss_semantic_region
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -552,6 +643,21 @@ class VPRFrameworkDistill(VPRFramework):
         self.log("loss_global_distill", distill_out["loss_global"], prog_bar=False, logger=True)
         self.log("loss_region_distill", distill_out["loss_region"], prog_bar=False, logger=True)
         self.log("loss_attn_distill", distill_out["loss_attn"], prog_bar=False, logger=True)
+        self.log(
+            "loss_semantic_region",
+            loss_semantic_region,
+            prog_bar=False,
+            logger=True,
+        )
+        for metric_name, metric_value in semantic_region_stats.items():
+            self.log(metric_name, metric_value, prog_bar=False, logger=True)
+        if semantic_gate is not None:
+            self.log("semantic_gate_std", semantic_gate.float().std(), logger=True)
+            self.log(
+                "semantic_gate_max_delta",
+                (semantic_gate.float() - 1.0).abs().amax(),
+                logger=True,
+            )
         self.log(
             "loss_semantic_alias",
             distill_out["loss_alias"],

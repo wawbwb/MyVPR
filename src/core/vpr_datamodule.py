@@ -58,6 +58,8 @@ class VPRDataModule(L.LightningDataModule):
         return_metadata=False,
         return_teacher_view=False,
         teacher_image_size=(224, 224),
+        augmentation_mode="randaugment",
+        semantic_cache_dir=None,
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -73,9 +75,20 @@ class VPRDataModule(L.LightningDataModule):
         self.random_sample_from_each_place = random_sample_from_each_place
         self.val_set_names = val_set_names
         self.return_augmented = return_augmented
-        self.return_metadata = return_metadata
+        self.semantic_cache_dir = semantic_cache_dir
+        self.return_metadata = return_metadata or semantic_cache_dir is not None
         self.return_teacher_view = return_teacher_view
         self.teacher_image_size = teacher_image_size
+        self.augmentation_mode = str(augmentation_mode).lower()
+        if self.augmentation_mode not in {"randaugment", "photometric"}:
+            raise ValueError(
+                "augmentation_mode must be 'randaugment' or 'photometric'"
+            )
+        if semantic_cache_dir is not None and self.augmentation_mode != "photometric":
+            raise ValueError(
+                "offline semantic regions require augmentation_mode='photometric'; "
+                "RandAugment can geometrically misalign cached patch targets"
+            )
         if self.return_teacher_view and not self.return_metadata:
             raise ValueError(
                 "return_teacher_view requires return_metadata"
@@ -97,13 +110,29 @@ class VPRDataModule(L.LightningDataModule):
             self.val_set_paths[ds_name] = ds_path
         
         # Define the train transformations
-        self.train_transform = T2.Compose([
-            T2.ToImage(),  # Convert to tensor, only needed if you had a PIL image
-            T2.Resize(size=self.train_image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
-            T2.RandAugment(num_ops=3, magnitude=15, interpolation=T2.InterpolationMode.BILINEAR),
-            T2.ToDtype(torch.float32, scale=True),
-            T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
-        ])
+        if self.augmentation_mode == "randaugment":
+            self.train_transform = T2.Compose([
+                T2.ToImage(),  # Convert to tensor, only needed for PIL input
+                T2.Resize(size=self.train_image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
+                T2.RandAugment(num_ops=3, magnitude=15, interpolation=T2.InterpolationMode.BILINEAR),
+                T2.ToDtype(torch.float32, scale=True),
+                T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
+            ])
+        else:
+            # Spatial coordinates stay identical to the clean cached CLIP
+            # grid; only image appearance is perturbed.
+            self.train_transform = T2.Compose([
+                T2.ToImage(),
+                T2.Resize(size=self.train_image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
+                T2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+                T2.RandomGrayscale(p=0.2),
+                T2.RandomApply(
+                    [T2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))],
+                    p=0.5,
+                ),
+                T2.ToDtype(torch.float32, scale=True),
+                T2.Normalize(mean=self.mean_std["mean"], std=self.mean_std["std"]),
+            ])
 
         # Photometric-only augmentation for distillation (no geometric transforms)
         # Shares the same resize as train_transform so tokens are spatially aligned
@@ -207,6 +236,7 @@ class VPRDataModule(L.LightningDataModule):
             teacher_transform=(
                 self.teacher_transform if self.return_teacher_view else None
             ),
+            semantic_cache_dir=self.semantic_cache_dir,
         )
     
     def _get_val_dataset(self, ds_name):  

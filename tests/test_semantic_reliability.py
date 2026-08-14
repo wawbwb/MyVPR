@@ -229,7 +229,7 @@ def test_detached_reliability_kl_updates_head_not_backbone() -> None:
         detach_backbone_for_attn=True,
     )
 
-    _, _, student_attn, raw_featmap = framework._student_forward(
+    _, _, student_attn, raw_featmap, _, _ = framework._student_forward(
         torch.randn(3, 2, 2, 2)
     )
     distill_attn = framework._attention_for_distillation(raw_featmap, student_attn)

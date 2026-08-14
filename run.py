@@ -70,6 +70,23 @@ def get_instance(module_name, class_name, params):
 # This is called when the train mode is selected
 def train(config):
     seed_everything(config["seed"], workers=True)
+    accelerator = str(
+        config.get('trainer', {}).get('accelerator', 'gpu')
+    ).lower()
+    configured_devices = config.get('trainer', {}).get('devices', [1])
+    if accelerator in {'gpu', 'cuda'}:
+        # This workstation has a faulty GPU 0.  Requiring an explicit index
+        # also prevents Lightning's ``devices=1`` shorthand from selecting it.
+        if not isinstance(configured_devices, (list, tuple)) or list(
+            configured_devices
+        ) != [1]:
+            raise ValueError(
+                "GPU 0 is faulty; training must use exactly --devices 1 "
+                "(do not combine this with CUDA_VISIBLE_DEVICES remapping)"
+            )
+    # Use Tensor Cores for the fp32 local-matching matrices used by semantic
+    # targets (and remove PyTorch's repeated 3090 performance warning).
+    torch.set_float32_matmul_precision("high")
     torch.backends.cuda.sdp_kernel(enable_flash=True, enable_mem_efficient=True)
     torch.backends.cuda.enable_flash_sdp(True)
 
@@ -83,6 +100,16 @@ def train(config):
     lambda_attn = float(spatial_cfg.get('lambda_kl', 0.0))
     attention_target = str(spatial_cfg.get('target', 'clip_attention'))
     reliability_cfg = spatial_cfg.get('semantic_reliability', {}) or {}
+    semantic_region_cfg = distill_cfg.get('semantic_region', {}) or {}
+    semantic_region_enabled = bool(
+        semantic_region_cfg.get('enabled', False)
+    )
+    semantic_region_mode = str(
+        semantic_region_cfg.get('mode', 'full')
+    ).lower()
+    lambda_semantic_region = float(
+        semantic_region_cfg.get('lambda_target', 0.0)
+    )
     detach_backbone_for_attn = bool(
         spatial_cfg.get('detach_backbone_for_kl', False)
     )
@@ -156,6 +183,7 @@ def train(config):
         ('spatial_attn.lambda_kl', lambda_attn),
         ('semantic_alias.lambda', lambda_alias),
         ('semantic_positive.lambda', lambda_positive),
+        ('semantic_region.lambda_target', lambda_semantic_region),
     ):
         if not math.isfinite(value) or value < 0:
             raise ValueError(
@@ -212,6 +240,62 @@ def train(config):
         raise ValueError(
             "Non-zero global/region weights require distillation.enabled=true"
         )
+    if lambda_semantic_region > 0 and not semantic_region_enabled:
+        raise ValueError(
+            "semantic_region.lambda_target is non-zero but semantic_region.enabled is false"
+        )
+    if semantic_region_enabled and not distill_enabled:
+        raise ValueError("semantic_region requires distillation.enabled=true")
+    if semantic_region_mode not in {
+        'repeatability_only',
+        'repeatability_uniqueness_only',
+        'semantic_only',
+        'full',
+        'shuffled',
+    }:
+        raise ValueError(
+            "semantic_region.mode must be repeatability_only, "
+            "repeatability_uniqueness_only, semantic_only, full, or shuffled"
+        )
+    semantic_region_active = (
+        semantic_region_enabled and lambda_semantic_region > 0
+    )
+    if semantic_region_active:
+        if int(config['datamodule']['img_per_place']) < 2:
+            raise ValueError("semantic_region requires img_per_place >= 2")
+        if int(config['datamodule']['batch_size']) < 2:
+            raise ValueError("semantic_region requires at least two places per batch")
+        if config.get('compile', False):
+            raise ValueError("semantic_region does not support --compile")
+        uses_semantic_cache = semantic_region_mode in {
+            'semantic_only', 'full', 'shuffled'
+        }
+        cache_dir = semantic_region_cfg.get('cache_dir')
+        if uses_semantic_cache and not cache_dir:
+            raise ValueError(
+                f"semantic_region.cache_dir is required in {semantic_region_mode} mode"
+            )
+        if uses_semantic_cache and str(
+            config['datamodule'].get('augmentation_mode', 'randaugment')
+        ).lower() != 'photometric':
+            raise ValueError(
+                "cached semantic regions require datamodule.augmentation_mode="
+                "photometric so image tokens stay spatially aligned"
+            )
+        if any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+            )
+        ) or spatial_attn_enabled:
+            raise ValueError(
+                "semantic_region experiments must disable the legacy global/"
+                "region/attention/alias/positive paths so the ablation stays isolated"
+            )
 
     semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
     if lambda_alias > 0 and not semantic_alias_enabled:
@@ -334,8 +418,24 @@ def train(config):
         val_set_names=config['datamodule']['val_set_names'],
         val_image_size=config['datamodule']['val_image_size'], # if None, the same as train_image_size
         return_augmented=return_augmented,
-        return_metadata=semantic_alias_active or semantic_positive_active,
+        return_metadata=(
+            semantic_alias_active
+            or semantic_positive_active
+            or (
+                semantic_region_active
+                and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
+            )
+        ),
         return_teacher_view=semantic_positive_active,
+        augmentation_mode=config['datamodule'].get(
+            'augmentation_mode', 'randaugment'
+        ),
+        semantic_cache_dir=(
+            semantic_region_cfg.get('cache_dir')
+            if semantic_region_active
+            and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
+            else None
+        ),
     )
 
 
@@ -433,7 +533,31 @@ def train(config):
         if lambda_global <= 0:
             distill_module.student_global_proj.requires_grad_(False)
 
-    if teacher_required or spatial_attn_enabled:
+    semantic_region_gate = None
+    semantic_region_target = None
+    if semantic_region_active:
+        from src.models.semantic_region_gate import (
+            SemanticRegionGate,
+            SemanticRegionReliabilityTarget,
+        )
+
+        semantic_region_gate = SemanticRegionGate(
+            in_channels=out_channels,
+            alpha=float(semantic_region_cfg.get('alpha', 0.2)),
+        )
+        semantic_region_target = SemanticRegionReliabilityTarget(
+            mode=semantic_region_mode,
+            match_grid=int(semantic_region_cfg.get('match_grid', 10)),
+            target_scale=float(semantic_region_cfg.get('target_scale', 2.0)),
+            place_chunk_size=int(
+                semantic_region_cfg.get('place_chunk_size', 8)
+            ),
+            min_spatial_std=float(
+                semantic_region_cfg.get('min_spatial_std', 1e-3)
+            ),
+        )
+
+    if teacher_required or spatial_attn_enabled or semantic_region_active:
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
             aggregator=aggregator,
@@ -455,6 +579,9 @@ def train(config):
             lambda_positive=lambda_positive,
             distill_warmup_steps=distill_cfg.get('distill_warmup_steps', 1500),
             detach_backbone_for_attn=detach_backbone_for_attn,
+            semantic_region_gate=semantic_region_gate,
+            semantic_region_target=semantic_region_target,
+            lambda_semantic_region=lambda_semantic_region,
         )
     else:
         vpr_model = VPRFramework(
@@ -480,9 +607,17 @@ def train(config):
     # and use the backbone name as the subdirectory
     # e.g. a BoQ model with ResNet50 backbone will be saved under logs/ResNet50/BoQ
     # this makes it easy to compared different aggregators with the same backbone
+    experiment_name = aggregator.__class__.__name__
+    if semantic_region_active:
+        experiment_name += f"_semantic_region_{semantic_region_mode}"
+    elif str(
+        config['datamodule'].get('augmentation_mode', 'randaugment')
+    ).lower() == 'photometric':
+        experiment_name += "_photometric"
+
     tensorboard_logger = TensorBoardLogger(
         save_dir=f"./logs/{backbone.backbone_name}",
-        name=f"{aggregator.__class__.__name__}",
+        name=experiment_name,
         default_hp_metric=False
     )
     
@@ -514,8 +649,8 @@ def train(config):
     seed_everything(config["seed"], workers=True)
 
     trainer = Trainer(
-        accelerator=config['trainer'].get('accelerator', 'gpu'),
-        devices=config['trainer'].get('devices', [1]),
+        accelerator=accelerator,
+        devices=configured_devices,
         logger=tensorboard_logger,
         num_sanity_val_steps=0, # is -1 to run one pass on all validation sets before training starts
         precision=config['trainer'].get('precision', '16-mixed'),

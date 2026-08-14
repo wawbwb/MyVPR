@@ -1,4 +1,4 @@
-"""Compare two MixVPR checkpoints on illumination-sensitive MSLS subsets.
+"""Compare two VPR checkpoints on illumination-sensitive MSLS subsets.
 
 This script evaluates two checkpoints on:
 1) msls-val-night (night -> day)
@@ -30,13 +30,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.dataloaders.valid.msls_condition import MSLSConditionDataset
 from src.models.distillation import SpatialAttentionHead
+from src.models.semantic_region_gate import SemanticRegionGate
 from src.utils.metrics import compute_recall_performance
 
 
 DEFAULT_MY_CKPT = "my_MIXVPR_R1[0.8662]_R5[0.9297].ckpt"
 DEFAULT_ORIGIN_CKPT = "origin_MIXVPR_R1[0.8784]_R5[0.9297].ckpt"
 
-VAL_IMAGE_SIZE = (320, 320)
 IMAGENET_MEAN_STD = {"mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]}
 
 
@@ -48,17 +48,35 @@ class InferenceModel(torch.nn.Module):
     ``backbone -> spatial gate -> aggregator``.
     """
 
-    def __init__(self, backbone, aggregator, spatial_attn_head=None):
+    def __init__(
+        self,
+        backbone,
+        aggregator,
+        spatial_attn_head=None,
+        semantic_region_gate=None,
+    ):
         super().__init__()
         self.backbone = backbone
         self.aggregator = aggregator
         self.spatial_attn_head = spatial_attn_head
+        self.semantic_region_gate = semantic_region_gate
+
+    @staticmethod
+    def _split_backbone_output(backbone_output):
+        if isinstance(backbone_output, tuple):
+            return backbone_output[0], lambda local: (local, *backbone_output[1:])
+        if isinstance(backbone_output, list):
+            return backbone_output[0], lambda local: [local, *backbone_output[1:]]
+        return backbone_output, lambda local: local
 
     def forward(self, x):
-        featmap = self.backbone(x)
+        backbone_output = self.backbone(x)
+        featmap, restore_output = self._split_backbone_output(backbone_output)
+        if self.semantic_region_gate is not None:
+            featmap, _, _ = self.semantic_region_gate(featmap)
         if self.spatial_attn_head is not None:
             featmap, _ = self.spatial_attn_head(featmap)
-        output = self.aggregator(featmap)
+        output = self.aggregator(restore_output(featmap))
         if isinstance(output, (tuple, list)):
             return output[0]
         return output
@@ -66,14 +84,26 @@ class InferenceModel(torch.nn.Module):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Evaluate two MixVPR checkpoints on night/season condition splits"
+        description="Evaluate two VPR checkpoints on night/season condition splits"
     )
     parser.add_argument("--my-ckpt", default=DEFAULT_MY_CKPT, help="path to your best checkpoint")
     parser.add_argument("--origin-ckpt", default=DEFAULT_ORIGIN_CKPT, help="path to original best checkpoint")
     parser.add_argument("--msls-path", default="datasets/msls-val", help="path to msls-val folder")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--num-workers", type=int, default=8)
-    parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
+    parser.add_argument(
+        "--image-size",
+        type=int,
+        nargs=2,
+        default=[280, 280],
+        metavar=("HEIGHT", "WIDTH"),
+        help="common evaluation size for both checkpoints (default: 280 280)",
+    )
+    parser.add_argument(
+        "--device",
+        default="cuda:1",
+        help="torch device (default: cuda:1; use cpu explicitly if needed)",
+    )
     parser.add_argument(
         "--k-values",
         type=int,
@@ -90,11 +120,11 @@ def get_instance(module_name, class_name, params):
     return cls(**params)
 
 
-def build_transform():
+def build_transform(image_size):
     return T2.Compose(
         [
             T2.ToImage(),
-            T2.Resize(size=VAL_IMAGE_SIZE, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
+            T2.Resize(size=image_size, interpolation=T2.InterpolationMode.BICUBIC, antialias=True),
             T2.ToDtype(torch.float32, scale=True),
             T2.Normalize(mean=IMAGENET_MEAN_STD["mean"], std=IMAGENET_MEAN_STD["std"]),
         ]
@@ -107,6 +137,11 @@ def get_spatial_attn_config(config):
     # top-level fallback makes exported/inference-only configs easy to support.
     distill_cfg = config.get("distillation", {}) or {}
     return config.get("spatial_attn", distill_cfg.get("spatial_attn", {})) or {}
+
+
+def get_semantic_region_config(config):
+    distill_cfg = config.get("distillation", {}) or {}
+    return distill_cfg.get("semantic_region", {}) or {}
 
 
 def extract_required_submodule_state(state_dict, prefix, module_name):
@@ -169,10 +204,21 @@ def load_inference_model_from_ckpt(ckpt_path, device):
             gate_strength=spatial_cfg.get("gate_strength", 1.0),
         )
 
+    semantic_region_cfg = get_semantic_region_config(config)
+    semantic_region_gate = None
+    semantic_region_enabled = bool(semantic_region_cfg.get("enabled", False))
+    semantic_region_weight = float(semantic_region_cfg.get("lambda_target", 0.0))
+    if semantic_region_enabled and semantic_region_weight > 0:
+        semantic_region_gate = SemanticRegionGate(
+            in_channels=backbone.out_channels,
+            alpha=float(semantic_region_cfg.get("alpha", 0.2)),
+        )
+
     model = InferenceModel(
         backbone=backbone,
         aggregator=aggregator,
         spatial_attn_head=spatial_attn_head,
+        semantic_region_gate=semantic_region_gate,
     )
 
     full_state_dict = strip_compiled_model_prefix(checkpoint["state_dict"])
@@ -204,6 +250,20 @@ def load_inference_model_from_ckpt(ckpt_path, device):
             raise RuntimeError(
                 "SpatialAttentionHead is enabled, but its checkpoint weights "
                 f"do not match the configured head: {exc}"
+            ) from exc
+
+    if model.semantic_region_gate is not None:
+        semantic_state = extract_required_submodule_state(
+            full_state_dict,
+            prefix="semantic_region_gate.",
+            module_name="SemanticRegionGate",
+        )
+        try:
+            model.semantic_region_gate.load_state_dict(semantic_state, strict=True)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "SemanticRegionGate is enabled, but its checkpoint weights "
+                f"do not match the configured gate: {exc}"
             ) from exc
 
     model = model.to(device)
@@ -247,13 +307,23 @@ def evaluate_on_dataset(model, dataset, device, batch_size, num_workers, k_value
 
 def choose_device(device_arg):
     if device_arg == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return torch.device(device_arg)
+        return torch.device("cuda:1" if torch.cuda.device_count() > 1 else "cpu")
+    device = torch.device(device_arg)
+    if device.type == "cuda":
+        if device.index is None:
+            raise ValueError(
+                "specify an explicit CUDA index; GPU 0 is faulty (use --device cuda:1)"
+            )
+        if device.index == 0:
+            raise ValueError("GPU 0 is faulty; use --device cuda:1")
+        if device.index >= torch.cuda.device_count():
+            raise ValueError(f"CUDA device {device} is unavailable")
+    return device
 
 
 def print_result_table(results, dataset_names, model_names, k_values):
     print("\n" + "=" * 90)
-    print("结果对比（Δ = My - Origin）")
+    print("结果对比（Δ = 语义门控 - 视觉基线）")
     print("=" * 90)
 
     header = f"{'Dataset':<35} | {'Metric':<8} | {model_names[0]:>16} | {model_names[1]:>16} | {'Δ':>10}"
@@ -285,7 +355,9 @@ def main():
     if not msls_path.exists():
         raise FileNotFoundError(f"msls path not found: {msls_path}")
 
-    transform = build_transform()
+    # This comparison intentionally uses one common resolution for both
+    # checkpoints. The semantic BoQ experiments are configured at 280x280.
+    transform = build_transform(tuple(args.image_size))
     datasets = OrderedDict(
         {
             "msls-val-night": MSLSConditionDataset(
@@ -300,7 +372,7 @@ def main():
     checkpoints = OrderedDict(
         {
             "My Semantic-Gated": my_ckpt,
-            "Origin MixVPR": origin_ckpt,
+            "Visual Baseline": origin_ckpt,
         }
     )
 
