@@ -1,0 +1,623 @@
+(VPR) wt@msi-MS-7D28:~/workspace/OpenVPRLab$ python run.py --train --config config/salad_dinov2.yaml --train_set gsv-cities --val_sets msls-val pitts30k-val --train_image_size 280 280 --val_image_size 280 280 --batch_size 40 --img_per_place 4 --max_epochs 40 --devices 1 --precision 16-mixed --seed 42
+Seed set to 42
+/home/wt/.conda/envs/VPR/lib/python3.11/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+Using cache found in /home/wt/.cache/torch/hub/facebookresearch_dinov2_main
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/swiglu_ffn.py:43: UserWarning: xFormers is available (SwiGLU)
+  warnings.warn("xFormers is available (SwiGLU)")
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/attention.py:27: UserWarning: xFormers is available (Attention)
+  warnings.warn("xFormers is available (Attention)")
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/block.py:33: UserWarning: xFormers is available (Block)
+  warnings.warn("xFormers is available (Block)")
+Seed set to 42
+Using 16bit Automatic Mixed Precision (AMP)
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/plugins/precision/amp.py:52: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+You are using a CUDA device ('NVIDIA GeForce RTX 3090') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+
+
+╭───── Training dataset stats ─────╮
+│                                  │
+│  number of cities       23       │
+│  number of places       62514    │
+│  number of images       524701   │
+│                                  │
+╰──────────────────────────────────╯
+╭──── Validation datasets ────╮
+│                             │
+│  msls-val                   │
+│  ├── queries     740        │
+│  └── references  18871      │
+│  pitts30k-val               │
+│  ├── queries     7608       │
+│  └── references  10000      │
+│                             │
+╰─────────────────────────────╯
+╭─────── Data configuration ────────╮
+│                                   │
+│  iterations per epoch    1562     │
+│  train batch size (PxK)  40x4     │
+│  training image size     280x280  │
+│  validation image size   280x280  │
+│                                   │
+╰───────────────────────────────────╯
+
+
+┏━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃   ┃ Name          ┃ Type            ┃ Params ┃ Mode  ┃
+┡━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ 0 │ backbone      │ DinoV2          │ 86.6 M │ train │
+│ 1 │ aggregator    │ SALAD           │  1.4 M │ train │
+│ 2 │ loss_function │ VPRLossFunction │      0 │ train │
+└───┴───────────────┴─────────────────┴────────┴───────┘
+Trainable params: 15.6 M
+Non-trainable params: 72.4 M
+Total params: 88.0 M
+Total estimated model params size (MB): 351
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+Epoch 0/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:19 • 0:00:00 1.62it/s v_num: 4.00
+                                                                                         loss: 0.40
+                                                                                         batch_acc: 0.58
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.38   95.68   96.76   97.16   │
+│   pitts30k-val   93.68   98.91   99.58   99.71   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 1/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:13:48 • 0:00:00 1.90it/s v_num: 4.00
+                                                                                         loss: 0.26
+                                                                                         batch_acc: 0.73
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.41   95.54   96.08   96.76   │
+│   pitts30k-val   93.68   98.74   99.51   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 2/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:14:55 • 0:00:00 1.68it/s v_num: 4.00
+                                                                                         loss: 0.25
+                                                                                         batch_acc: 0.73
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.32   95.14   95.81   96.62   │
+│   pitts30k-val   92.97   98.62   99.43   99.57   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 3/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:17 • 0:00:00 1.64it/s v_num: 4.00
+                                                                                         loss: 0.21
+                                                                                         batch_acc: 0.76
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.05   95.00   95.81   96.49   │
+│   pitts30k-val   93.20   98.83   99.29   99.58   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 4/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:38 • 0:00:00 1.62it/s v_num: 4.00
+                                                                                         loss: 0.47
+                                                                                         batch_acc: 0.54
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.46   94.59   95.54   96.08   │
+│   pitts30k-val   93.56   98.75   99.32   99.46   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 5/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:38 • 0:00:00 1.64it/s v_num: 4.00
+                                                                                         loss: 0.28
+                                                                                         batch_acc: 0.68
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       87.30   95.14   96.08   96.62   │
+│   pitts30k-val   93.93   98.79   99.45   99.58   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 6/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:41 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                         loss: 0.22
+                                                                                         batch_acc: 0.76
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       87.57   95.00   96.49   96.76   │
+│   pitts30k-val   93.45   98.70   99.29   99.50   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 7/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:57 • 0:00:00 1.64it/s v_num: 4.00
+                                                                                         loss: 0.27
+                                                                                         batch_acc: 0.71
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.78   95.14   96.08   96.76   │
+│   pitts30k-val   94.06   98.73   99.24   99.47   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 8/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:59 • 0:00:00 1.62it/s v_num: 4.00
+                                                                                         loss: 0.24
+                                                                                         batch_acc: 0.74
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       87.30   94.32   95.81   96.49   │
+│   pitts30k-val   92.93   98.65   99.29   99.54   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 9/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:53 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                         loss: 0.10
+                                                                                         batch_acc: 0.89
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.38   94.73   95.95   97.03   │
+│   pitts30k-val   93.43   98.58   99.17   99.42   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 10/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:47 • 0:00:00 1.62it/s v_num: 4.00
+                                                                                          loss: 0.18
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.51   95.41   96.49   96.89   │
+│   pitts30k-val   93.95   98.65   99.26   99.54   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 11/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:49 • 0:00:00 1.61it/s v_num: 4.00
+                                                                                          loss: 0.18
+                                                                                          batch_acc: 0.80
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.46   95.68   96.35   97.30   │
+│   pitts30k-val   94.12   98.66   99.34   99.51   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 12/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:56 • 0:00:00 1.61it/s v_num: 4.00
+                                                                                          loss: 0.11
+                                                                                          batch_acc: 0.87
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.05   95.95   96.62   97.03   │
+│   pitts30k-val   94.09   98.71   99.30   99.50   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 13/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:57 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                          loss: 0.14
+                                                                                          batch_acc: 0.85
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.92   95.41   96.35   97.03   │
+│   pitts30k-val   94.32   98.62   99.36   99.54   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 14/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:57 • 0:00:00 1.62it/s v_num: 4.00
+                                                                                          loss: 0.13
+                                                                                          batch_acc: 0.85
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.59   95.27   96.35   96.62   │
+│   pitts30k-val   94.44   98.63   99.38   99.57   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 15/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:54 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                          loss: 0.18
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.86   95.27   96.08   97.03   │
+│   pitts30k-val   94.47   98.67   99.34   99.55   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 16/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:02 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                          loss: 0.24
+                                                                                          batch_acc: 0.73
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.14   95.27   96.35   97.03   │
+│   pitts30k-val   94.36   98.71   99.42   99.58   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 17/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:59 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.19
+                                                                                          batch_acc: 0.81
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.59   95.41   96.22   96.76   │
+│   pitts30k-val   94.43   98.90   99.51   99.61   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 18/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:08 • 0:00:00 1.61it/s v_num: 4.00
+                                                                                          loss: 0.17
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.05   95.54   96.08   96.62   │
+│   pitts30k-val   94.33   98.84   99.51   99.65   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 19/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:07 • 0:00:00 1.56it/s v_num: 4.00
+                                                                                          loss: 0.16
+                                                                                          batch_acc: 0.83
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.68   96.35   96.76   │
+│   pitts30k-val   94.47   98.86   99.42   99.63   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 20/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:00 • 0:00:00 1.57it/s v_num: 4.00
+                                                                                          loss: 0.29
+                                                                                          batch_acc: 0.71
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       91.08   95.68   96.49   96.89   │
+│   pitts30k-val   94.53   98.87   99.49   99.70   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 21/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:06 • 0:00:00 1.59it/s v_num: 4.00
+                                                                                          loss: 0.14
+                                                                                          batch_acc: 0.85
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.68   96.49   96.89   │
+│   pitts30k-val   94.43   98.91   99.49   99.67   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 22/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:57 • 0:00:00 1.61it/s v_num: 4.00
+                                                                                          loss: 0.14
+                                                                                          batch_acc: 0.85
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.68   96.22   96.89   │
+│   pitts30k-val   94.51   98.92   99.47   99.70   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 23/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:56 • 0:00:00 1.61it/s v_num: 4.00
+                                                                                          loss: 0.16
+                                                                                          batch_acc: 0.83
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.41   95.81   96.22   96.89   │
+│   pitts30k-val   94.51   98.95   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 24/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:08 • 0:00:00 1.59it/s v_num: 4.00
+                                                                                          loss: 0.15
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.89   │
+│   pitts30k-val   94.53   98.91   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 25/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:09 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.23
+                                                                                          batch_acc: 0.74
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.68   96.22   96.89   │
+│   pitts30k-val   94.44   98.97   99.49   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 26/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:07 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.19
+                                                                                          batch_acc: 0.79
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.68   95.68   96.22   96.89   │
+│   pitts30k-val   94.45   98.96   99.49   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 27/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:10 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.19
+                                                                                          batch_acc: 0.79
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.68   95.81   96.08   96.89   │
+│   pitts30k-val   94.49   98.95   99.50   99.67   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 28/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:11 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.09
+                                                                                          batch_acc: 0.88
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.81   95.81   96.22   96.89   │
+│   pitts30k-val   94.51   98.95   99.51   99.68   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 29/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:18 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.15
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.48   98.92   99.50   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 30/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:04 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.13
+                                                                                          batch_acc: 0.85
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.48   98.94   99.47   99.67   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 31/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:17 • 0:00:00 1.58it/s v_num: 4.00
+                                                                                          loss: 0.21
+                                                                                          batch_acc: 0.78
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.49   98.94   99.47   99.67   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 32/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:00 • 0:00:00 1.60it/s v_num: 4.00
+                                                                                          loss: 0.09
+                                                                                          batch_acc: 0.90
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.51   98.92   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 33/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:11 • 0:00:00 1.73it/s v_num: 4.00
+                                                                                          loss: 0.17
+                                                                                          batch_acc: 0.81
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.89   │
+│   pitts30k-val   94.52   98.92   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 34/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:14:27 • 0:00:00 1.13it/s v_num: 4.00
+                                                                                          loss: 0.15
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.53   98.92   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 35/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:21 • 0:00:00 1.81it/s v_num: 4.00
+                                                                                          loss: 0.11
+                                                                                          batch_acc: 0.87
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.53   98.92   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 36/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:14:02 • 0:00:00 1.97it/s v_num: 4.00
+                                                                                          loss: 0.30
+                                                                                          batch_acc: 0.68
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.52   98.94   99.47   99.65   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 37/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:13:36 • 0:00:00 2.11it/s v_num: 4.00
+                                                                                          loss: 0.19
+                                                                                          batch_acc: 0.79
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.53   98.92   99.47   99.65   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 38/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:13:40 • 0:00:00 1.98it/s v_num: 4.00
+                                                                                          loss: 0.17
+                                                                                          batch_acc: 0.82
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.53   98.92   99.47   99.65   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec,
+TreeSpec) and treespec.is_leaf()` instead.
+Epoch 39/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:27 • 0:00:00 1.59it/s v_num: 4.00
+                                                                                          loss: 0.08
+                                                                                          batch_acc: 0.90
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.54   95.81   96.22   96.76   │
+│   pitts30k-val   94.55   98.92   99.47   99.66   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+Epoch 39/39 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:15:27 • 0:00:00 1.59it/s v_num: 4.00
+                                                                                          loss: 0.08
+                                                                                          batch_acc: 0.90
+(VPR) wt@msi-MS-7D28:~/workspace/OpenVPRLab$
