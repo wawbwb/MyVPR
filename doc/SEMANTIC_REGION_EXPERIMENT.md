@@ -47,3 +47,70 @@ For MSLS night/season evaluation, use
 The loader restores `semantic_region_gate.*` from the checkpoint; evaluating a
 semantic checkpoint with an older loader that knows only the backbone and
 aggregator would silently measure the wrong model.
+
+## Seed-42 outcome
+
+All six 40-epoch runs completed.  The table reports MSLS-val R@1 in percent;
+the late mean is the arithmetic mean over epochs 20--39.
+
+| Config | Best | Epoch 20--39 mean | Final |
+| --- | ---: | ---: | ---: |
+| photometric | 90.27 | 89.925 | 89.86 |
+| repeatability only | 90.95 | 90.604 | 90.81 |
+| repeatability + uniqueness | 91.22 | 90.562 | 90.54 |
+| semantic only | 90.54 | 89.893 | 90.14 |
+| shuffled semantics | 91.22 | 90.983 | 90.95 |
+| full aligned semantics | 89.86 | 89.709 | 89.73 |
+
+Training succeeded mechanically, but the semantic hypothesis is not supported
+for seed 42.  Full aligned semantics is 1.36 points (about 10 of 740 queries)
+below both the no-semantics and shuffled controls at their best checkpoints,
+and is also below the photometric baseline.  This fails the pre-registered
+criterion, so three-seed and SALAD replication should wait for a target-level
+diagnosis.  Night/season results have not yet been collected.
+
+## Aligned-versus-shuffled propagation diagnostic
+
+`scripts/visualize_semantic_region_delta.py` isolates the target construction
+from learned-backbone differences.  It loads one neutral
+repeatability+uniqueness checkpoint, takes one fixed `P=40`, `K=4` batch,
+computes the raw DINO feature map once, then compares the aligned cache with a
+place-rolled cache.  The plotted propagation quantity is exactly
+
+```text
+delta = confidence * (weighted_neighbor_reliability - base_reliability)
+```
+
+Run this from the repository root on the training machine:
+
+```bash
+git pull --ff-only origin main
+conda activate VPR
+
+RU_DIR=logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints
+find "$RU_DIR" -maxdepth 1 -type f -name '*.ckpt' -print
+RU_CKPT="$(find "$RU_DIR" -maxdepth 1 -type f -name 'epoch(26)_*.ckpt' -print -quit)"
+test -f "$RU_CKPT"
+
+python -m pytest -q \
+  tests/test_semantic_region_gate.py \
+  tests/test_semantic_region_delta_visualization.py
+
+python scripts/visualize_semantic_region_delta.py \
+  --feature-ckpt "$RU_CKPT" \
+  --device cuda:1 \
+  --clean-input \
+  --batch-index 0 \
+  --num-workers 0 \
+  --num-samples 8 \
+  --output doc/semantic_region_delta_batch0_clean
+```
+
+The output directory contains 4x4 PNG panels, `summary.csv`,
+`diagnostic_tensors.pt`, and `run.json`.  Aligned and shuffled deltas use one
+shared symmetric colour range: red is a positive reliability change, blue is a
+negative change, and near-white is approximately zero.  Inspect both the
+ranked examples and the `random_audit` example.  Aligned propagation is suspect
+if it repeatedly changes road, sky, vegetation, or generic building regions
+more strongly than stable facade details, signs, windows, and other
+place-specific structures.
