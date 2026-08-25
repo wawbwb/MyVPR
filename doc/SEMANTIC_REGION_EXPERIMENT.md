@@ -170,3 +170,14 @@ mask montage nevertheless remains scattered over generic road, vegetation,
 facade, and vehicle regions, so this fixed-batch target analysis is not evidence
 of a retrieval improvement.  A revised method still needs matched RU, aligned,
 and shuffled training before any R@1 claim.
+
+## Next route: explicit dynamic-category negative prior
+
+Do not retrain the sparse CLIP propagation target yet.  The next preregistered
+screen is a frozen-checkpoint intervention that applies segmented dynamic-area
+coverage as a negative BoQ cross-attention-logit prior, with aligned,
+role-preserving shuffled, and exact-value random controls.  Its implementation,
+commands, limitations, and stop/go rule are documented in
+`doc/DYNAMIC_CATEGORY_PRIOR_SCREEN.md`.  This route is intentionally isolated
+from CLIP and does not reuse the interpolation or per-image unit-variance
+target construction diagnosed above.

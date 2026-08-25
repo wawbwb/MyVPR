@@ -1,4 +1,4 @@
-"""
+r"""
     BoQ: A Place is Worth a Bag of learnable Queries (CVPR 2024)
     
     Paper: https://arxiv.org/abs/2405.07364
@@ -44,7 +44,15 @@ class BoQBlock(torch.nn.Module):
         self.norm_out = torch.nn.LayerNorm(in_dim)
         
 
-    def forward(self, x):
+    def forward(self, x, attention_bias=None):
+        """Run one BoQ block with an optional per-key additive bias.
+
+        ``attention_bias`` is added to the cross-attention logits through
+        ``MultiheadAttention.key_padding_mask``.  It must have shape ``(B, N)``
+        where ``N`` is the number of spatial input tokens.  Negative values
+        suppress keys and zero leaves their logits unchanged.  The encoder and
+        learned-query self-attention remain untouched.
+        """
         B = x.size(0)
         x = self.encoder(x)
         
@@ -53,7 +61,29 @@ class BoQBlock(torch.nn.Module):
         q = q + self.self_attn(q, q, q)[0]
         q = self.norm_q(q)
         
-        out, attn = self.cross_attn(q, x, x)
+        if attention_bias is None:
+            # Keep the historical no-prior path byte-for-byte equivalent.
+            out, attn = self.cross_attn(q, x, x)
+        else:
+            expected = (B, x.size(1))
+            if tuple(attention_bias.shape) != expected:
+                raise ValueError(
+                    f"attention_bias must have shape {expected}, got "
+                    f"{tuple(attention_bias.shape)}"
+                )
+            attention_bias = attention_bias.to(device=x.device, dtype=x.dtype)
+            if not bool(torch.isfinite(attention_bias).all()):
+                raise ValueError("attention_bias must contain only finite values")
+            if bool((attention_bias > 0).any()):
+                raise ValueError(
+                    "attention_bias is a negative prior and must be non-positive"
+                )
+            out, attn = self.cross_attn(
+                q,
+                x,
+                x,
+                key_padding_mask=attention_bias,
+            )
         out = self.norm_out(out)
         return x, out, attn.detach()
 
@@ -88,15 +118,77 @@ class BoQ(torch.nn.Module):
         # the outputs of all BoQ blocks are concatenated and projected to row_dim
         self.fc = torch.nn.Linear(num_layers*num_queries, row_dim)
         
-    def forward(self, x):
+    @staticmethod
+    def _flatten_attention_bias(attention_bias, batch_size, height, width):
+        """Validate and flatten a spatial additive attention bias."""
+
+        if attention_bias is None:
+            return None
+        if attention_bias.ndim == 4:
+            if attention_bias.shape[1] != 1:
+                raise ValueError(
+                    "4D attention_bias must have shape (B, 1, H, W)"
+                )
+            attention_bias = attention_bias[:, 0]
+        if attention_bias.ndim == 3:
+            if tuple(attention_bias.shape) != (batch_size, height, width):
+                raise ValueError(
+                    "3D attention_bias must match the BoQ input spatial shape "
+                    f"{(batch_size, height, width)}, got "
+                    f"{tuple(attention_bias.shape)}"
+                )
+            attention_bias = attention_bias.flatten(1)
+        elif attention_bias.ndim == 2:
+            expected = (batch_size, height * width)
+            if tuple(attention_bias.shape) != expected:
+                raise ValueError(
+                    "2D attention_bias must have shape "
+                    f"{expected}, got {tuple(attention_bias.shape)}"
+                )
+        else:
+            raise ValueError(
+                "attention_bias must have shape (B, N), (B, H, W), or "
+                "(B, 1, H, W)"
+            )
+        return attention_bias
+
+    def forward(self, x, attention_bias=None):
+        """Aggregate a feature map, optionally suppressing spatial keys.
+
+        Args:
+            x: Feature map with shape ``(B, C, H, W)``.
+            attention_bias: Optional additive cross-attention-logit bias with
+                shape ``(B, H, W)``, ``(B, 1, H, W)``, or ``(B, H*W)``.
+                Negative values reduce attention to the corresponding patch.
+
+        Existing callers omit ``attention_bias`` and therefore execute the
+        original BoQ path exactly.
+        """
+        batch_size, _, height, width = x.shape
+        attention_bias = self._flatten_attention_bias(
+            attention_bias,
+            batch_size=batch_size,
+            height=height,
+            width=width,
+        )
+
         x = self.proj_c(x)
         x = x.flatten(2).permute(0, 2, 1)
         x = self.norm_input(x)
+
+        if attention_bias is not None:
+            attention_bias = attention_bias.to(device=x.device, dtype=x.dtype)
+            if not bool(torch.isfinite(attention_bias).all()):
+                raise ValueError("attention_bias must contain only finite values")
+            if bool((attention_bias > 0).any()):
+                raise ValueError(
+                    "attention_bias is a negative prior and must be non-positive"
+                )
         
         outs = []
         attns = []
         for i in range(len(self.boqs)):
-            x, out, attn = self.boqs[i](x)
+            x, out, attn = self.boqs[i](x, attention_bias=attention_bias)
             outs.append(out)
             attns.append(attn)
 
