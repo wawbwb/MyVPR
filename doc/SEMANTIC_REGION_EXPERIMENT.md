@@ -114,3 +114,59 @@ ranked examples and the `random_audit` example.  Aligned propagation is suspect
 if it repeatedly changes road, sky, vegetation, or generic building regions
 more strongly than stable facade details, signs, windows, and other
 place-specific structures.
+
+## Offline target counterfactual sweep
+
+The seed-42 retrieval verdict above is already negative.  The offline sweep is
+not needed to decide whether the completed experiment succeeded; it is used to
+decide whether a redesigned target is worth retraining.  It reads the saved
+diagnostic tensor bundle and needs neither the dataset nor a checkpoint:
+
+```bash
+python scripts/sweep_semantic_region_counterfactual.py \
+  --input doc/semantic_region_delta_batch0_clean/diagnostic_tensors.pt \
+  --output doc/semantic_region_counterfactual_batch0
+```
+
+The sweep keeps the original confidence values at retained patches and sets
+rejected patches to zero.  Absolute thresholds `0.5`, `0.6`, `0.7` and an
+exact per-image top-20% mask are crossed with three target transforms and two
+propagation compositions:
+
+- `production_roundtrip`: the current `base10 -> base14 -> out10` path;
+- `ru_additive`: `base10 + resize(delta14, 10)`, which is exactly the RU target
+  when the semantic mask is empty;
+- `per_image_zscore`: the current per-image unit-variance transform;
+- `shared_base`: one fixed scale estimated from the complete RU batch;
+- `center_only`: subtract the per-image mean without dividing by its standard
+  deviation.
+
+The dense production row reproduces the saved target before the sweep.  On the
+fixed clean batch, an empty semantic mask in `production_roundtrip` still
+changes the final target from direct RU by mean absolute `0.10062`, with spatial
+correlation `0.9722`.  This exposes a previously unmeasured interpolation
+confound: semantic full/shuffled resize the entire base map `10 -> 14 -> 10`,
+whereas RU does not.  It cannot explain full versus shuffled because both use
+the round trip, but it confounds comparisons against RU.
+
+For the RU-preserving additive composition with `center_only`, the principal
+aligned results are:
+
+| Mask | Patch coverage | Aligned delta retained | Target change from RU | Aligned--shuffled target difference | Saturated target fraction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| dense | 100.00% | 100.00% | 0.05866 | 0.05879 | 4.17% |
+| confidence >= 0.5 | 29.69% | 40.04% | 0.02855 | 0.04296 | 5.45% |
+| confidence >= 0.6 | 12.64% | 19.94% | 0.01583 | 0.02734 | 5.75% |
+| confidence >= 0.7 | 4.38% | 7.73% | 0.00714 | 0.01321 | 5.98% |
+| top 20% per image | 20.41% | 29.66% | 0.02276 | 0.03566 | 5.57% |
+
+Hard masking therefore works mechanically and removing unit-variance scaling
+reduces the dense aligned saturation from roughly 36% in production to roughly
+4%.  Threshold `0.7` is almost a semantic-off control and leaves three of 160
+images with no active patch.  Threshold `0.6` is the most useful triage point:
+it retains about one fifth of the aligned propagation magnitude without
+forcing low-confidence patches into every image as top-20% does.  The selected
+mask montage nevertheless remains scattered over generic road, vegetation,
+facade, and vehicle regions, so this fixed-batch target analysis is not evidence
+of a retrieval improvement.  A revised method still needs matched RU, aligned,
+and shuffled training before any R@1 claim.

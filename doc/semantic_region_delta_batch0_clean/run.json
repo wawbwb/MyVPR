@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "checkpoint": "/home/wt/workspace/OpenVPRLab/logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt",
+  "checkpoint_mode": "repeatability_uniqueness_only",
+  "config": "/home/wt/workspace/OpenVPRLab/config/boq_dinov2_semantic_region_full.yaml",
+  "cache_dir": "/home/wt/workspace/OpenVPRLab/datasets/cache/gsv_cities_clip_vitb16_top8",
+  "cache_manifest": {
+    "sha256": "0ca5ea7a7c86e673ee234e657e8ec27eaf0f6ffe40ba03e46e447eb42e869857",
+    "content": {
+      "cities": [
+        {
+          "count": 22271,
+          "name": "Bangkok",
+          "offset": 0,
+          "sha256": "182c1895acd646af205c6332171dae19cb91665abd288b32266ad61633359856"
+        },
+        {
+          "count": 15894,
+          "name": "Barcelona",
+          "offset": 22271,
+          "sha256": "ec18750328c15acd4ca359b22ce6729e6e665144a9461eb1fac01da31abc8946"
+        },
+        {
+          "count": 32616,
+          "name": "Boston",
+          "offset": 38165,
+          "sha256": "77eb9248bfe478d734abfb89b407702972711f795fa3f3174a2c2206429ed4ec"
+        },
+        {
+          "count": 14171,
+          "name": "Brussels",
+          "offset": 70781,
+          "sha256": "48dc691f2fa7f43db77ce77b51789ffaf75d49c4d9aaf711128c7c243cab9c2d"
+        },
+        {
+          "count": 8481,
+          "name": "BuenosAires",
+          "offset": 84952,
+          "sha256": "cf8d890ae9e7ce8d1c631eb3b873915874c73edd450c34cd142b29320b67eb34"
+        },
+        {
+          "count": 34091,
+          "name": "Chicago",
+          "offset": 93433,
+          "sha256": "8a9e1113b6144d2a04a6f25711026c9461458b0b754bfc3c0ef042a8ac348026"
+        },
+        {
+          "count": 27045,
+          "name": "Lisbon",
+          "offset": 127524,
+          "sha256": "471330aa627bd3ced9526453c35429122ff56108a45d44844ddb2c89ba3d1b01"
+        },
+        {
+          "count": 58672,
+          "name": "London",
+          "offset": 154569,
+          "sha256": "a5889c1883b53bd5a38130a675e092186ada11ce696d3ee7274ee072735d56d8"
+        },
+        {
+          "count": 8891,
+          "name": "LosAngeles",
+          "offset": 213241,
+          "sha256": "821108305d3c9e762ca42023aaed3ea741f47d7418061928352d5413fdf010f4"
+        },
+        {
+          "count": 14554,
+          "name": "Madrid",
+          "offset": 222132,
+          "sha256": "bb4529532cfa58ca1148eff1a94f03cfb219c736a511ca64ffc5e0a9ee53a929"
+        },
+        {
+          "count": 6024,
+          "name": "Medellin",
+          "offset": 236686,
+          "sha256": "365fbf7764b96d8df2da04c4c462fa778e25c16861cbcaae022efc3a4dd0a61a"
+        },
+        {
+          "count": 28542,
+          "name": "Melbourne",
+          "offset": 242710,
+          "sha256": "fe2d02284e51804622273c4095adf00e2359094477a7c635bfad7303dcd04e9e"
+        },
+        {
+          "count": 12801,
+          "name": "MexicoCity",
+          "offset": 271252,
+          "sha256": "82b5321510e24f402c21af4cfbd3cb62d02a1c9875a9e2ae19855f494c9b28d2"
+        },
+        {
+          "count": 43637,
+          "name": "Miami",
+          "offset": 284053,
+          "sha256": "29da948b32365d2bbe5865bf64c1f02f1aa3b7758bea37d14ff5f9cfd529142d"
+        },
+        {
+          "count": 22326,
+          "name": "Minneapolis",
+          "offset": 327690,
+          "sha256": "6c46cd2918c986a9a7b8a945bffabea64e76e7e77f128a2494691b05e77ed27d"
+        },
+        {
+          "count": 9756,
+          "name": "OSL",
+          "offset": 350016,
+          "sha256": "652c9f270974d7bc4e82ff5929846bc64f1809b222d1e2beb302f1bb4d063b1f"
+        },
+        {
+          "count": 22605,
+          "name": "Osaka",
+          "offset": 359772,
+          "sha256": "b17b5c6f1c453eacc4ecf6006817346e9e62c6e36fbd5cb63db88377b171ff8d"
+        },
+        {
+          "count": 17590,
+          "name": "PRG",
+          "offset": 382377,
+          "sha256": "54cf75a9c8272e7d7b92192eff816a98a94b4be9ca86cdc8f43c345b611eabae"
+        },
+        {
+          "count": 39963,
+          "name": "PRS",
+          "offset": 399967,
+          "sha256": "4dfde0dc6998593a01bae913404e4f8d8465853a14301267e44876d0d00b664d"
+        },
+        {
+          "count": 36251,
+          "name": "Phoenix",
+          "offset": 439930,
+          "sha256": "1a3205798fe6f696f6d8759a5d73b86dd40d5a52e9b93a156dfa8bb7c83f3b32"
+        },
+        {
+          "count": 24068,
+          "name": "Rome",
+          "offset": 476181,
+          "sha256": "18e3763ab8210fb0b36035904236d62f481ff42e8e19760737b85b611dc3351b"
+        },
+        {
+          "count": 17712,
+          "name": "TRT",
+          "offset": 500249,
+          "sha256": "566e664f60a28d3ef12e0c9ad45b98faa961e79ef64514a1b101ae08f6315190"
+        },
+        {
+          "count": 11545,
+          "name": "WashingtonDC",
+          "offset": 517961,
+          "sha256": "10d6b06236e0d226e6eebb582af041b981f0c36ff1c62c62243b9bcffa0cb5af"
+        }
+      ],
+      "complete": true,
+      "completed_utc": "2026-08-20T02:50:55.656122+00:00",
+      "confidence_dtype": "float16",
+      "created_utc": "2026-08-14T15:05:25.475800+00:00",
+      "dataset_root": "/home/wt/workspace/OpenVPRLab/datasets/gsv_cities",
+      "diagonal_masked": true,
+      "grid_size": 14,
+      "indices_dtype": "uint8",
+      "model_name": "ViT-B-16",
+      "num_images": 529506,
+      "patch_count": 196,
+      "pretrained": "openai",
+      "schema": "openvpr_clip_sparse_affinity",
+      "semantic_temperature": 0.07,
+      "spatial_sigma": 0.25,
+      "teacher_input_size": 224,
+      "topk": 8,
+      "version": 1,
+      "weights_dtype": "float16"
+    }
+  },
+  "device": "cuda:1",
+  "seed": 42,
+  "batch_index": 0,
+  "place_count": 40,
+  "views_per_place": 4,
+  "batch_size_images": 160,
+  "clean_input": true,
+  "num_workers": 0,
+  "image_shape": [
+    160,
+    3,
+    280,
+    280
+  ],
+  "raw_featmap_shape": [
+    160,
+    768,
+    20,
+    20
+  ],
+  "cache_shape": [
+    160,
+    196,
+    8
+  ],
+  "builder": {
+    "match_grid": 10,
+    "target_scale": 2.0,
+    "place_chunk_size": 8,
+    "min_spatial_std": 0.001
+  },
+  "shared_scales": {
+    "reliability_abs_p99": 1.2295624017715454,
+    "propagation_delta_abs_p99": 0.46959343552589417,
+    "delta_difference_abs_p99": 0.47736436128616333,
+    "target_difference_abs_p99": 0.6632211804389954
+  },
+  "selected_indices": [
+    16,
+    86,
+    18,
+    8,
+    73,
+    69,
+    57,
+    31
+  ],
+  "selection_reasons": {
+    "16": [
+      "top_aligned_delta"
+    ],
+    "86": [
+      "top_aligned_delta"
+    ],
+    "18": [
+      "top_aligned_delta"
+    ],
+    "8": [
+      "top_aligned_delta"
+    ],
+    "73": [
+      "top_target_contrast"
+    ],
+    "69": [
+      "top_target_contrast"
+    ],
+    "57": [
+      "top_target_contrast"
+    ],
+    "31": [
+      "random_audit"
+    ]
+  },
+  "component_stats": {
+    "region_repeatability": 0.8976846933364868,
+    "region_uniqueness": 0.15634098649024963,
+    "region_commonness": 0.8436591029167175,
+    "region_hard_place_similarity": 0.9572691321372986
+  },
+  "production_consistency_check": "passed",
+  "saved_full_raw_features": false
+}
