@@ -12,6 +12,8 @@ from scripts.dynamic_category_prior import (
     role_preserving_derangement,
     save_mask_cache,
     spatially_permute_masks,
+    validate_ground_truth,
+    validate_overlapping_ground_truth,
 )
 from src.models.aggregators.boq import BoQ, BoQBlock
 
@@ -225,3 +227,54 @@ def test_condition_query_mapping_is_unique_and_order_preserving() -> None:
         map_condition_query_indices(["q/same.jpg", "q/same.jpg"], ["q/same.jpg"])
     with pytest.raises(ValueError, match="condition queries contain duplicate"):
         map_condition_query_indices(full, ["q/one.jpg", "q/one.jpg"])
+
+
+def test_ground_truth_validation_rejects_empty_duplicate_and_bad_indices() -> None:
+    valid = validate_ground_truth(
+        [np.asarray([2, 0]), np.asarray([1])],
+        num_queries=2,
+        num_references=3,
+        dataset_name="test",
+    )
+    assert [values.tolist() for values in valid] == [[2, 0], [1]]
+
+    bad_cases = (
+        ([np.asarray([], dtype=np.int64)], "empty"),
+        ([np.asarray([0, 0])], "duplicates"),
+        ([np.asarray([-1])], "outside"),
+        ([np.asarray([3])], "outside"),
+        ([np.asarray([1.0])], "not integer"),
+        ([np.asarray([[1]])], "1-D"),
+    )
+    for ground_truth, message in bad_cases:
+        with pytest.raises(ValueError, match=message):
+            validate_ground_truth(
+                ground_truth,
+                num_queries=1,
+                num_references=3,
+                dataset_name="test",
+            )
+
+
+def test_overlapping_ground_truth_must_match_standard_exactly() -> None:
+    standard_paths = ["q/zero.jpg", "q/one.jpg"]
+    standard_gt = [np.asarray([2, 1]), np.asarray([4])]
+    condition_paths = ["q/extra.jpg", "q/zero.jpg"]
+    condition_gt = [np.asarray([3]), np.asarray([1, 2])]
+
+    assert validate_overlapping_ground_truth(
+        standard_paths,
+        standard_gt,
+        condition_paths,
+        condition_gt,
+        condition_name="night",
+    ) == (1, 1)
+
+    with pytest.raises(ValueError, match="disagrees with standard MSLS"):
+        validate_overlapping_ground_truth(
+            standard_paths,
+            standard_gt,
+            condition_paths,
+            [np.asarray([3]), np.asarray([2])],
+            condition_name="night",
+        )

@@ -1,7 +1,7 @@
 """Evaluate a frozen dynamic-category negative prior at BoQ attention logits.
 
 This is a causal screening experiment, not training.  It keeps the selected
-repeatability+uniqueness checkpoint frozen and compares four descriptors from
+repeatability+uniqueness checkpoint frozen and compares five descriptors from
 the exact same DINO feature map:
 
 * baseline: no attention bias (the historical checkpoint path);
@@ -46,6 +46,8 @@ from scripts.dynamic_category_prior import (  # noqa: E402
     map_condition_query_indices,
     role_preserving_derangement,
     spatially_permute_masks,
+    validate_ground_truth,
+    validate_overlapping_ground_truth,
 )
 from scripts.eval_condition_robustness import (  # noqa: E402
     build_transform,
@@ -58,6 +60,11 @@ from src.models.aggregators.boq import BoQ  # noqa: E402
 
 
 VARIANTS = ("baseline", "zero_bias", "aligned", "shuffled", "random")
+CUSTOM_CONDITION_PROTOCOL = (
+    "custom condition subset of the standard MSLS query universe, searched "
+    "against the standard full database; not an official condition-filtered "
+    "MSLS subtask"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,7 +79,7 @@ def parse_args() -> argparse.Namespace:
         "--scratch-dir",
         type=Path,
         default=None,
-        help="parent for temporary descriptor memmaps (about 4 GB float32)",
+        help="parent for temporary descriptor memmaps (about 5 GB float32)",
     )
     parser.add_argument(
         "--keep-descriptors",
@@ -84,7 +91,7 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         choices=("night", "season"),
         default=("night", "season"),
-        help="condition subsets reusing the standard MSLS descriptors",
+        help="validated condition subsets reusing the standard MSLS descriptors",
     )
     parser.add_argument(
         "--beta",
@@ -120,6 +127,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    args.conditions = tuple(sorted(set(args.conditions)))
     args.checkpoint = args.checkpoint.expanduser().resolve()
     args.msls_path = args.msls_path.expanduser().resolve()
     args.mask_cache = args.mask_cache.expanduser().resolve()
@@ -397,22 +405,46 @@ def _search_and_score(
     return recalls, predictions[:, 0].copy(), hits
 
 
+def manifest_record(path: Path) -> dict[str, Any]:
+    """Record one immutable input manifest for result provenance."""
+
+    if not path.is_file():
+        raise FileNotFoundError(f"evaluation manifest not found: {path}")
+    return {
+        "path": str(path),
+        "sha256": file_sha256(path),
+        "size_bytes": path.stat().st_size,
+    }
+
+
 def build_evaluation_sets(
     full_dataset: MapillarySLSDataset,
     condition_names: Sequence[str],
     transform: Any,
     msls_path: Path,
 ) -> list[dict[str, Any]]:
-    if full_dataset.num_queries <= 0:
-        raise ValueError("standard MSLS has no queries")
-    if len(full_dataset.ground_truth) != full_dataset.num_queries:
-        raise ValueError("standard MSLS ground truth/query count mismatch")
+    standard_query_paths = canonical_image_paths(full_dataset.qImages)
+    standard_ground_truth = validate_ground_truth(
+        full_dataset.ground_truth,
+        num_queries=full_dataset.num_queries,
+        num_references=full_dataset.num_references,
+        dataset_name="standard MSLS",
+    )
+    standard_query_file = msls_path / "msls_val_qImages.npy"
+    standard_gt_file = msls_path / "msls_val_gt_25m.npy"
     evaluations: list[dict[str, Any]] = [
         {
             "name": full_dataset.dataset_name,
-            "query_paths": canonical_image_paths(full_dataset.qImages),
+            "query_paths": standard_query_paths,
             "query_offsets": np.arange(full_dataset.num_queries, dtype=np.int64),
-            "ground_truth": full_dataset.ground_truth,
+            "ground_truth": standard_ground_truth,
+            "protocol": "standard MSLS-val protocol",
+            "num_standard_query_overlap": full_dataset.num_queries,
+            "num_condition_only_queries": 0,
+            "manifests": {
+                "queries": manifest_record(standard_query_file),
+                "ground_truth": manifest_record(standard_gt_file),
+            },
         }
     ]
     for condition_name in condition_names:
@@ -425,27 +457,49 @@ def build_evaluation_sets(
         except FileNotFoundError as exc:
             raise FileNotFoundError(
                 f"missing {condition_name} split; run "
-                "scripts/generate_msls_condition_splits.py first"
+                "scripts/generate_msls_condition_splits.py --msls-path "
+                f"{msls_path} --force first"
             ) from exc
         if not np.array_equal(
             canonical_image_paths(condition.dbImages),
             canonical_image_paths(full_dataset.dbImages),
         ):
             raise ValueError(f"{condition_name} split does not share MSLS DB order")
-        if condition.num_queries <= 0:
-            raise ValueError(f"{condition_name} split has no queries")
-        if len(condition.ground_truth) != condition.num_queries:
-            raise ValueError(
-                f"{condition_name} ground truth/query count mismatch"
-            )
+        condition_query_paths = canonical_image_paths(condition.qImages)
+        condition_ground_truth = validate_ground_truth(
+            condition.ground_truth,
+            num_queries=condition.num_queries,
+            num_references=condition.num_references,
+            dataset_name=condition.dataset_name,
+        )
+        overlap_count, condition_only_count = validate_overlapping_ground_truth(
+            standard_query_paths,
+            standard_ground_truth,
+            condition_query_paths,
+            condition_ground_truth,
+            condition_name=condition.dataset_name,
+        )
+        query_offsets = map_condition_query_indices(
+            standard_query_paths, condition_query_paths
+        )
+        if condition_only_count != 0 or overlap_count != condition.num_queries:
+            raise AssertionError("condition subset mapping is internally inconsistent")
+        query_filename, gt_filename = MSLSConditionDataset.CONDITION_FILES[
+            condition_name
+        ]
         evaluations.append(
             {
                 "name": condition.dataset_name,
-                "query_paths": canonical_image_paths(condition.qImages),
-                "query_offsets": map_condition_query_indices(
-                    full_dataset.qImages, condition.qImages
-                ),
-                "ground_truth": condition.ground_truth,
+                "query_paths": condition_query_paths,
+                "query_offsets": query_offsets,
+                "ground_truth": condition_ground_truth,
+                "protocol": CUSTOM_CONDITION_PROTOCOL,
+                "num_standard_query_overlap": overlap_count,
+                "num_condition_only_queries": condition_only_count,
+                "manifests": {
+                    "queries": manifest_record(msls_path / query_filename),
+                    "ground_truth": manifest_record(msls_path / gt_filename),
+                },
             }
         )
     return evaluations
@@ -768,7 +822,7 @@ def main() -> None:
         write_csv(args.output / "query_outcomes.csv", outcome_rows)
         write_csv(args.output / "paired_comparisons.csv", paired_rows)
         run_record = {
-            "schema_version": 1,
+            "schema_version": 2,
             "method": "frozen_dynamic_category_negative_attention_prior",
             "checkpoint": {
                 "path": str(args.checkpoint),
@@ -815,9 +869,29 @@ def main() -> None:
                 {
                     "name": evaluation["name"],
                     "num_queries": len(evaluation["query_offsets"]),
+                    "protocol": evaluation["protocol"],
+                    "num_standard_query_overlap": evaluation[
+                        "num_standard_query_overlap"
+                    ],
+                    "num_condition_only_queries": evaluation[
+                        "num_condition_only_queries"
+                    ],
+                    "manifests": evaluation["manifests"],
                 }
                 for evaluation in evaluations
             ],
+            "descriptor_index": {
+                "num_references": dataset.num_references,
+                "num_standard_queries": dataset.num_queries,
+                "definition": "standard MSLS DB + standard query index",
+                "database_manifest": manifest_record(
+                    args.msls_path / "msls_val_dbImages.npy"
+                ),
+            },
+            "evaluation_protocol": {
+                "standard": "standard MSLS-val protocol",
+                "conditions": CUSTOM_CONDITION_PROTOCOL,
+            },
             "image_size": list(args.image_size),
             "batch_size": args.batch_size,
             "num_workers": args.num_workers,
@@ -832,8 +906,18 @@ def main() -> None:
             "limitations": [
                 "This is a frozen-checkpoint causal screen, not a trained model.",
                 "Pascal-VOC has no rider or truck label.",
-                "The prior enters after BoQ projection/encoder token mixing and does not erase dynamic features.",
-                "Failure rejects this teacher/injection/strength route, not all semantic VPR methods.",
+                (
+                    "The prior enters after BoQ projection/encoder token mixing "
+                    "and does not erase dynamic features."
+                ),
+                (
+                    "Night/season are custom query slices over the standard full "
+                    "database, not official condition-filtered MSLS subtasks."
+                ),
+                (
+                    "Failure rejects this teacher/injection/strength route, not "
+                    "all semantic VPR methods."
+                ),
             ],
         }
         with (args.output / "run.json").open("w", encoding="utf-8") as handle:

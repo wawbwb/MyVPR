@@ -11,8 +11,10 @@ class MSLSConditionDataset(Dataset):
     """
     MSLS-val condition-specific subset (night / season) for evaluating robustness.
     
-    Uses the same database as standard msls-val, but with filtered queries
-    targeting specific condition changes (illumination or season).
+    Uses the same database as standard msls-val, with query subsets drawn only
+    from the standard query manifest and targeting illumination or season
+    changes. This is a custom full-DB robustness slice, not an official MSLS
+    condition-filtered subtask.
     
     Generate the required .npy files using: scripts/generate_msls_condition_splits.py
     """

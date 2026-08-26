@@ -37,6 +37,107 @@ def canonical_image_paths(paths: Sequence[Any]) -> np.ndarray:
     )
 
 
+def validate_ground_truth(
+    ground_truth: Sequence[Any],
+    *,
+    num_queries: int,
+    num_references: int,
+    dataset_name: str,
+) -> list[np.ndarray]:
+    """Validate and normalise one retrieval ground-truth list.
+
+    Every query must have at least one unique integer reference index in the
+    shared database.  Failing closed here prevents invalid condition manifests
+    from producing plausible-looking recall values.
+    """
+
+    if num_queries <= 0:
+        raise ValueError(f"{dataset_name} has no queries")
+    if num_references <= 0:
+        raise ValueError(f"{dataset_name} has no references")
+    if len(ground_truth) != num_queries:
+        raise ValueError(
+            f"{dataset_name} ground truth/query count mismatch: "
+            f"{len(ground_truth)} vs {num_queries}"
+        )
+
+    normalised: list[np.ndarray] = []
+    for query_index, positives in enumerate(ground_truth):
+        indices = np.asarray(positives)
+        if indices.ndim != 1:
+            raise ValueError(
+                f"{dataset_name} query {query_index} ground truth must be 1-D"
+            )
+        if indices.size == 0:
+            raise ValueError(
+                f"{dataset_name} query {query_index} has empty ground truth"
+            )
+        if not np.issubdtype(indices.dtype, np.integer):
+            raise ValueError(
+                f"{dataset_name} query {query_index} ground truth is not integer"
+            )
+        indices = indices.astype(np.int64, copy=False)
+        if len(np.unique(indices)) != len(indices):
+            raise ValueError(
+                f"{dataset_name} query {query_index} ground truth has duplicates"
+            )
+        if int(indices.min()) < 0 or int(indices.max()) >= num_references:
+            raise ValueError(
+                f"{dataset_name} query {query_index} ground truth is outside "
+                f"[0, {num_references})"
+            )
+        normalised.append(indices)
+    return normalised
+
+
+def validate_overlapping_ground_truth(
+    standard_query_paths: Sequence[Any],
+    standard_ground_truth: Sequence[np.ndarray],
+    condition_query_paths: Sequence[Any],
+    condition_ground_truth: Sequence[np.ndarray],
+    *,
+    condition_name: str,
+) -> tuple[int, int]:
+    """Require identical positive sets for queries shared by two manifests."""
+
+    standard_paths = canonical_image_paths(standard_query_paths)
+    condition_paths = canonical_image_paths(condition_query_paths)
+    if len(standard_paths) != len(standard_ground_truth):
+        raise ValueError("standard query paths/ground truth count mismatch")
+    if len(condition_paths) != len(condition_ground_truth):
+        raise ValueError(
+            f"{condition_name} query paths/ground truth count mismatch"
+        )
+    if len(set(standard_paths.tolist())) != len(standard_paths):
+        raise ValueError("standard MSLS queries contain duplicate paths")
+    if len(set(condition_paths.tolist())) != len(condition_paths):
+        raise ValueError(f"{condition_name} queries contain duplicate paths")
+
+    standard_lookup = {
+        path: query_index
+        for query_index, path in enumerate(standard_paths.tolist())
+    }
+    overlap = 0
+    for condition_index, path in enumerate(condition_paths.tolist()):
+        standard_index = standard_lookup.get(path)
+        if standard_index is None:
+            continue
+        overlap += 1
+        standard_positives = np.sort(
+            np.asarray(standard_ground_truth[standard_index], dtype=np.int64)
+        )
+        condition_positives = np.sort(
+            np.asarray(condition_ground_truth[condition_index], dtype=np.int64)
+        )
+        if not np.array_equal(standard_positives, condition_positives):
+            raise ValueError(
+                f"{condition_name} ground truth disagrees with standard MSLS "
+                f"for overlapping query {path!r}; regenerate the condition "
+                "manifests before evaluation"
+            )
+    return overlap, len(condition_paths) - overlap
+
+
 def string_sequence_sha256(values: Sequence[Any]) -> str:
     digest = hashlib.sha256()
     for value in values:
@@ -329,6 +430,8 @@ def map_condition_query_indices(
     missing = [path for path in condition.tolist() if path not in mapping]
     if missing:
         raise ValueError(
-            f"condition queries are not a subset of standard MSLS ({len(missing)} missing)"
+            f"condition queries are not a subset of standard MSLS "
+            f"({len(missing)} missing); regenerate them with "
+            "scripts/generate_msls_condition_splits.py --force"
         )
     return np.asarray([mapping[path] for path in condition.tolist()], dtype=np.int64)

@@ -47,8 +47,16 @@ Neither control uses a per-image z-score.
 The mask is cached first, then the segmentation teacher is removed.  VPR
 evaluation computes DINO plus the learned RU gate once per image batch and
 only repeats the relatively small BoQ aggregation.  Standard, night, and
-season metrics reuse the same database and query descriptors; condition
-queries are mapped back to the standard MSLS query set by exact path.
+season metrics reuse the same database and query descriptors.  The condition
+generator intersects `n2d` / `w2s` / `s2w` candidates with the standard MSLS
+query manifest and reuses the corresponding standard GT rows.  Thus every
+condition query maps back to the standard query index by exact path.
+
+The repository's night/season files are **custom condition subsets searched
+against the standard full MSLS database**.  They are not the official MSLS
+condition subtasks, which select a condition-specific database as well as
+queries.  Report them as robustness slices of the standard full-DB protocol,
+not as official `n2d`, `w2s`, or `s2w` scores.
 
 ## Commands
 
@@ -59,29 +67,34 @@ conda activate VPR
 
 python -m pytest -q \
   tests/test_dynamic_category_prior.py \
+  tests/test_msls_condition_splits.py \
   tests/test_condition_eval_loader.py
 
-# Only needed if either condition manifest does not already exist.
-if [ ! -f datasets/msls-val/msls_val_night_qImages.npy ] || \
-   [ ! -f datasets/msls-val/msls_val_season_qImages.npy ]; then
-  python scripts/generate_msls_condition_splits.py
-fi
+# Regenerate even when old manifests exist.  The old generator omitted the
+# panorama/standard-query-universe restriction.
+python scripts/generate_msls_condition_splits.py \
+  --msls-path datasets/msls-val \
+  --conditions night season \
+  --report doc/msls_condition_split_audit.json \
+  --force
 
 RU_DIR=logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints
 find "$RU_DIR" -maxdepth 1 -type f -name '*.ckpt' -print
 RU_CKPT="$(find "$RU_DIR" -maxdepth 1 -type f -name 'epoch(26)_*.ckpt' -print -quit)"
 test -f "$RU_CKPT"
 
-python scripts/cache_dynamic_category_masks.py \
-  --msls-path datasets/msls-val \
-  --output .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz \
-  --report-dir doc/dynamic_category_mask_audit \
-  --device cuda:1 \
-  --batch-size 16 \
-  --num-workers 8 \
-  --seg-size 520 520 \
-  --grid-size 20 20 \
-  --seed 42
+if [ ! -f .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz ]; then
+  python scripts/cache_dynamic_category_masks.py \
+    --msls-path datasets/msls-val \
+    --output .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz \
+    --report-dir doc/dynamic_category_mask_audit \
+    --device cuda:1 \
+    --batch-size 16 \
+    --num-workers 8 \
+    --seg-size 520 520 \
+    --grid-size 20 20 \
+    --seed 42
+fi
 
 python scripts/eval_dynamic_category_prior.py \
   --checkpoint "$RU_CKPT" \
@@ -97,6 +110,13 @@ python scripts/eval_dynamic_category_prior.py \
   --seed 42 \
   --conditions night season
 ```
+
+If the standard 19,611-image mask cache already completed successfully, keep
+and reuse it.  Regenerating the condition manifests changes only which of the
+standard 740 queries are reported in night/season slices; it does not change
+the cached image index or any mask.  The split audit records how many old
+condition candidates were outside the standard query universe and how many of
+those were panoramas.
 
 The default teacher weights are downloaded once from the official PyTorch
 model host and then reused from the torch hub cache.  If the training machine
@@ -125,7 +145,8 @@ The retrieval output contains:
 - `query_outcomes.csv`: top-1 prediction/correctness for every query/branch;
 - `paired_comparisons.csv`: aligned-only versus comparator-only correct counts;
 - `run.json`: hashes, exact controls, parameters, results, and an automatic
-  pass/fail verdict.
+  pass/fail verdict.  It also records all query/GT manifest hashes, exact
+  standard-query overlap, and the custom-condition protocol label.
 
 Before interpreting semantics, baseline must reproduce RU R@1 `91.22%` within
 `0.15` percentage points.  The screen passes only when all of these hold:
