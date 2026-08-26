@@ -1,10 +1,11 @@
-"""Cache dynamic-category area masks for the standard MSLS validation set.
+"""Cache dynamic-category masks for the full-DB condition-query screen.
 
 The cache is intentionally generated before VPR inference so the segmentation
 teacher can be removed from GPU memory.  Pixel labels come from a frozen
 torchvision DeepLabV3-MobileNetV3 teacher.  Hard dynamic pixels are area-pooled
 to the 20x20 DINOv2 patch grid; there is no confidence threshold and no
-per-image standardisation.
+per-image standardisation.  The indexed images are the standard MSLS database
+followed by the standard-first union of all generated condition queries.
 """
 
 from __future__ import annotations
@@ -41,6 +42,9 @@ from scripts.dynamic_category_prior import (  # noqa: E402
     save_mask_cache,
     string_sequence_sha256,
 )
+from src.dataloaders.valid.msls_condition_protocol import (  # noqa: E402
+    CONDITION_UNION_QUERY_FILE,
+)
 
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -62,22 +66,54 @@ def choose_device(device_arg: str) -> torch.device:
 
 
 class MSLSImageIndex:
-    """Minimal standard-MSLS index without importing retrieval dependencies."""
+    """Standard DB plus the generated standard-first condition query union."""
 
     def __init__(self, dataset_path: Path) -> None:
         self.dataset_path = dataset_path
         db_file = dataset_path / "msls_val_dbImages.npy"
-        query_file = dataset_path / "msls_val_qImages.npy"
-        if not db_file.is_file() or not query_file.is_file():
+        standard_query_file = dataset_path / "msls_val_qImages.npy"
+        query_union_file = dataset_path / CONDITION_UNION_QUERY_FILE
+        if not all(
+            path.is_file()
+            for path in (db_file, standard_query_file, query_union_file)
+        ):
             raise FileNotFoundError(
-                "MSLS path must contain msls_val_dbImages.npy and "
-                "msls_val_qImages.npy"
+                "MSLS path must contain the standard DB/query manifests and "
+                f"{CONDITION_UNION_QUERY_FILE}; run "
+                "scripts/generate_msls_condition_splits.py first"
             )
         self.dbImages = np.load(db_file, allow_pickle=False)
-        self.qImages = np.load(query_file, allow_pickle=False)
+        self.standard_qImages = np.load(standard_query_file, allow_pickle=False)
+        self.qImages = np.load(query_union_file, allow_pickle=False)
+        database_paths = np.asarray(
+            [str(path).replace("\\", "/") for path in self.dbImages]
+        )
+        standard_paths = np.asarray(
+            [str(path).replace("\\", "/") for path in self.standard_qImages]
+        )
+        union_paths = np.asarray(
+            [str(path).replace("\\", "/") for path in self.qImages]
+        )
+        if len(set(union_paths.tolist())) != len(union_paths):
+            raise ValueError("condition query union contains duplicate paths")
+        if len(set(database_paths.tolist())) != len(database_paths):
+            raise ValueError("standard MSLS database contains duplicate paths")
+        if len(union_paths) < len(standard_paths) or not np.array_equal(
+            union_paths[: len(standard_paths)], standard_paths
+        ):
+            raise ValueError(
+                "condition query union must begin with the exact standard "
+                "MSLS query manifest"
+            )
+        if set(database_paths.tolist()) & set(union_paths.tolist()):
+            raise ValueError("standard database and condition query union overlap")
+        self.dbImages = database_paths
+        self.standard_qImages = standard_paths
+        self.qImages = union_paths
         self.image_paths = np.concatenate((self.dbImages, self.qImages))
         self.num_references = len(self.dbImages)
         self.num_queries = len(self.qImages)
+        self.num_standard_queries = len(self.standard_qImages)
 
     def __len__(self) -> int:
         return len(self.image_paths)
@@ -100,7 +136,10 @@ class SegmentationImageDataset(Dataset):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Cache frozen dynamic-category masks for MSLS-val"
+        description=(
+            "Cache frozen dynamic-category masks for the standard DB plus "
+            "the complete condition-query union"
+        )
     )
     parser.add_argument("--msls-path", type=Path, default=Path("datasets/msls-val"))
     parser.add_argument("--output", type=Path, required=True)
@@ -375,7 +414,7 @@ def main() -> None:
         montage_indices,
     )
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "method": "dynamic_category_mask_cache",
         "cache": {
             "path": str(args.output),
@@ -389,7 +428,17 @@ def main() -> None:
             "path": str(args.msls_path),
             "num_images": len(base_dataset),
             "num_references": base_dataset.num_references,
-            "num_queries": base_dataset.num_queries,
+            "num_standard_queries": base_dataset.num_standard_queries,
+            "num_union_queries": base_dataset.num_queries,
+            "num_condition_only_queries": (
+                base_dataset.num_queries - base_dataset.num_standard_queries
+            ),
+            "query_union_manifest": {
+                "path": str(args.msls_path / CONDITION_UNION_QUERY_FILE),
+                "sha256": file_sha256(
+                    args.msls_path / CONDITION_UNION_QUERY_FILE
+                ),
+            },
         },
         "teacher": teacher_record,
         "segmentation_size": list(args.seg_size),
@@ -423,6 +472,10 @@ def main() -> None:
             "The Pascal-VOC label space has no rider or truck category.",
             "The mask is a segmentation argmax area prior, not place evidence.",
             "The cache contains no per-image z-score or confidence threshold.",
+            (
+                "Condition queries are searched against the standard full DB; "
+                "this cache does not define an official MSLS condition subtask."
+            ),
         ],
     }
     with (args.report_dir / "run.json").open("w", encoding="utf-8") as handle:

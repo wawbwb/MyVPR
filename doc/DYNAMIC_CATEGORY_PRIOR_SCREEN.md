@@ -1,162 +1,235 @@
 # Dynamic-category negative-prior screen
 
-## Why this screen is different
+## Scope and protocol
 
-The completed CLIP semantic-region experiment is negative for seed 42.  This
-screen does not tune that target, reuse CLIP propagation, multiply DINO
-features, or retrain a model.  It asks a narrower causal question:
+This is a frozen-checkpoint causal screen. It asks whether reducing BoQ
+attention to segmented dynamic objects helps the trained
+repeatability+uniqueness (RU) model. It does not retrain the model and it does
+not reuse the failed CLIP propagation target.
 
-> Does explicitly reducing BoQ attention to segmented dynamic objects improve
-> the frozen repeatability+uniqueness (RU) checkpoint?
-
-The fixed torchvision DeepLabV3-MobileNetV3 teacher predicts Pascal-VOC pixel
-labels on the clean MSLS image.  Hard dynamic pixels (`person`, `bicycle`,
-`car`, `motorbike`, `bus`, and `train`) are area-pooled to the DINOv2 `20x20`
-patch grid.  For patch coverage `m` and the preregistered `beta=0.5`, both BoQ
-cross-attention blocks receive
+DeepLabV3-MobileNetV3 predicts Pascal-VOC labels on each clean image. The
+dynamic classes are `person`, `bicycle`, `car`, `motorbike`, `bus`, and
+`train`. Their hard-argmax pixel area is pooled to the DINOv2 `20x20` grid and
+inserted into both BoQ cross-attention blocks as
 
 ```text
-attention_bias = -0.5 * m
+attention_bias = -beta * dynamic_patch_fraction
 ```
 
-A fully dynamic patch therefore multiplies its prior attention odds by
-`exp(-0.5) = 0.607`.  The bias is finite, so patches are downweighted rather
-than deleted.  The teacher has no `rider` or `truck` category; that limitation
-must remain explicit when interpreting a negative result.
+The preregistered first value is `beta=0.5`. A fully dynamic patch therefore
+multiplies its prior attention odds by `exp(-0.5) = 0.607`; it is downweighted,
+not deleted. The teacher has no `rider` or `truck` class.
 
-## Matched controls
+All five variants use the same checkpoint and the same DINO/RU feature map:
 
-All five branches use one checkpoint and the exact same raw DINO/RU feature
-map for every image:
-
-| Branch | Intervention |
+| Variant | Intervention |
 | --- | --- |
-| `baseline` | `attention_bias=None`; the historical checkpoint path |
-| `zero_bias` | an all-zero float mask; controls the CUDA attention-kernel path |
-| `aligned` | the correct image's dynamic mask |
-| `shuffled` | a wrong image's mask from a seeded global derangement |
-| `random` | a seeded spatial permutation of the same image's 400 mask values |
+| `baseline` | `attention_bias=None` |
+| `zero_bias` | all-zero bias; numerical-path control |
+| `aligned` | the image's correct dynamic mask |
+| `shuffled` | another image's mask, with a role/condition-preserving derangement |
+| `random` | an exact spatial permutation of the same image's mask values |
 
-The shuffled donor permutation is generated separately inside the database
-and each query night/season-membership stratum, has no fixed points, and is
-independent of batch size.  Thus a night or season query always receives a
-mask from another query with the same condition memberships.
-The random branch exactly preserves every image's mask values and coverage.
-Neither control uses a per-image z-score.
+The standard 18,871-image database is unchanged. The generator reads all
+non-panorama `n2d`, `w2s`, and `s2w` query candidates, computes same-city 25 m
+positives in the exact global standard-DB index space, and excludes candidates
+with no positive. It writes three atomic conditions:
 
-The mask is cached first, then the segmentation teacher is removed.  VPR
-evaluation computes DINO plus the learned RU gate once per image batch and
-only repeats the relatively small BoQ aggregation.  Standard, night, and
-season metrics reuse the same database and query descriptors.  The condition
-generator intersects `n2d` / `w2s` / `s2w` candidates with the standard MSLS
-query manifest and reuses the corresponding standard GT rows.  Thus every
-condition query maps back to the standard query index by exact path.
+- `night` (`n2d`);
+- `winter2summer` (`w2s`);
+- `summer2winter` (`s2w`).
 
-The repository's night/season files are **custom condition subsets searched
-against the standard full MSLS database**.  They are not the official MSLS
-condition subtasks, which select a condition-specific database as well as
-queries.  Report them as robustness slices of the standard full-DB protocol,
-not as official `n2d`, `w2s`, or `s2w` scores.
+It also writes a `season` compatibility aggregate and a deterministic query
+union. The union begins with the standard 740 queries in their original order,
+then appends condition-only queries in atomic-condition order. One descriptor
+and one mask are therefore reused when a query belongs to multiple reports.
 
-## Commands
+This remains a **custom full-database robustness protocol**, not the official
+MSLS condition protocol: the official subtasks filter the database as well as
+the queries. Do not label these rows as official `n2d`, `w2s`, or `s2w`
+scores.
 
-Run from the repository root on the training machine:
+The metadata contains 55 night candidates and 996 combined season candidates.
+Image existence does not guarantee a valid retrieval query: candidates with
+no reference within 25 m are excluded. The previous files indicate that the
+season aggregate may fall to about 988 queries, but the newly generated audit
+is authoritative; do not hard-code 988 in analysis.
+
+## Remove the invalid intersection run
+
+Run these commands only from the repository root on the training machine. The
+targets are the four old manifests without `_full_db_`, the old 19,611-image
+cache/audit, and retrieval outputs produced from the incorrect 5-query night /
+84-query season intersection.
+
+```bash
+test -f scripts/generate_msls_condition_splits.py
+test -d datasets/msls-val
+
+rm -f -- \
+  datasets/msls-val/msls_val_night_qImages.npy \
+  datasets/msls-val/msls_val_night_gt_25m.npy \
+  datasets/msls-val/msls_val_season_qImages.npy \
+  datasets/msls-val/msls_val_season_gt_25m.npy \
+  doc/msls_condition_split_audit.json \
+  .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz \
+  msls_condition_fix.bundle
+
+rm -rf -- \
+  doc/dynamic_category_mask_audit \
+  doc/dynamic_category_prior_screen_b0.5 \
+  doc/dynamic_category_prior_screen_b0.5_fixed_splits
+```
+
+The old mask values were valid for the standard 740 queries, but that cache is
+incomplete for condition-only queries. Removing it avoids accidentally
+combining two different image indices. The evaluator also checks the complete
+ordered path manifest and will reject the old cache.
+
+## Generate and audit the corrected manifests
 
 ```bash
 conda activate VPR
 
 python -m pytest -q \
   tests/test_dynamic_category_prior.py \
+  tests/test_dynamic_category_eval_index.py \
   tests/test_msls_condition_splits.py \
+  tests/test_msls_condition_loader.py \
   tests/test_condition_eval_loader.py
 
-# Regenerate even when old manifests exist.  The old generator omitted the
-# panorama/standard-query-universe restriction.
 python scripts/generate_msls_condition_splits.py \
   --msls-path datasets/msls-val \
-  --conditions night season \
+  --cities cph sf \
+  --conditions night winter2summer summer2winter \
+  --distance-threshold 25 \
+  --expected-standard-queries 740 \
   --report doc/msls_condition_split_audit.json \
   --force
+```
 
+Inspect the actual retained counts before starting GPU work:
+
+```bash
+python - <<'PY'
+import json
+from pathlib import Path
+
+audit = json.loads(
+    Path("doc/msls_condition_split_audit.json").read_text()
+)
+for name, row in audit["conditions"].items():
+    print(
+        name,
+        "candidate=", row["candidate_queries_before_panorama_exclusion"],
+        "panorama=", row["excluded_panorama_queries"],
+        "no_positive=", row["excluded_no_positive_queries"],
+        "retained=", row["retained_queries"],
+        "standard_overlap=", row["standard_query_overlap"],
+        "condition_only=", row["condition_only_queries"],
+    )
+print("season aggregate=", audit["aggregates"]["season"]["retained_queries"])
+print("query union=", audit["query_union"]["num_queries"])
+print(
+    "membership counts=",
+    audit["query_union"]["condition_membership_counts"],
+)
+print(
+    "singleton memberships=",
+    audit["query_union"]["singleton_condition_membership_paths"],
+)
+PY
+```
+
+Do not continue if generation reports a shared standard query whose recomputed
+GT disagrees with `msls_val_gt_25m.npy`, a missing image, invalid metadata, or
+an unexpected empty condition. Those checks fail closed by design.
+Also stop if `singleton memberships` is non-empty: the shuffled-mask control
+cannot form a no-fixed-point donor permutation for a one-image membership
+stratum without weakening condition matching.
+
+Generated dataset files are:
+
+```text
+msls_val_night_full_db_qImages.npy
+msls_val_night_full_db_gt_25m.npy
+msls_val_winter2summer_full_db_qImages.npy
+msls_val_winter2summer_full_db_gt_25m.npy
+msls_val_summer2winter_full_db_qImages.npy
+msls_val_summer2winter_full_db_gt_25m.npy
+msls_val_season_full_db_qImages.npy
+msls_val_season_full_db_gt_25m.npy
+msls_val_condition_union_qImages.npy
+```
+
+## Cache the complete query union
+
+The old cache cannot be reused. Build a new cache whose name explicitly says
+`full_db_condition_union`:
+
+```bash
+python scripts/cache_dynamic_category_masks.py \
+  --msls-path datasets/msls-val \
+  --output .cache/dynamic_prior/msls_val_full_db_condition_union_deeplabv3_mbv3_grid20.npz \
+  --report-dir doc/dynamic_category_mask_audit_full_db_condition_union \
+  --device cuda:1 \
+  --batch-size 16 \
+  --num-workers 8 \
+  --seg-size 520 520 \
+  --grid-size 20 20 \
+  --seed 42
+```
+
+The default teacher pass is FP32 so hard-argmax boundaries do not depend on
+mixed-precision rounding. Reduce `--batch-size` if needed; do not enable
+`--amp` for the preregistered result. If the official weight host is
+unavailable, copy
+`deeplabv3_mobilenet_v3_large-fc3c493d.pth` to the machine and add:
+
+```bash
+--teacher-weights /path/to/deeplabv3_mobilenet_v3_large-fc3c493d.pth
+```
+
+## Run the corrected screen
+
+```bash
 RU_DIR=logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints
 find "$RU_DIR" -maxdepth 1 -type f -name '*.ckpt' -print
 RU_CKPT="$(find "$RU_DIR" -maxdepth 1 -type f -name 'epoch(26)_*.ckpt' -print -quit)"
 test -f "$RU_CKPT"
 
-if [ ! -f .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz ]; then
-  python scripts/cache_dynamic_category_masks.py \
-    --msls-path datasets/msls-val \
-    --output .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz \
-    --report-dir doc/dynamic_category_mask_audit \
-    --device cuda:1 \
-    --batch-size 16 \
-    --num-workers 8 \
-    --seg-size 520 520 \
-    --grid-size 20 20 \
-    --seed 42
-fi
-
 python scripts/eval_dynamic_category_prior.py \
   --checkpoint "$RU_CKPT" \
   --msls-path datasets/msls-val \
-  --mask-cache .cache/dynamic_prior/msls_val_deeplabv3_mbv3_grid20.npz \
-  --output doc/dynamic_category_prior_screen_b0.5 \
-  --scratch-dir /tmp/dynamic_prior_screen \
+  --mask-cache .cache/dynamic_prior/msls_val_full_db_condition_union_deeplabv3_mbv3_grid20.npz \
+  --output doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries \
+  --scratch-dir /tmp/dynamic_prior_screen_full_db_condition_queries \
   --device cuda:1 \
   --batch-size 32 \
   --num-workers 8 \
   --image-size 280 280 \
   --beta 0.5 \
   --seed 42 \
-  --conditions night season
+  --conditions night winter2summer summer2winter
 ```
 
-If the standard 19,611-image mask cache already completed successfully, keep
-and reuse it.  Regenerating the condition manifests changes only which of the
-standard 740 queries are reported in night/season slices; it does not change
-the cached image index or any mask.  The split audit records how many old
-condition candidates were outside the standard query universe and how many of
-those were panoramas.
+The five float32 descriptor matrices require roughly 5 GiB and are deleted
+unless `--keep-descriptors` is supplied. Do not commit teacher weights,
+`.cache/`, or scratch descriptors. Keep the split audit, mask audit, and final
+retrieval result after checking their hashes and query counts.
 
-The default teacher weights are downloaded once from the official PyTorch
-model host and then reused from the torch hub cache.  If the training machine
-cannot reach that host, download
-`deeplabv3_mobilenet_v3_large-fc3c493d.pth` elsewhere, copy it to the training
-machine, and add this option to the cache command:
+## Decision rule
 
-```bash
---teacher-weights /path/to/deeplabv3_mobilenet_v3_large-fc3c493d.pth
-```
+The retrieval directory contains `summary.csv`, `query_outcomes.csv`,
+`paired_comparisons.csv`, and `run.json`. Before interpreting the intervention,
+the baseline must reproduce RU overall R@1 `91.22%` within `0.15` percentage
+points. The screen passes only when:
 
-The segmentation cache defaults to FP32 so hard argmax labels do not depend on
-mixed-precision boundary rounding.  If memory is still tight, reduce its batch
-size; do not enable `--amp` for the preregistered first result.
+1. aligned beats zero-bias, shuffled, and random on standard MSLS-val;
+2. aligned loses no more than `0.3` points versus baseline overall;
+3. aligned gains at least `1.0` point versus zero-bias and beats all controls
+   on at least one complete atomic condition.
 
-Do not commit the teacher weights, `.cache/`, or temporary descriptor files.
-The five float32 descriptor matrices need about 5 GiB of scratch space and are
-deleted automatically unless `--keep-descriptors` is supplied.
-
-## Outputs and decision rule
-
-The mask audit contains `run.json` and an unbiased seeded 12-image montage.
-The retrieval output contains:
-
-- `summary.csv`: R@1/5/10 plus changes versus historical and zero-bias paths;
-- `query_outcomes.csv`: top-1 prediction/correctness for every query/branch;
-- `paired_comparisons.csv`: aligned-only versus comparator-only correct counts;
-- `run.json`: hashes, exact controls, parameters, results, and an automatic
-  pass/fail verdict.  It also records all query/GT manifest hashes, exact
-  standard-query overlap, and the custom-condition protocol label.
-
-Before interpreting semantics, baseline must reproduce RU R@1 `91.22%` within
-`0.15` percentage points.  The screen passes only when all of these hold:
-
-1. aligned R@1 beats zero-bias, shuffled, and random on full MSLS;
-2. aligned loses no more than `0.3` points versus baseline on full MSLS;
-3. on night or season, aligned gains at least `1.0` point versus zero-bias and
-   beats zero-bias, shuffled, and random.
-
-If it fails, stop this teacher/injection/strength route before training.  A
-failure does not disprove semantic VPR in general.  Only after a pass should
-`beta=0.25` and `beta=1.0` be run as separately recorded confirmations by
-reusing the same mask cache and choosing new output directories.
+If it fails, stop this teacher/injection/strength route before training. A
+failure rejects this implementation, not semantic VPR in general. Only after
+a pass should `beta=0.25` and `beta=1.0` be run as separate confirmations.

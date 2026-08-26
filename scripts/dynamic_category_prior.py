@@ -37,6 +37,38 @@ def canonical_image_paths(paths: Sequence[Any]) -> np.ndarray:
     )
 
 
+def build_query_union(
+    standard_query_paths: Sequence[Any],
+    condition_query_groups: Sequence[Sequence[Any]],
+) -> np.ndarray:
+    """Build a stable standard-first union of retrieval query manifests.
+
+    Standard MSLS queries keep their exact manifest order.  Condition-only
+    queries are appended on first occurrence while preserving the order of
+    both the condition groups and each manifest.  Duplicate paths inside any
+    individual manifest are rejected because they make query outcomes and
+    mask donors ambiguous.
+    """
+
+    standard = canonical_image_paths(standard_query_paths)
+    if len(set(standard.tolist())) != len(standard):
+        raise ValueError("standard MSLS queries contain duplicate paths")
+
+    union = standard.tolist()
+    seen = set(union)
+    for group_index, group in enumerate(condition_query_groups):
+        condition = canonical_image_paths(group)
+        if len(set(condition.tolist())) != len(condition):
+            raise ValueError(
+                f"condition query manifest {group_index} contains duplicate paths"
+            )
+        for path in condition.tolist():
+            if path not in seen:
+                seen.add(path)
+                union.append(path)
+    return np.asarray(union, dtype=np.str_)
+
+
 def validate_ground_truth(
     ground_truth: Sequence[Any],
     *,
@@ -410,13 +442,13 @@ def load_and_validate_mask_cache(
     return masks, metadata
 
 
-def map_condition_query_indices(
-    full_query_paths: Sequence[Any], condition_query_paths: Sequence[Any]
+def map_query_indices(
+    union_query_paths: Sequence[Any], subset_query_paths: Sequence[Any]
 ) -> np.ndarray:
-    """Map a condition subset to full-query offsets, rejecting ambiguity."""
+    """Map a unique query subset to offsets in a unique query union."""
 
-    full = canonical_image_paths(full_query_paths)
-    condition = canonical_image_paths(condition_query_paths)
+    full = canonical_image_paths(union_query_paths)
+    condition = canonical_image_paths(subset_query_paths)
     mapping: dict[str, int] = {}
     duplicates = set()
     for index, path in enumerate(full.tolist()):
@@ -424,14 +456,14 @@ def map_condition_query_indices(
             duplicates.add(path)
         mapping[path] = index
     if duplicates:
-        raise ValueError(f"full MSLS queries contain duplicate paths: {duplicates}")
+        raise ValueError(f"query union contains duplicate paths: {duplicates}")
     if len(set(condition.tolist())) != len(condition):
-        raise ValueError("condition queries contain duplicate paths")
+        raise ValueError("query subset contains duplicate paths")
     missing = [path for path in condition.tolist() if path not in mapping]
     if missing:
         raise ValueError(
-            f"condition queries are not a subset of standard MSLS "
-            f"({len(missing)} missing); regenerate them with "
-            "scripts/generate_msls_condition_splits.py --force"
+            f"query subset contains paths missing from the query union "
+            f"({len(missing)} missing); regenerate all condition manifests "
+            "and msls_val_condition_union_qImages.npy"
         )
     return np.asarray([mapping[path] for path in condition.tolist()], dtype=np.int64)

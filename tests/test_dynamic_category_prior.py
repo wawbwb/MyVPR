@@ -5,9 +5,10 @@ import pytest
 import torch
 
 from scripts.dynamic_category_prior import (
+    build_query_union,
     dynamic_patch_coverage,
     load_and_validate_mask_cache,
-    map_condition_query_indices,
+    map_query_indices,
     resolve_dynamic_class_ids,
     role_preserving_derangement,
     save_mask_cache,
@@ -217,16 +218,49 @@ def test_mask_cache_requires_exact_paths_order_boundary_and_grid(tmp_path: Path)
         )
 
 
-def test_condition_query_mapping_is_unique_and_order_preserving() -> None:
-    full = ["q/zero.jpg", "q/one.jpg", "q/two.jpg"]
-    actual = map_condition_query_indices(full, ["q/two.jpg", "q/zero.jpg"])
-    assert actual.tolist() == [2, 0]
-    with pytest.raises(ValueError, match="not a subset"):
-        map_condition_query_indices(full, ["q/missing.jpg"])
+def test_standard_first_query_union_is_stable_and_maps_condition_only_queries() -> None:
+    standard = ["q/zero.jpg", "q/one.jpg"]
+    union = build_query_union(
+        standard,
+        [
+            ["q/one.jpg", "q/night.jpg"],
+            ["q/season.jpg", "q/night.jpg"],
+        ],
+    )
+
+    assert union.tolist() == [
+        "q/zero.jpg",
+        "q/one.jpg",
+        "q/night.jpg",
+        "q/season.jpg",
+    ]
+    assert map_query_indices(
+        union, ["q/night.jpg", "q/zero.jpg", "q/season.jpg"]
+    ).tolist() == [2, 0, 3]
+    with pytest.raises(ValueError, match="missing from the query union"):
+        map_query_indices(union, ["q/missing.jpg"])
     with pytest.raises(ValueError, match="duplicate"):
-        map_condition_query_indices(["q/same.jpg", "q/same.jpg"], ["q/same.jpg"])
-    with pytest.raises(ValueError, match="condition queries contain duplicate"):
-        map_condition_query_indices(full, ["q/one.jpg", "q/one.jpg"])
+        map_query_indices(["q/same.jpg", "q/same.jpg"], ["q/same.jpg"])
+    with pytest.raises(ValueError, match="query subset contains duplicate"):
+        map_query_indices(union, ["q/one.jpg", "q/one.jpg"])
+    with pytest.raises(ValueError, match="condition query manifest"):
+        build_query_union(standard, [["q/night.jpg", "q/night.jpg"]])
+
+
+def test_standard_only_mask_cache_is_rejected_for_condition_query_union(
+    tmp_path: Path,
+) -> None:
+    cache_path = tmp_path / "standard_only_masks.npz"
+    _, standard_only_paths = _write_cache(cache_path)
+    union_paths = [*standard_only_paths, "city/condition_only_query.jpg"]
+
+    with pytest.raises(ValueError, match="paths/order"):
+        load_and_validate_mask_cache(
+            cache_path,
+            expected_image_paths=union_paths,
+            expected_num_references=3,
+            expected_grid_size=(2, 3),
+        )
 
 
 def test_ground_truth_validation_rejects_empty_duplicate_and_bad_indices() -> None:

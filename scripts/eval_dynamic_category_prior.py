@@ -40,10 +40,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.dynamic_category_prior import (  # noqa: E402
+    build_query_union,
     canonical_image_paths,
     file_sha256,
     load_and_validate_mask_cache,
-    map_condition_query_indices,
+    map_query_indices,
     role_preserving_derangement,
     spatially_permute_masks,
     validate_ground_truth,
@@ -55,15 +56,23 @@ from scripts.eval_condition_robustness import (  # noqa: E402
     load_inference_model_from_ckpt,
 )
 from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset  # noqa: E402
-from src.dataloaders.valid.msls_condition import MSLSConditionDataset  # noqa: E402
+from src.dataloaders.valid.msls_condition_protocol import (  # noqa: E402
+    CONDITION_FILES,
+    CONDITION_ORDER,
+    CONDITION_UNION_QUERY_FILE,
+)
+from src.dataloaders.valid.msls_condition import (  # noqa: E402
+    MSLSConditionDataset,
+    MSLSConditionUnionDataset,
+)
 from src.models.aggregators.boq import BoQ  # noqa: E402
 
 
 VARIANTS = ("baseline", "zero_bias", "aligned", "shuffled", "random")
 CUSTOM_CONDITION_PROTOCOL = (
-    "custom condition subset of the standard MSLS query universe, searched "
-    "against the standard full database; not an official condition-filtered "
-    "MSLS subtask"
+    "custom full condition-query slice searched against the standard full "
+    "MSLS database with same-city 25 m ground truth; not an official "
+    "condition-filtered MSLS subtask"
 )
 
 
@@ -89,9 +98,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--conditions",
         nargs="*",
-        choices=("night", "season"),
-        default=("night", "season"),
-        help="validated condition subsets reusing the standard MSLS descriptors",
+        choices=CONDITION_ORDER,
+        default=CONDITION_ORDER,
+        help="full condition-query slices to report (union descriptors are shared)",
     )
     parser.add_argument(
         "--beta",
@@ -127,7 +136,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> None:
-    args.conditions = tuple(sorted(set(args.conditions)))
+    requested_conditions = set(args.conditions)
+    args.conditions = tuple(
+        name for name in CONDITION_ORDER if name in requested_conditions
+    )
     args.checkpoint = args.checkpoint.expanduser().resolve()
     args.msls_path = args.msls_path.expanduser().resolve()
     args.mask_cache = args.mask_cache.expanduser().resolve()
@@ -284,7 +296,7 @@ class DescriptorStore:
 def extract_descriptors(
     *,
     model: torch.nn.Module,
-    dataset: MapillarySLSDataset,
+    dataset: MSLSConditionUnionDataset,
     masks: np.ndarray,
     donor_indices: np.ndarray,
     beta: float,
@@ -418,28 +430,46 @@ def manifest_record(path: Path) -> dict[str, Any]:
 
 
 def build_evaluation_sets(
-    full_dataset: MapillarySLSDataset,
+    standard_dataset: MapillarySLSDataset,
+    union_dataset: MSLSConditionUnionDataset,
     condition_names: Sequence[str],
     transform: Any,
     msls_path: Path,
-) -> list[dict[str, Any]]:
-    standard_query_paths = canonical_image_paths(full_dataset.qImages)
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not np.array_equal(
+        canonical_image_paths(standard_dataset.dbImages),
+        canonical_image_paths(union_dataset.dbImages),
+    ):
+        raise ValueError("condition query union does not share standard MSLS DB order")
+
+    standard_query_paths = canonical_image_paths(standard_dataset.qImages)
+    union_query_paths = canonical_image_paths(union_dataset.qImages)
     standard_ground_truth = validate_ground_truth(
-        full_dataset.ground_truth,
-        num_queries=full_dataset.num_queries,
-        num_references=full_dataset.num_references,
+        standard_dataset.ground_truth,
+        num_queries=standard_dataset.num_queries,
+        num_references=standard_dataset.num_references,
         dataset_name="standard MSLS",
     )
+    standard_query_offsets = map_query_indices(
+        union_query_paths, standard_query_paths
+    )
+    if not np.array_equal(
+        standard_query_offsets,
+        np.arange(standard_dataset.num_queries, dtype=np.int64),
+    ):
+        raise ValueError(
+            "condition query union must begin with the standard MSLS query manifest"
+        )
     standard_query_file = msls_path / "msls_val_qImages.npy"
     standard_gt_file = msls_path / "msls_val_gt_25m.npy"
     evaluations: list[dict[str, Any]] = [
         {
-            "name": full_dataset.dataset_name,
+            "name": standard_dataset.dataset_name,
             "query_paths": standard_query_paths,
-            "query_offsets": np.arange(full_dataset.num_queries, dtype=np.int64),
+            "query_offsets": standard_query_offsets,
             "ground_truth": standard_ground_truth,
             "protocol": "standard MSLS-val protocol",
-            "num_standard_query_overlap": full_dataset.num_queries,
+            "num_standard_query_overlap": standard_dataset.num_queries,
             "num_condition_only_queries": 0,
             "manifests": {
                 "queries": manifest_record(standard_query_file),
@@ -447,7 +477,9 @@ def build_evaluation_sets(
             },
         }
     ]
-    for condition_name in condition_names:
+    condition_datasets: dict[str, MSLSConditionDataset] = {}
+    condition_memberships: list[dict[str, Any]] = []
+    for condition_name in CONDITION_ORDER:
         try:
             condition = MSLSConditionDataset(
                 condition=condition_name,
@@ -460,9 +492,10 @@ def build_evaluation_sets(
                 "scripts/generate_msls_condition_splits.py --msls-path "
                 f"{msls_path} --force first"
             ) from exc
+        condition_datasets[condition_name] = condition
         if not np.array_equal(
             canonical_image_paths(condition.dbImages),
-            canonical_image_paths(full_dataset.dbImages),
+            canonical_image_paths(standard_dataset.dbImages),
         ):
             raise ValueError(f"{condition_name} split does not share MSLS DB order")
         condition_query_paths = canonical_image_paths(condition.qImages)
@@ -479,39 +512,49 @@ def build_evaluation_sets(
             condition_ground_truth,
             condition_name=condition.dataset_name,
         )
-        query_offsets = map_condition_query_indices(
-            standard_query_paths, condition_query_paths
+        query_offsets = map_query_indices(
+            union_query_paths, condition_query_paths
         )
-        if condition_only_count != 0 or overlap_count != condition.num_queries:
-            raise AssertionError("condition subset mapping is internally inconsistent")
-        query_filename, gt_filename = MSLSConditionDataset.CONDITION_FILES[
-            condition_name
-        ]
-        evaluations.append(
-            {
-                "name": condition.dataset_name,
-                "query_paths": condition_query_paths,
-                "query_offsets": query_offsets,
-                "ground_truth": condition_ground_truth,
-                "protocol": CUSTOM_CONDITION_PROTOCOL,
-                "num_standard_query_overlap": overlap_count,
-                "num_condition_only_queries": condition_only_count,
-                "manifests": {
-                    "queries": manifest_record(msls_path / query_filename),
-                    "ground_truth": manifest_record(msls_path / gt_filename),
-                },
-            }
+        condition_memberships.append(
+            {"name": condition.dataset_name, "query_offsets": query_offsets}
         )
-    return evaluations
+        if condition_name in condition_names:
+            query_filename, gt_filename = CONDITION_FILES[condition_name]
+            evaluations.append(
+                {
+                    "name": condition.dataset_name,
+                    "query_paths": condition_query_paths,
+                    "query_offsets": query_offsets,
+                    "ground_truth": condition_ground_truth,
+                    "protocol": CUSTOM_CONDITION_PROTOCOL,
+                    "num_standard_query_overlap": overlap_count,
+                    "num_condition_only_queries": condition_only_count,
+                    "manifests": {
+                        "queries": manifest_record(msls_path / query_filename),
+                        "ground_truth": manifest_record(msls_path / gt_filename),
+                    },
+                }
+            )
+
+    expected_union = build_query_union(
+        standard_query_paths,
+        [condition_datasets[name].qImages for name in CONDITION_ORDER],
+    )
+    if not np.array_equal(expected_union, union_query_paths):
+        raise ValueError(
+            "condition query union is stale or has the wrong order; regenerate "
+            "all condition manifests"
+        )
+    return evaluations, condition_memberships
 
 
 def build_query_condition_strata(
-    evaluations: Sequence[Mapping[str, Any]], num_queries: int
+    condition_memberships: Sequence[Mapping[str, Any]], num_queries: int
 ) -> tuple[np.ndarray, dict[str, int]]:
     """Encode all condition memberships so shuffled donors stay matched."""
 
     strata = np.zeros(num_queries, dtype=np.uint64)
-    for bit, evaluation in enumerate(evaluations[1:]):
+    for bit, evaluation in enumerate(condition_memberships):
         if bit >= 63:
             raise ValueError("too many condition splits for a uint64 membership mask")
         offsets = np.asarray(evaluation["query_offsets"], dtype=np.int64)
@@ -528,7 +571,7 @@ def build_query_condition_strata(
 def evaluate_variants(
     store: DescriptorStore,
     *,
-    dataset: MapillarySLSDataset,
+    dataset: MSLSConditionUnionDataset,
     evaluations: Sequence[Mapping[str, Any]],
     beta: float,
     k_values: Sequence[int],
@@ -699,7 +742,8 @@ def screening_verdict(
             "Pass only if baseline is reproduced, aligned beats zero-bias, "
             "shuffled, and random on overall, overall drops no more than 0.3 "
             "pp versus the historical baseline, and aligned gains at least 1 "
-            "pp versus zero-bias while beating controls on night or season."
+            "pp versus zero-bias while beating controls on at least one full "
+            "condition-query slice."
         ),
     }
 
@@ -740,22 +784,29 @@ def main() -> None:
         args.checkpoint, tuple(args.image_size)
     )
     transform = build_transform(tuple(args.image_size))
-    dataset = MapillarySLSDataset(
+    standard_dataset = MapillarySLSDataset(
+        dataset_path=str(args.msls_path), input_transform=transform
+    )
+    dataset = MSLSConditionUnionDataset(
         dataset_path=str(args.msls_path), input_transform=transform
     )
     if max(args.k_values) > dataset.num_references:
         raise ValueError("largest k-value exceeds the number of MSLS references")
+    evaluations, condition_memberships = build_evaluation_sets(
+        standard_dataset,
+        dataset,
+        args.conditions,
+        transform,
+        args.msls_path,
+    )
     masks, cache_metadata = load_and_validate_mask_cache(
         args.mask_cache,
         expected_image_paths=dataset.image_paths,
         expected_num_references=dataset.num_references,
         expected_grid_size=grid_size,
     )
-    evaluations = build_evaluation_sets(
-        dataset, args.conditions, transform, args.msls_path
-    )
     query_strata, query_stratum_counts = build_query_condition_strata(
-        evaluations, dataset.num_queries
+        condition_memberships, dataset.num_queries
     )
     donor_indices = role_preserving_derangement(
         dataset.num_references,
@@ -822,7 +873,7 @@ def main() -> None:
         write_csv(args.output / "query_outcomes.csv", outcome_rows)
         write_csv(args.output / "paired_comparisons.csv", paired_rows)
         run_record = {
-            "schema_version": 2,
+            "schema_version": 3,
             "method": "frozen_dynamic_category_negative_attention_prior",
             "checkpoint": {
                 "path": str(args.checkpoint),
@@ -863,7 +914,7 @@ def main() -> None:
             "query_condition_stratum_counts": query_stratum_counts,
             "query_condition_bits": {
                 str(bit): evaluation["name"]
-                for bit, evaluation in enumerate(evaluations[1:])
+                for bit, evaluation in enumerate(condition_memberships)
             },
             "datasets": [
                 {
@@ -882,10 +933,23 @@ def main() -> None:
             ],
             "descriptor_index": {
                 "num_references": dataset.num_references,
-                "num_standard_queries": dataset.num_queries,
-                "definition": "standard MSLS DB + standard query index",
+                "num_standard_queries": standard_dataset.num_queries,
+                "num_union_queries": dataset.num_queries,
+                "num_condition_only_queries": (
+                    dataset.num_queries - standard_dataset.num_queries
+                ),
+                "definition": (
+                    "standard MSLS DB + standard-first union of all full "
+                    "condition-query manifests"
+                ),
                 "database_manifest": manifest_record(
                     args.msls_path / "msls_val_dbImages.npy"
+                ),
+                "standard_query_manifest": manifest_record(
+                    args.msls_path / "msls_val_qImages.npy"
+                ),
+                "query_union_manifest": manifest_record(
+                    args.msls_path / CONDITION_UNION_QUERY_FILE
                 ),
             },
             "evaluation_protocol": {
@@ -911,8 +975,9 @@ def main() -> None:
                     "and does not erase dynamic features."
                 ),
                 (
-                    "Night/season are custom query slices over the standard full "
-                    "database, not official condition-filtered MSLS subtasks."
+                    "Night/winter-to-summer/summer-to-winter are full condition "
+                    "query slices over the standard full database, not official "
+                    "condition-filtered MSLS subtasks."
                 ),
                 (
                     "Failure rejects this teacher/injection/strength route, not "
