@@ -233,3 +233,71 @@ points. The screen passes only when:
 If it fails, stop this teacher/injection/strength route before training. A
 failure rejects this implementation, not semantic VPR in general. Only after
 a pass should `beta=0.25` and `beta=1.0` be run as separate confirmations.
+
+## Diagnose baseline BoQ attention routing
+
+After a failed screen, the following audit determines whether the frozen RU
+BoQ baseline already avoids dynamic regions. It uses the same checkpoint,
+complete query-union cache, transforms, and feature path as the retrieval
+screen, but always calls BoQ with `attention_bias=None`:
+
+```bash
+python scripts/audit_boq_dynamic_attention.py \
+  --checkpoint "$RU_CKPT" \
+  --msls-path datasets/msls-val \
+  --mask-cache .cache/dynamic_prior/msls_val_full_db_condition_union_deeplabv3_mbv3_grid20.npz \
+  --output doc/boq_baseline_dynamic_attention_audit \
+  --device cuda:1 \
+  --batch-size 32 \
+  --num-workers 8 \
+  --image-size 280 280 \
+  --seed 42 \
+  --conditions night winter2summer summer2winter
+```
+
+The audited baseline is
+`DINO -> trained RU semantic_region_gate -> BoQ(attention_bias=None)`. It is
+the baseline variant of this screen, not the photometric-only checkpoint.
+The script temporarily requests per-head weights from each BoQ
+`MultiheadAttention` and fails unless the descriptor and legacy head-mean
+attention are reproduced.
+
+The primary continuous-mask statistic is:
+
+```text
+attention_mass = sum_patch(attention_probability * dynamic_area_fraction)
+uniform_expected_mass = mean_patch(dynamic_area_fraction)
+micro_enrichment = sum_image(attention_mass) / sum_image(dynamic_area_fraction)
+```
+
+`micro_enrichment < 1` means relative avoidance and `> 1` means enrichment.
+Do not interpret enrichment alone as semantic alignment because vehicles and
+BoQ attention may both prefer the lower image. `aligned_minus_random_mass`
+preserves every mask value within the same image and changes only its spatial
+arrangement, so it controls coverage but may still expose a common lower-image
+bias. The shuffled comparison preserves reference/query role, the exact
+condition-membership stratum, and the population's typical mask positions.
+Evidence for image-specific dynamic-object attention therefore requires
+aligned to beat both random and shuffled at group level.
+
+Important outputs are:
+
+```text
+summary.csv                         group/layer primary results
+head_summary.csv                    per-layer, per-head results
+query_slot_summary.csv              per learned BoQ query results
+per_image.csv                       image-level metrics and selection audit
+mean_position_attention.jpg         dataset-level spatial routing maps
+attention_balanced_random.jpg       deterministic qualitative sample
+attention_high_aligned_minus_random.jpg
+attention_low_aligned_minus_random.jpg
+head_details/                       selected per-head overlays
+run.json                            hashes, dimensions, invariants, definitions
+```
+
+Heatmaps display `num_patches * attention`, so uniform attention is exactly
+`1`. Every image uses one dataset-wide p99 colour scale; there is no per-image
+min-max or z-score. These maps describe where learned BoQ queries read spatial
+tokens. They are not causal pixel saliency because values, output projections,
+LayerNorm, token mixing, and the final signed FC projection also affect the
+descriptor.
