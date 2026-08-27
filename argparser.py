@@ -47,6 +47,16 @@ def parse_args() -> Dict[str, Any]:
     parser.add_argument('--accelerator', type=str, help='Lightning accelerator (for example gpu or cpu)')
     parser.add_argument('--devices', nargs='+', type=int, help='Lightning device indices, for example --devices 0')
     parser.add_argument('--precision', type=str, help='Lightning precision, for example 16-mixed or 32-true')
+    parser.add_argument(
+        '--init-checkpoint',
+        type=str,
+        help='Warm-start checkpoint for a frozen query-semantic screen',
+    )
+    parser.add_argument(
+        '--freeze-base',
+        action='store_true',
+        help='Freeze the pretrained VPR/RU path and train only semantic adapters',
+    )
 
     args = parser.parse_args()
 
@@ -115,6 +125,8 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
             'accelerator': "gpu",
             'devices': [1],
             'precision': "16-mixed",
+            'init_checkpoint': None,
+            'freeze_base': False,
         },
         'distillation': {
             'enabled': False,
@@ -181,6 +193,10 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
         config['trainer']['devices'] = arg_dict['devices']
     if arg_dict['precision'] is not None:
         config['trainer']['precision'] = arg_dict['precision']
+    if arg_dict['init_checkpoint'] is not None:
+        config['trainer']['init_checkpoint'] = arg_dict['init_checkpoint']
+    if arg_dict['freeze_base']:
+        config['trainer']['freeze_base'] = True
 
     # Update other general config
     if arg_dict['seed'] is not None:

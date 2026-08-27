@@ -36,7 +36,13 @@ class DinoV2(nn.Module):
                              f"Supported backbones are: {self.AVAILABLE_MODELS}")
                              
                 
-        self.dino = torch.hub.load('facebookresearch/dinov2', self.backbone_name)
+        # Keep the explicit ref used by every recorded DINOv2 experiment.
+        # Besides making the source checkpoint path reproducible, this lets
+        # torch.hub reuse ``facebookresearch_dinov2_main`` without first
+        # contacting GitHub merely to discover the repository default branch.
+        self.dino = torch.hub.load(
+            'facebookresearch/dinov2:main', self.backbone_name
+        )
         
         # freeze the patch embedding and positional encoding
         self.dino.patch_embed.requires_grad_(False)

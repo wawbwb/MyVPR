@@ -8,6 +8,8 @@
 
 import math
 import operator
+import json
+from pathlib import Path
 
 import torch
 import yaml
@@ -70,6 +72,10 @@ def get_instance(module_name, class_name, params):
 # This is called when the train mode is selected
 def train(config):
     seed_everything(config["seed"], workers=True)
+    accelerator = str(
+        config.get("trainer", {}).get("accelerator", "gpu")
+    ).lower()
+    configured_devices = config.get("trainer", {}).get("devices", [1])
     # Use Tensor Cores for the fp32 local-matching matrices used by semantic
     # targets (and remove PyTorch's repeated 3090 performance warning).
     torch.set_float32_matmul_precision("high")
@@ -96,6 +102,51 @@ def train(config):
     lambda_semantic_region = float(
         semantic_region_cfg.get('lambda_target', 0.0)
     )
+    semantic_region_apply_pretrained = bool(
+        semantic_region_cfg.get('apply_pretrained_gate', False)
+    )
+    query_semantic_cfg = distill_cfg.get('query_semantic', {}) or {}
+    query_semantic_enabled = bool(query_semantic_cfg.get('enabled', False))
+    query_semantic_mode = str(
+        query_semantic_cfg.get('mode', 'architecture_only')
+    ).lower()
+    lambda_query_semantic = float(
+        query_semantic_cfg.get('lambda_target', 0.0)
+    )
+    query_semantic_num_classes = int(
+        query_semantic_cfg.get('num_classes', 150)
+    )
+    query_semantic_teacher_model = str(
+        query_semantic_cfg.get(
+            'teacher_model',
+            'nvidia/segformer-b0-finetuned-ade-512-512',
+        )
+    )
+    query_semantic_teacher_revision = str(
+        query_semantic_cfg.get(
+            'teacher_revision',
+            '489d5cd81a0b59fab9b7ea758d3548ebe99677da',
+        )
+    )
+    query_semantic_transformers_version = str(
+        query_semantic_cfg.get(
+            'teacher_transformers_version', '4.44.2'
+        )
+    )
+    query_semantic_min_confidence = float(
+        query_semantic_cfg.get('min_confidence', 0.5)
+    )
+    query_semantic_ignore_index = int(
+        query_semantic_cfg.get('ignore_index', 255)
+    )
+    query_semantic_random_seed = int(
+        query_semantic_cfg.get('random_seed', config['seed'])
+    )
+    initial_checkpoint = config['trainer'].get('init_checkpoint')
+    initial_checkpoint_sha256 = config['trainer'].get(
+        'init_checkpoint_sha256'
+    )
+    freeze_base = bool(config['trainer'].get('freeze_base', False))
     detach_backbone_for_attn = bool(
         spatial_cfg.get('detach_backbone_for_kl', False)
     )
@@ -170,6 +221,7 @@ def train(config):
         ('semantic_alias.lambda', lambda_alias),
         ('semantic_positive.lambda', lambda_positive),
         ('semantic_region.lambda_target', lambda_semantic_region),
+        ('query_semantic.lambda_target', lambda_query_semantic),
     ):
         if not math.isfinite(value) or value < 0:
             raise ValueError(
@@ -243,10 +295,17 @@ def train(config):
             "semantic_region.mode must be repeatability_only, "
             "repeatability_uniqueness_only, semantic_only, full, or shuffled"
         )
-    semantic_region_active = (
+    semantic_region_target_active = (
         semantic_region_enabled and lambda_semantic_region > 0
     )
-    if semantic_region_active:
+    semantic_region_gate_active = semantic_region_enabled and (
+        semantic_region_target_active or semantic_region_apply_pretrained
+    )
+    if semantic_region_apply_pretrained and not semantic_region_enabled:
+        raise ValueError(
+            "semantic_region.apply_pretrained_gate requires enabled=true"
+        )
+    if semantic_region_target_active:
         if int(config['datamodule']['img_per_place']) < 2:
             raise ValueError("semantic_region requires img_per_place >= 2")
         if int(config['datamodule']['batch_size']) < 2:
@@ -282,6 +341,216 @@ def train(config):
                 "semantic_region experiments must disable the legacy global/"
                 "region/attention/alias/positive paths so the ablation stays isolated"
             )
+
+    from src.models.query_semantic import (
+        QUERY_SEMANTIC_MODES,
+        verify_query_semantic_cache_hashes,
+    )
+
+    if query_semantic_mode not in QUERY_SEMANTIC_MODES:
+        raise ValueError(
+            "distillation.query_semantic.mode must be architecture_only, "
+            "aligned, shuffled, or random"
+        )
+    query_semantic_supervision_active = (
+        query_semantic_enabled and lambda_query_semantic > 0
+    )
+    if lambda_query_semantic > 0 and not query_semantic_enabled:
+        raise ValueError(
+            "query_semantic.lambda_target is non-zero but enabled is false"
+        )
+    if query_semantic_enabled:
+        if not distill_enabled:
+            raise ValueError("query_semantic requires distillation.enabled=true")
+        if config.get('compile', False):
+            raise ValueError(
+                "query_semantic zero-start compatibility does not support "
+                "--compile"
+            )
+        if config['aggregator']['class'] != 'BoQ':
+            raise ValueError("query_semantic currently requires the BoQ aggregator")
+        if config['backbone']['class'] != 'DinoV2':
+            raise ValueError(
+                "query_semantic screen currently requires the DinoV2 backbone"
+            )
+        if not 2 <= query_semantic_num_classes <= 255:
+            raise ValueError("query_semantic.num_classes must be in [2, 255]")
+        if not 0.0 <= query_semantic_min_confidence <= 1.0:
+            raise ValueError(
+                "query_semantic.min_confidence must be in [0, 1]"
+            )
+        if not 0 <= query_semantic_ignore_index <= 255:
+            raise ValueError("query_semantic.ignore_index must be in [0, 255]")
+        if query_semantic_mode == 'architecture_only':
+            if lambda_query_semantic != 0:
+                raise ValueError(
+                    "architecture_only requires query_semantic.lambda_target=0"
+                )
+        elif lambda_query_semantic <= 0:
+            raise ValueError(
+                f"query_semantic mode {query_semantic_mode} requires a positive "
+                "lambda_target"
+            )
+        cache_dir = query_semantic_cfg.get('cache_dir')
+        if query_semantic_supervision_active and not cache_dir:
+            raise ValueError(
+                f"query_semantic mode {query_semantic_mode} requires cache_dir"
+            )
+        try:
+            train_height, train_width = (
+                int(value)
+                for value in config['datamodule']['train_image_size']
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "query_semantic requires train_image_size=[height,width]"
+            ) from exc
+        if train_height % 14 or train_width % 14:
+            raise ValueError(
+                "DINOv2 query semantics require train dimensions divisible by 14"
+            )
+        expected_query_grid = [train_height // 14, train_width // 14]
+        if query_semantic_supervision_active:
+            manifest_path = (
+                Path(cache_dir).expanduser().resolve() / 'manifest.json'
+            )
+            if not manifest_path.is_file():
+                raise FileNotFoundError(
+                    f"query semantic cache manifest not found: {manifest_path}"
+                )
+            with manifest_path.open('r', encoding='utf-8') as handle:
+                query_manifest = json.load(handle)
+            if (
+                query_manifest.get('schema')
+                != 'openvpr_ade20k_patch_labels'
+                or query_manifest.get('version') != 1
+                or not query_manifest.get('complete', False)
+            ):
+                raise ValueError(
+                    "query semantic cache manifest is incomplete or unsupported"
+                )
+            if query_manifest.get('grid_size') != expected_query_grid:
+                raise ValueError(
+                    "query semantic cache grid does not match DINO features: "
+                    f"expected {expected_query_grid}, found "
+                    f"{query_manifest.get('grid_size')}"
+                )
+            if query_manifest.get('target_image_size') != [
+                train_height,
+                train_width,
+            ]:
+                raise ValueError(
+                    "query semantic cache target_image_size does not match "
+                    "datamodule.train_image_size"
+                )
+            if query_manifest.get('num_classes') != query_semantic_num_classes:
+                raise ValueError(
+                    "query semantic cache num_classes does not match the model"
+                )
+            if query_manifest.get('eligible_min_views') != int(
+                config['datamodule']['img_per_place']
+            ):
+                raise ValueError(
+                    "query semantic cache eligible_min_views does not match "
+                    "datamodule.img_per_place"
+                )
+            if query_manifest.get('model_name') != query_semantic_teacher_model:
+                raise ValueError(
+                    "query semantic cache teacher model does not match the config"
+                )
+            if query_manifest.get('resolved_commit') != (
+                query_semantic_teacher_revision
+            ):
+                raise ValueError(
+                    "query semantic cache teacher commit does not match the "
+                    "pinned config revision"
+                )
+            if query_manifest.get('transformers_version') != (
+                query_semantic_transformers_version
+            ):
+                raise ValueError(
+                    "query semantic cache transformers version does not "
+                    "match the pinned config"
+                )
+            expected_cache_protocol = {
+                'teacher_input': 'clean_rgb',
+                'pooling': (
+                    'bilinear_logits_to_target_then_softmax_then_'
+                    'nonoverlap_avg_pool'
+                ),
+                'confidence_quantization': (
+                    'round(clamp(top1_probability,0,1)*255)'
+                ),
+                'inference_precision': 'amp_float16',
+            }
+            for field, expected_value in expected_cache_protocol.items():
+                if query_manifest.get(field) != expected_value:
+                    raise ValueError(
+                        f"query semantic cache {field} does not match the "
+                        "preregistered clean-image patch protocol"
+                    )
+            verified_hashes = verify_query_semantic_cache_hashes(
+                cache_dir, query_manifest
+            )
+            print(
+                "Verified query-semantic cache SHA256: "
+                + ", ".join(
+                    f"{name}={digest[:12]}..."
+                    for name, digest in verified_hashes.items()
+                )
+            )
+        if query_semantic_supervision_active and str(
+            config['datamodule'].get('augmentation_mode', 'randaugment')
+        ).lower() != 'photometric':
+            raise ValueError(
+                "cached query semantics require augmentation_mode=photometric"
+            )
+        if not semantic_region_gate_active or semantic_region_mode != (
+            'repeatability_uniqueness_only'
+        ):
+            raise ValueError(
+                "query_semantic screen requires the pretrained "
+                "repeatability_uniqueness_only gate"
+            )
+        if semantic_region_target_active:
+            raise ValueError(
+                "query_semantic frozen screen must set semantic_region."
+                "lambda_target=0 to avoid recomputing the RU target"
+            )
+        if spatial_attn_enabled or any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+            )
+        ):
+            raise ValueError(
+                "query_semantic experiments must disable all legacy semantic "
+                "and CLIP distillation paths"
+            )
+        if not initial_checkpoint:
+            raise ValueError(
+                "query_semantic requires --init-checkpoint (or trainer."
+                "init_checkpoint) pointing to the trained RU checkpoint"
+            )
+        if not initial_checkpoint_sha256:
+            raise ValueError(
+                "query_semantic requires trainer.init_checkpoint_sha256 to "
+                "pin the audited RU checkpoint"
+            )
+        if not freeze_base:
+            raise ValueError(
+                "the preregistered query_semantic screen requires "
+                "trainer.freeze_base=true"
+            )
+    elif initial_checkpoint or initial_checkpoint_sha256 or freeze_base:
+        raise ValueError(
+            "trainer.init_checkpoint/freeze_base are reserved for the "
+            "query-semantic screen"
+        )
 
     semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
     if lambda_alias > 0 and not semantic_alias_enabled:
@@ -407,8 +676,9 @@ def train(config):
         return_metadata=(
             semantic_alias_active
             or semantic_positive_active
+            or query_semantic_supervision_active
             or (
-                semantic_region_active
+                semantic_region_target_active
                 and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
             )
         ),
@@ -418,9 +688,19 @@ def train(config):
         ),
         semantic_cache_dir=(
             semantic_region_cfg.get('cache_dir')
-            if semantic_region_active
+            if semantic_region_target_active
             and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
             else None
+        ),
+        query_semantic_cache_dir=(
+            query_semantic_cfg.get('cache_dir')
+            if query_semantic_supervision_active
+            else None
+        ),
+        query_semantic_selection=(
+            'aligned'
+            if query_semantic_mode == 'architecture_only'
+            else query_semantic_mode
         ),
     )
 
@@ -437,6 +717,20 @@ def train(config):
             config['aggregator']['params']['in_channels'] = out_channels
     
     aggregator = get_instance(config['aggregator']['module'], config['aggregator']['class'], config['aggregator']['params'])
+    aggregator_semantic_classes = getattr(
+        aggregator, 'semantic_num_classes', None
+    )
+    if query_semantic_enabled:
+        if aggregator_semantic_classes != query_semantic_num_classes:
+            raise ValueError(
+                "aggregator.params.semantic_num_classes must equal "
+                "distillation.query_semantic.num_classes"
+            )
+    elif aggregator_semantic_classes is not None:
+        raise ValueError(
+            "a semantic-conditioned aggregator requires "
+            "distillation.query_semantic.enabled=true"
+        )
     loss_function = get_instance(config['loss_function']['module'], config['loss_function']['class'], config['loss_function']['params'])
 
     # The phase-C student head is an inference-time component, so it is kept
@@ -521,16 +815,20 @@ def train(config):
 
     semantic_region_gate = None
     semantic_region_target = None
-    if semantic_region_active:
+    if semantic_region_gate_active:
         from src.models.semantic_region_gate import (
             SemanticRegionGate,
-            SemanticRegionReliabilityTarget,
         )
 
         semantic_region_gate = SemanticRegionGate(
             in_channels=out_channels,
             alpha=float(semantic_region_cfg.get('alpha', 0.2)),
         )
+    if semantic_region_target_active:
+        from src.models.semantic_region_gate import (
+            SemanticRegionReliabilityTarget,
+        )
+
         semantic_region_target = SemanticRegionReliabilityTarget(
             mode=semantic_region_mode,
             match_grid=int(semantic_region_cfg.get('match_grid', 10)),
@@ -543,7 +841,24 @@ def train(config):
             ),
         )
 
-    if teacher_required or spatial_attn_enabled or semantic_region_active:
+    query_semantic_target = None
+    if query_semantic_supervision_active:
+        from src.models.query_semantic import QuerySemanticTarget
+
+        query_semantic_target = QuerySemanticTarget(
+            mode=query_semantic_mode,
+            num_classes=query_semantic_num_classes,
+            min_confidence=query_semantic_min_confidence,
+            ignore_index=query_semantic_ignore_index,
+            random_seed=query_semantic_random_seed,
+        )
+
+    if (
+        teacher_required
+        or spatial_attn_enabled
+        or semantic_region_gate_active
+        or query_semantic_enabled
+    ):
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
             aggregator=aggregator,
@@ -568,6 +883,8 @@ def train(config):
             semantic_region_gate=semantic_region_gate,
             semantic_region_target=semantic_region_target,
             lambda_semantic_region=lambda_semantic_region,
+            query_semantic_target=query_semantic_target,
+            lambda_query_semantic=lambda_query_semantic,
         )
     else:
         vpr_model = VPRFramework(
@@ -584,6 +901,35 @@ def train(config):
             config_dict=config, # pass the config to the framework in order to save it
         )
 
+    if query_semantic_enabled and initial_checkpoint:
+        from src.models.query_semantic import warm_start_query_semantic_model
+
+        warm_start_report = warm_start_query_semantic_model(
+            vpr_model,
+            initial_checkpoint,
+            expected_sha256=initial_checkpoint_sha256,
+        )
+        print(
+            "Query-semantic warm start: "
+            f"{warm_start_report['checkpoint']} "
+            f"sha256={warm_start_report['checkpoint_sha256'][:12]}...; "
+            f"({warm_start_report['loaded_keys']} tensors loaded; "
+            f"{len(warm_start_report['new_keys'])} new tensors initialized)"
+        )
+    if query_semantic_enabled and freeze_base:
+        from src.models.query_semantic import freeze_for_query_semantic_screen
+
+        trainable_names = freeze_for_query_semantic_screen(vpr_model)
+        trainable_count = sum(
+            parameter.numel()
+            for parameter in vpr_model.parameters()
+            if parameter.requires_grad
+        )
+        print(
+            "Frozen RU base; query-semantic trainable tensors: "
+            f"{len(trainable_names)} ({trainable_count:,} parameters)"
+        )
+
     if config["compile"]:
         vpr_model = torch.compile(vpr_model)
 
@@ -594,7 +940,9 @@ def train(config):
     # e.g. a BoQ model with ResNet50 backbone will be saved under logs/ResNet50/BoQ
     # this makes it easy to compared different aggregators with the same backbone
     experiment_name = aggregator.__class__.__name__
-    if semantic_region_active:
+    if query_semantic_enabled:
+        experiment_name += f"_query_semantic_{query_semantic_mode}"
+    elif semantic_region_gate_active:
         experiment_name += f"_semantic_region_{semantic_region_mode}"
     elif str(
         config['datamodule'].get('augmentation_mode', 'randaugment')

@@ -60,6 +60,8 @@ class VPRDataModule(L.LightningDataModule):
         teacher_image_size=(224, 224),
         augmentation_mode="randaugment",
         semantic_cache_dir=None,
+        query_semantic_cache_dir=None,
+        query_semantic_selection="aligned",
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -76,7 +78,26 @@ class VPRDataModule(L.LightningDataModule):
         self.val_set_names = val_set_names
         self.return_augmented = return_augmented
         self.semantic_cache_dir = semantic_cache_dir
-        self.return_metadata = return_metadata or semantic_cache_dir is not None
+        self.query_semantic_cache_dir = query_semantic_cache_dir
+        self.query_semantic_selection = str(query_semantic_selection).lower()
+        if self.query_semantic_selection not in {
+            "aligned", "shuffled", "random"
+        }:
+            raise ValueError(
+                "query_semantic_selection must be aligned, shuffled, or random"
+            )
+        if (
+            self.query_semantic_cache_dir is None
+            and self.query_semantic_selection != "aligned"
+        ):
+            raise ValueError(
+                "query_semantic_selection requires query_semantic_cache_dir"
+            )
+        self.return_metadata = (
+            return_metadata
+            or semantic_cache_dir is not None
+            or query_semantic_cache_dir is not None
+        )
         self.return_teacher_view = return_teacher_view
         self.teacher_image_size = teacher_image_size
         self.augmentation_mode = str(augmentation_mode).lower()
@@ -84,9 +105,12 @@ class VPRDataModule(L.LightningDataModule):
             raise ValueError(
                 "augmentation_mode must be 'randaugment' or 'photometric'"
             )
-        if semantic_cache_dir is not None and self.augmentation_mode != "photometric":
+        if (
+            semantic_cache_dir is not None
+            or query_semantic_cache_dir is not None
+        ) and self.augmentation_mode != "photometric":
             raise ValueError(
-                "offline semantic regions require augmentation_mode='photometric'; "
+                "offline semantic caches require augmentation_mode='photometric'; "
                 "RandAugment can geometrically misalign cached patch targets"
             )
         if self.return_teacher_view and not self.return_metadata:
@@ -237,6 +261,8 @@ class VPRDataModule(L.LightningDataModule):
                 self.teacher_transform if self.return_teacher_view else None
             ),
             semantic_cache_dir=self.semantic_cache_dir,
+            query_semantic_cache_dir=self.query_semantic_cache_dir,
+            query_semantic_selection=self.query_semantic_selection,
         )
     
     def _get_val_dataset(self, ds_name):  

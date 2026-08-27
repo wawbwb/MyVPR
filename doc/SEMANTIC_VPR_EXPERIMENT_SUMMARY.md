@@ -11,7 +11,7 @@
 
 因此，现有实验不能证明“语义在 VPR 中理论上无效”，但已经较有力地否定了本项目中这些具体实现：全局 CLIP 描述子拟合、CLIP 单图空间 attention 拟合、标量 patch reliability、CLIP 语义负样本/正样本选择、CLIP affinity 平滑区域目标，以及固定动态类别负偏置。继续只扫 `alpha`、`lambda`、`beta` 或温度，信息收益很低。
 
-下一条仍值得做的路线是 **Query-conditioned Semantic BoQ**：把冻结分割教师产生的局部类别向量压缩为训练期监督，让不同 BoQ query 学习不同的语义条件化读取方式；推理时只保留学生分支。它应以 DINOv2-BoQ 的 repeatability+uniqueness（RU）模型为强匹配基线，并保留 shuffled-label、random-vector、architecture-only 三类对照。
+下一条仍值得做的路线是 **Query-conditioned Semantic BoQ**：把冻结分割教师产生的局部类别向量压缩为训练期监督，让不同 BoQ query 学习不同的语义条件化读取方式；推理时只保留学生分支。它应以 DINOv2-BoQ 的 repeatability+uniqueness（RU）模型为强匹配基线，并保留 shuffled-label、图内空间随机 label-confidence、architecture-only 三类对照。该路线现已实现，具体结构、配置、命令和判据见 `doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -152,14 +152,14 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - “所有动态物体都应该被抑制”；
 - “只需减小权重就能救回现有方案”。
 
-## 7. 推荐的下一实验：Query-conditioned Semantic BoQ
+## 7. 已实现、待运行：Query-conditioned Semantic BoQ
 
 建议让冻结分割教师为每个 DINO patch 提供低维类别/属性向量，由一个轻量学生头预测这些向量；每个 BoQ learned query 再根据自身状态产生类别条件，形成 query-specific 的 key/value modulation 或 attention bias。这样语义不是检索后的重排，而是在描述子生成阶段参与局部聚合；同时避免所有 query 使用同一张“动态=坏”的 mask。
 
 最短、信息量最高的执行顺序：
 
 1. 冻结 RU checkpoint，只训练语义学生头和 query-conditioned adapter，先做 5–10 epoch screen；
-2. matched controls：architecture-only、aligned label、shuffled label、random vector，所有组参数量与训练预算一致；
+2. matched controls：architecture-only、aligned label、shuffled label、图内空间随机 label-confidence，所有组参数量与训练预算一致；
 3. 同时报告 MSLS overall、night/winter2summer/summer2winter full-db 和 Pitts30k；
 4. aligned 必须优于 RU、architecture-only、shuffled、random；overall 至少 +0.3 pp，或某个足够大的困难子集至少 +1.0 pp 且 overall 不下降超过 0.2 pp，才进入 40 epochs；
 5. 通过后再做三个 seed，最后才考虑 SALAD 复制。

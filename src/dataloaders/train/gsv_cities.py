@@ -71,6 +71,8 @@ class GSVCitiesDataset(Dataset):
                  return_teacher_view=False,
                  teacher_transform=None,
                  semantic_cache_dir=None,
+                 query_semantic_cache_dir=None,
+                 query_semantic_selection="aligned",
                  ):
         """
         Args:
@@ -93,6 +95,13 @@ class GSVCitiesDataset(Dataset):
                 CLIP semantic-affinity cache.  Enabling it appends the sampled
                 cache rows to metadata in exactly the same order as the K
                 returned images.
+            query_semantic_cache_dir (path-like): Directory containing the
+                independent ADE20K patch-label cache used by Query-conditioned
+                Semantic BoQ.
+            query_semantic_selection (str): ``aligned`` reads each image's own
+                labels, ``shuffled`` reads the manifest's within-city donor,
+                and ``random`` transports aligned rows for deterministic
+                random-target construction in the training framework.
         """
         super().__init__()
         
@@ -130,15 +139,52 @@ class GSVCitiesDataset(Dataset):
             if semantic_cache_dir is not None
             else None
         )
+        self.query_semantic_cache_dir = (
+            Path(query_semantic_cache_dir).expanduser().resolve()
+            if query_semantic_cache_dir is not None
+            else None
+        )
+        self.query_semantic_selection = str(query_semantic_selection).lower()
+        if self.query_semantic_selection not in {
+            'aligned', 'shuffled', 'random'
+        }:
+            raise ValueError(
+                "query_semantic_selection must be aligned, shuffled, or random"
+            )
+        if (
+            self.query_semantic_cache_dir is None
+            and self.query_semantic_selection != 'aligned'
+        ):
+            raise ValueError(
+                "query_semantic_selection requires query_semantic_cache_dir"
+            )
         # Cached targets are transported through the existing metadata path.
-        self.return_metadata = return_metadata or self.semantic_cache_dir is not None
+        self.return_metadata = (
+            return_metadata
+            or self.semantic_cache_dir is not None
+            or self.query_semantic_cache_dir is not None
+        )
         self.return_teacher_view = return_teacher_view
         self.teacher_transform = teacher_transform
         self._semantic_cache_manifest = None
         self._semantic_cache_cities = None
         self._semantic_cache_arrays = None
+        self._query_semantic_cache_manifest = None
+        self._query_semantic_cache_cities = None
+        self._query_semantic_cache_arrays = None
+        self.query_semantic_grid_size = None
+        self.query_semantic_num_classes = None
+        self.query_semantic_eligible_min_views = None
         if self.semantic_cache_dir is not None:
             self._load_semantic_cache_manifest()
+        if self.query_semantic_cache_dir is not None:
+            self._load_query_semantic_cache_manifest()
+            if self.img_per_place != self.query_semantic_eligible_min_views:
+                raise ValueError(
+                    "query semantic shuffled control was built for "
+                    f"img_per_place={self.query_semantic_eligible_min_views}, "
+                    f"but the dataset uses {self.img_per_place}"
+                )
         if self.return_teacher_view and not self.return_metadata:
             raise ValueError(
                 "return_teacher_view requires return_metadata so the legacy "
@@ -273,10 +319,245 @@ class GSVCitiesDataset(Dataset):
             ),
         }
 
+    @staticmethod
+    def _query_semantic_grid_size(manifest):
+        grid_size = manifest.get('grid_size')
+        if (
+            not isinstance(grid_size, list)
+            or len(grid_size) != 2
+            or any(isinstance(value, bool) for value in grid_size)
+        ):
+            raise ValueError(
+                "query semantic cache grid_size must be [height, width]"
+            )
+        try:
+            height, width = (int(value) for value in grid_size)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "query semantic cache grid_size must contain integers"
+            ) from exc
+        if [height, width] != grid_size or height < 1 or width < 1:
+            raise ValueError(
+                "query semantic cache grid_size must contain positive integers"
+            )
+        return height, width
+
+    def _load_query_semantic_cache_manifest(self):
+        manifest_path = self.query_semantic_cache_dir / 'manifest.json'
+        if not manifest_path.is_file():
+            raise FileNotFoundError(
+                f"query semantic cache manifest not found: {manifest_path}"
+            )
+        with manifest_path.open('r', encoding='utf-8') as handle:
+            manifest = json.load(handle)
+        if manifest.get('schema') != 'openvpr_ade20k_patch_labels':
+            raise ValueError(
+                f"unsupported query semantic cache schema in {manifest_path}"
+            )
+        if manifest.get('version') != 1:
+            raise ValueError(
+                f"unsupported query semantic cache version in {manifest_path}: "
+                f"{manifest.get('version')}"
+            )
+        if not manifest.get('complete', False):
+            raise ValueError(
+                f"query semantic cache is incomplete: {manifest_path}; resume "
+                "the precomputation before training"
+            )
+
+        image_count = manifest.get('num_images')
+        if (
+            isinstance(image_count, bool)
+            or not isinstance(image_count, int)
+            or image_count < 1
+        ):
+            raise ValueError("query semantic cache num_images must be positive")
+        grid_size = self._query_semantic_grid_size(manifest)
+        num_classes = manifest.get('num_classes')
+        if (
+            isinstance(num_classes, bool)
+            or not isinstance(num_classes, int)
+            or not 1 <= num_classes <= 256
+        ):
+            raise ValueError(
+                "query semantic cache num_classes must be in [1, 256]"
+            )
+        classes = manifest.get('classes')
+        if (
+            not isinstance(classes, list)
+            or len(classes) != num_classes
+            or any(not isinstance(name, str) or not name for name in classes)
+            or len(set(classes)) != len(classes)
+        ):
+            raise ValueError(
+                "query semantic cache classes must contain num_classes unique names"
+            )
+        declared_dtypes = {
+            'labels_dtype': 'uint8',
+            'confidence_dtype': 'uint8',
+            'shuffled_indices_dtype': 'int32',
+        }
+        for field, expected in declared_dtypes.items():
+            if manifest.get(field) != expected:
+                raise ValueError(
+                    f"query semantic cache {field} must be {expected!r}"
+                )
+
+        eligible_min_views = manifest.get('eligible_min_views')
+        if (
+            isinstance(eligible_min_views, bool)
+            or not isinstance(eligible_min_views, int)
+            or eligible_min_views < 2
+        ):
+            raise ValueError(
+                "query semantic cache eligible_min_views must be at least 2"
+            )
+
+        city_entries = manifest.get('cities')
+        if not isinstance(city_entries, list) or not city_entries:
+            raise ValueError("query semantic cache manifest has no city entries")
+        cities = {}
+        expected_offset = 0
+        for entry in city_entries:
+            if not isinstance(entry, dict):
+                raise ValueError(
+                    "query semantic cache city entries must be mappings"
+                )
+            name = entry.get('name')
+            if not isinstance(name, str) or not name or name in cities:
+                raise ValueError(
+                    "query semantic cache contains invalid/duplicate cities"
+                )
+            offset = entry.get('offset')
+            count = entry.get('count')
+            eligible_count = entry.get('eligible_count')
+            shift = entry.get('eligible_shuffle_shift')
+            if any(
+                isinstance(value, bool) or not isinstance(value, int)
+                for value in (offset, count, eligible_count, shift)
+            ):
+                raise ValueError(
+                    f"query semantic cache city {name!r} has non-integer "
+                    "offset/count/eligible shuffle metadata"
+                )
+            if offset != expected_offset or count < 2:
+                raise ValueError(
+                    "query semantic cache city offsets must form a contiguous "
+                    "index and every city must contain at least two images"
+                )
+            if not 2 <= eligible_count <= count or not 0 < shift < eligible_count:
+                raise ValueError(
+                    f"query semantic cache city {name!r} has invalid eligible "
+                    "shuffle metadata"
+                )
+            csv_hash = entry.get('sha256')
+            if not isinstance(csv_hash, str) or len(csv_hash) != 64:
+                raise ValueError(
+                    f"query semantic cache city {name!r} has invalid CSV sha256"
+                )
+            cities[name] = entry
+            expected_offset += count
+        if expected_offset != image_count:
+            raise ValueError(
+                "query semantic cache city counts do not match num_images"
+            )
+
+        self._validate_query_semantic_cache_arrays(
+            manifest=manifest,
+            city_entries=city_entries,
+            grid_size=grid_size,
+        )
+        self._query_semantic_cache_manifest = manifest
+        self._query_semantic_cache_cities = cities
+        self.query_semantic_grid_size = grid_size
+        self.query_semantic_num_classes = num_classes
+        self.query_semantic_eligible_min_views = eligible_min_views
+
+    def _validate_query_semantic_cache_arrays(
+        self, manifest, city_entries, grid_size
+    ):
+        image_count = int(manifest['num_images'])
+        height, width = grid_size
+        specs = {
+            'labels': ((image_count, height, width), np.dtype('uint8')),
+            'confidence': ((image_count, height, width), np.dtype('uint8')),
+            'shuffled_indices': ((image_count,), np.dtype('int32')),
+        }
+        arrays = {}
+        for name, (shape, dtype) in specs.items():
+            path = self.query_semantic_cache_dir / f'{name}.npy'
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"query semantic cache array not found: {path}"
+                )
+            array = np.load(path, mmap_mode='r')
+            if array.shape != shape or array.dtype != dtype:
+                raise ValueError(
+                    f"invalid query semantic cache {name}: expected "
+                    f"{shape}/{dtype}, found {array.shape}/{array.dtype}"
+                )
+            arrays[name] = array
+
+        shuffled = arrays['shuffled_indices']
+        for entry in city_entries:
+            offset = int(entry['offset'])
+            count = int(entry['count'])
+            actual = np.asarray(
+                shuffled[offset:offset + count], dtype=np.int64
+            )
+            if (
+                bool(np.any(actual < offset))
+                or bool(np.any(actual >= offset + count))
+                or np.unique(actual).size != count
+            ):
+                raise ValueError(
+                    f"query semantic cache shuffled_indices for {entry['name']!r} "
+                    "must be a within-city bijection"
+                )
+
+    def _open_query_semantic_cache_arrays(self):
+        """Open query-semantic memmaps lazily inside each DataLoader worker."""
+        if self._query_semantic_cache_arrays is not None:
+            return self._query_semantic_cache_arrays
+        arrays = {
+            name: np.load(
+                self.query_semantic_cache_dir / f'{name}.npy', mmap_mode='r'
+            )
+            for name in ('labels', 'confidence', 'shuffled_indices')
+        }
+        self._query_semantic_cache_arrays = arrays
+        return arrays
+
+    def _read_query_semantic_cache(self, cache_indices):
+        arrays = self._open_query_semantic_cache_arrays()
+        rows = np.asarray(cache_indices, dtype=np.int64)
+        source_rows = rows
+        if self.query_semantic_selection == 'shuffled':
+            source_rows = np.asarray(
+                arrays['shuffled_indices'][rows], dtype=np.int64
+            )
+        labels = np.asarray(arrays['labels'][source_rows]).copy()
+        if labels.size and int(labels.max()) >= self.query_semantic_num_classes:
+            raise ValueError(
+                "query semantic cache label is outside the configured class range"
+            )
+        confidence = np.asarray(
+            arrays['confidence'][source_rows], dtype=np.float32
+        ).copy()
+        confidence /= 255.0
+        return {
+            'query_semantic_labels': torch.from_numpy(labels),
+            'query_semantic_confidence': torch.from_numpy(confidence),
+            # Preserve the sampled image's stable identity even when its target
+            # comes from a shuffled donor. Random controls key off this index.
+            'query_semantic_cache_indices': torch.from_numpy(rows.copy()),
+        }
+
     def __getstate__(self):
         state = self.__dict__.copy()
         # Never pickle/fork a mapping opened by a different worker process.
         state['_semantic_cache_arrays'] = None
+        state['_query_semantic_cache_arrays'] = None
         return state
         
     def __getdataframes(self):
@@ -289,9 +570,16 @@ class GSVCitiesDataset(Dataset):
             for each city in self.cities
         '''
         dataframes = []
+        query_shuffled = None
+        if self.query_semantic_cache_dir is not None:
+            query_shuffled = np.load(
+                self.query_semantic_cache_dir / 'shuffled_indices.npy',
+                mmap_mode='r',
+            )
         for i, city in enumerate(self.cities):
             csv_path = self.base_path / 'Dataframes' / f'{city}.csv'
             df = pd.read_csv(csv_path)
+            actual_hash = None
             if self.semantic_cache_dir is not None:
                 cache_city = self._semantic_cache_cities.get(city)
                 if cache_city is None:
@@ -313,6 +601,69 @@ class GSVCitiesDataset(Dataset):
                 # Assign before city-level shuffle.  This is the stable cache
                 # key: manifest city offset + original CSV row ordinal.
                 df['_semantic_cache_index'] = (
+                    int(cache_city['offset'])
+                    + np.arange(len(df), dtype=np.int64)
+                )
+            if self.query_semantic_cache_dir is not None:
+                cache_city = self._query_semantic_cache_cities.get(city)
+                if cache_city is None:
+                    raise ValueError(
+                        f"city {city!r} is absent from query semantic cache manifest"
+                    )
+                expected_count = int(cache_city['count'])
+                if len(df) != expected_count:
+                    raise ValueError(
+                        f"query semantic cache row-count mismatch for {city}: "
+                        f"manifest={expected_count}, csv={len(df)}"
+                    )
+                if actual_hash is None:
+                    actual_hash = self._sha256(csv_path)
+                if actual_hash != cache_city.get('sha256'):
+                    raise ValueError(
+                        f"query semantic cache CSV hash mismatch for {csv_path}; "
+                        "rebuild the cache before training"
+                    )
+                place_ids = df.loc[:, 'place_id'].to_numpy()
+                place_counts = df.groupby('place_id')['place_id'].transform(
+                    'size'
+                ).to_numpy()
+                eligible_positions = np.flatnonzero(
+                    place_counts >= self.query_semantic_eligible_min_views
+                )
+                if eligible_positions.size != int(cache_city['eligible_count']):
+                    raise ValueError(
+                        f"query semantic eligible row count changed for {city!r}"
+                    )
+                shuffle_shift = int(cache_city['eligible_shuffle_shift'])
+                expected_donors = np.arange(len(df), dtype=np.int64)
+                expected_donors[eligible_positions] = eligible_positions[
+                    (
+                        np.arange(eligible_positions.size, dtype=np.int64)
+                        + shuffle_shift
+                    )
+                    % eligible_positions.size
+                ]
+                offset = int(cache_city['offset'])
+                actual_donors = np.asarray(
+                    query_shuffled[offset:offset + len(df)],
+                    dtype=np.int64,
+                ) - offset
+                if not np.array_equal(actual_donors, expected_donors):
+                    raise ValueError(
+                        f"query semantic eligible shuffle mismatch for {city!r}"
+                    )
+                eligible_donors = actual_donors[eligible_positions]
+                if bool(
+                    np.any(
+                        place_ids[eligible_positions]
+                        == place_ids[eligible_donors]
+                    )
+                ):
+                    raise ValueError(
+                        f"query semantic cache shuffled donor for {city!r} "
+                        "contains an image from the same place; rebuild the cache"
+                    )
+                df['_query_semantic_cache_index'] = (
                     int(cache_city['offset'])
                     + np.arange(len(df), dtype=np.int64)
                 )
@@ -406,6 +757,14 @@ class GSVCitiesDataset(Dataset):
                 metadata.update(
                     self._read_semantic_cache(
                         place.loc[:, '_semantic_cache_index'].to_numpy(
+                            dtype=np.int64
+                        )
+                    )
+                )
+            if self.query_semantic_cache_dir is not None:
+                metadata.update(
+                    self._read_query_semantic_cache(
+                        place.loc[:, '_query_semantic_cache_index'].to_numpy(
                             dtype=np.int64
                         )
                     )

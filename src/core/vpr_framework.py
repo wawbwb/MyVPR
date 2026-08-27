@@ -79,10 +79,24 @@ class VPRFramework(L.LightningModule):
         return x
 
     def _optimizer_param_groups(self):
-        return [
-            {"params": self.backbone.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
-            {"params": self.aggregator.parameters(), "lr": self.lr, "weight_decay": self.weight_decay},
-        ]
+        groups = []
+        for module in (self.backbone, self.aggregator):
+            parameters = [
+                parameter
+                for parameter in module.parameters()
+                if parameter.requires_grad
+            ]
+            if parameters:
+                groups.append(
+                    {
+                        "params": parameters,
+                        "lr": self.lr,
+                        "weight_decay": self.weight_decay,
+                    }
+                )
+        if not groups:
+            raise ValueError("model has no trainable backbone/aggregator parameters")
+        return groups
     
     def configure_optimizers(self):
         """
@@ -315,6 +329,8 @@ class VPRFrameworkDistill(VPRFramework):
         semantic_region_gate=None,
         semantic_region_target=None,
         lambda_semantic_region=0.0,
+        query_semantic_target=None,
+        lambda_query_semantic=0.0,
     ):
         super().__init__(
             backbone=backbone,
@@ -336,6 +352,7 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_alias", lambda_alias),
             ("lambda_positive", lambda_positive),
             ("lambda_semantic_region", lambda_semantic_region),
+            ("lambda_query_semantic", lambda_query_semantic),
         ):
             if not math.isfinite(value) or value < 0:
                 raise ValueError(
@@ -381,6 +398,28 @@ class VPRFrameworkDistill(VPRFramework):
             raise ValueError(
                 "semantic region gate and target are required when its lambda is non-zero"
             )
+        self.query_semantic_target = query_semantic_target
+        self.lambda_query_semantic = float(lambda_query_semantic)
+        if self.lambda_query_semantic > 0 and self.query_semantic_target is None:
+            raise ValueError(
+                "query semantic target is required when its lambda is non-zero"
+            )
+        if self.query_semantic_target is not None and not hasattr(
+            self.aggregator, "predict_semantics"
+        ):
+            raise ValueError(
+                "query semantic supervision requires an aggregator semantic head"
+            )
+
+    def train(self, mode=True):
+        super().train(mode)
+        if mode and getattr(self, "_query_semantic_base_frozen", False):
+            # Keep the pretrained RU feature path deterministic while the
+            # semantic head/query adapters train. BoQ itself uses zero dropout;
+            # its semantic children remain trainable in either module mode.
+            self.backbone.eval()
+            self.semantic_region_gate.eval()
+        return self
 
     @staticmethod
     def _split_backbone_output(backbone_output):
@@ -395,7 +434,7 @@ class VPRFrameworkDistill(VPRFramework):
             return backbone_output[0], lambda local: [local, *backbone_output[1:]]
         return backbone_output, lambda local: local
 
-    def _student_forward(self, images):
+    def _student_forward(self, images, return_query_semantic=False):
         """Run the exact student path shared by train, validation and inference."""
         backbone_output = self.backbone(images)
         raw_featmap, restore_output = self._split_backbone_output(backbone_output)
@@ -407,8 +446,20 @@ class VPRFrameworkDistill(VPRFramework):
             featmap, semantic_score, semantic_gate = self.semantic_region_gate(featmap)
         if self.spatial_attn_head is not None:
             featmap, student_attn = self.spatial_attn_head(featmap)
-        model_output = self.aggregator(restore_output(featmap))
-        return (
+        query_semantic_logits = None
+        if getattr(self.aggregator, "semantic_num_classes", None) is not None:
+            # Both the cached teacher loss and the VPR path train the semantic
+            # student, but neither is allowed to move the frozen/RU feature
+            # extractor through this auxiliary branch.
+            query_semantic_logits = self.aggregator.predict_semantics(
+                featmap.detach()
+            )
+            model_output = self.aggregator(
+                restore_output(featmap), semantic_logits=query_semantic_logits
+            )
+        else:
+            model_output = self.aggregator(restore_output(featmap))
+        result = (
             model_output,
             featmap,
             student_attn,
@@ -416,6 +467,9 @@ class VPRFrameworkDistill(VPRFramework):
             semantic_score,
             semantic_gate,
         )
+        if return_query_semantic:
+            return (*result, query_semantic_logits)
+        return result
 
     def _attention_for_distillation(self, raw_featmap, student_attn):
         """Optionally stop the reliability KL from directly moving backbone."""
@@ -538,7 +592,8 @@ class VPRFrameworkDistill(VPRFramework):
             raw_featmap,
             semantic_score,
             semantic_gate,
-        ) = self._student_forward(images)
+            query_semantic_logits,
+        ) = self._student_forward(images, return_query_semantic=True)
 
         if isinstance(model_output, (tuple, list)):
             descriptors = model_output[0]
@@ -580,6 +635,43 @@ class VPRFrameworkDistill(VPRFramework):
             )
         else:
             loss_semantic_region = loss_vpr.new_zeros(())
+
+        query_semantic_stats = {}
+        if self.lambda_query_semantic > 0:
+            if query_semantic_logits is None:
+                raise RuntimeError(
+                    "query semantic loss is active but the aggregator returned no logits"
+                )
+            if metadata is None:
+                raise RuntimeError(
+                    "query semantic loss requires cached targets in batch metadata"
+                )
+            query_labels = metadata.get("query_semantic_labels")
+            query_confidence = metadata.get("query_semantic_confidence")
+            query_cache_indices = metadata.get("query_semantic_cache_indices")
+            if any(
+                value is None
+                for value in (
+                    query_labels,
+                    query_confidence,
+                    query_cache_indices,
+                )
+            ):
+                raise RuntimeError(
+                    "query semantic metadata must contain labels, confidence, "
+                    "and stable cache indices"
+                )
+            query_labels = query_labels.flatten(0, 1)
+            query_confidence = query_confidence.flatten(0, 1)
+            query_cache_indices = query_cache_indices.flatten(0, 1)
+            loss_query_semantic, query_semantic_stats = self.query_semantic_target(
+                query_semantic_logits,
+                query_labels,
+                query_confidence,
+                query_cache_indices,
+            )
+        else:
+            loss_query_semantic = loss_vpr.new_zeros(())
 
         # Distillation losses. The lambda=0 architecture control skips CLIP
         # entirely while retaining the exact same student inference path.
@@ -636,6 +728,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_alias * distill_out["loss_alias"]
             + warmup_scale * self.lambda_positive * distill_out["loss_positive"]
             + warmup_scale * self.lambda_semantic_region * loss_semantic_region
+            + warmup_scale * self.lambda_query_semantic * loss_query_semantic
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -651,6 +744,30 @@ class VPRFrameworkDistill(VPRFramework):
         )
         for metric_name, metric_value in semantic_region_stats.items():
             self.log(metric_name, metric_value, prog_bar=False, logger=True)
+        self.log(
+            "loss_query_semantic",
+            loss_query_semantic,
+            prog_bar=False,
+            logger=True,
+        )
+        for metric_name, metric_value in query_semantic_stats.items():
+            self.log(metric_name, metric_value, prog_bar=False, logger=True)
+        if query_semantic_logits is not None:
+            self.log(
+                "query_semantic_logit_std",
+                query_semantic_logits.float().std(unbiased=False),
+                prog_bar=False,
+                logger=True,
+            )
+            for metric_name, metric_value in (
+                self.aggregator.semantic_diagnostics().items()
+            ):
+                self.log(
+                    metric_name,
+                    metric_value,
+                    prog_bar=False,
+                    logger=True,
+                )
         if semantic_gate is not None:
             self.log("semantic_gate_std", semantic_gate.float().std(), logger=True)
             self.log(
@@ -686,6 +803,14 @@ class VPRFrameworkDistill(VPRFramework):
         self.log(
             "effective_lambda_positive",
             loss_vpr.new_tensor(warmup_scale * self.lambda_positive),
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "effective_lambda_query_semantic",
+            loss_vpr.new_tensor(
+                warmup_scale * self.lambda_query_semantic
+            ),
             prog_bar=False,
             logger=True,
         )

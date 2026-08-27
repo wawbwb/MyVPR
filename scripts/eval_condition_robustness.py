@@ -208,7 +208,12 @@ def load_inference_model_from_ckpt(ckpt_path, device):
     semantic_region_gate = None
     semantic_region_enabled = bool(semantic_region_cfg.get("enabled", False))
     semantic_region_weight = float(semantic_region_cfg.get("lambda_target", 0.0))
-    if semantic_region_enabled and semantic_region_weight > 0:
+    semantic_region_apply_pretrained = bool(
+        semantic_region_cfg.get("apply_pretrained_gate", False)
+    )
+    if semantic_region_enabled and (
+        semantic_region_weight > 0 or semantic_region_apply_pretrained
+    ):
         semantic_region_gate = SemanticRegionGate(
             in_channels=backbone.out_channels,
             alpha=float(semantic_region_cfg.get("alpha", 0.2)),

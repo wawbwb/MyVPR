@@ -19,3 +19,4 @@ dependencies:
       - open_clip_torch==2.26.1
       - tensorboard==2.17
       - pytest==8.2.2
+      - transformers==4.44.2
