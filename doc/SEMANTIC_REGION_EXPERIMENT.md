@@ -71,62 +71,30 @@ diagnosis.  Night/season results have not yet been collected.
 
 ## Aligned-versus-shuffled propagation diagnostic
 
-`scripts/visualize_semantic_region_delta.py` isolates the target construction
-from learned-backbone differences.  It loads one neutral
-repeatability+uniqueness checkpoint, takes one fixed `P=40`, `K=4` batch,
-computes the raw DINO feature map once, then compares the aligned cache with a
-place-rolled cache.  The plotted propagation quantity is exactly
+This completed diagnostic isolated target construction from learned-backbone
+differences. It used one neutral repeatability+uniqueness checkpoint, one fixed
+`P=40`, `K=4` batch, and one shared raw DINO feature map to compare aligned and
+place-rolled caches. The measured propagation quantity was exactly
 
 ```text
 delta = confidence * (weighted_neighbor_reliability - base_reliability)
 ```
 
-Run this from the repository root on the training machine:
-
-```bash
-git pull --ff-only origin main
-conda activate VPR
-
-RU_DIR=logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints
-find "$RU_DIR" -maxdepth 1 -type f -name '*.ckpt' -print
-RU_CKPT="$(find "$RU_DIR" -maxdepth 1 -type f -name 'epoch(26)_*.ckpt' -print -quit)"
-test -f "$RU_CKPT"
-
-python -m pytest -q \
-  tests/test_semantic_region_gate.py \
-  tests/test_semantic_region_delta_visualization.py
-
-python scripts/visualize_semantic_region_delta.py \
-  --feature-ckpt "$RU_CKPT" \
-  --device cuda:1 \
-  --clean-input \
-  --batch-index 0 \
-  --num-workers 0 \
-  --num-samples 8 \
-  --output doc/semantic_region_delta_batch0_clean
-```
-
-The output directory contains 4x4 PNG panels, `summary.csv`,
-`diagnostic_tensors.pt`, and `run.json`.  Aligned and shuffled deltas use one
-shared symmetric colour range: red is a positive reliability change, blue is a
-negative change, and near-white is approximately zero.  Inspect both the
-ranked examples and the `random_audit` example.  Aligned propagation is suspect
-if it repeatedly changes road, sky, vegetation, or generic building regions
-more strongly than stable facade details, signs, windows, and other
-place-specific structures.
+The compact evidence retained in `doc/semantic_region_delta_batch0_clean` is
+`run.json` plus `summary.csv`. The sample panels and tensor bundle were removed
+after their conclusions were incorporated into
+`doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md`. The one-time implementation can be
+restored from Git commit `123d745`; the removed tensor bundle can be restored
+from commit `85e2816`.
 
 ## Offline target counterfactual sweep
 
-The seed-42 retrieval verdict above is already negative.  The offline sweep is
-not needed to decide whether the completed experiment succeeded; it is used to
-decide whether a redesigned target is worth retraining.  It reads the saved
-diagnostic tensor bundle and needs neither the dataset nor a checkpoint:
-
-```bash
-python scripts/sweep_semantic_region_counterfactual.py \
-  --input doc/semantic_region_delta_batch0_clean/diagnostic_tensors.pt \
-  --output doc/semantic_region_counterfactual_batch0
-```
+The seed-42 retrieval verdict above is already negative. This completed offline
+sweep was used only to decide whether a redesigned target was worth retraining;
+it did not alter that verdict. Its one-time implementation is archived in Git
+commit `85e2816`. Compact results remain in
+`doc/semantic_region_counterfactual_batch0`; the per-sample table and aggregate
+plot were removed after the summary values below were verified.
 
 The sweep keeps the original confidence values at retained patches and sets
 rejected patches to zero.  Absolute thresholds `0.5`, `0.6`, `0.7` and an

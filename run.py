@@ -70,20 +70,6 @@ def get_instance(module_name, class_name, params):
 # This is called when the train mode is selected
 def train(config):
     seed_everything(config["seed"], workers=True)
-    accelerator = str(
-        config.get('trainer', {}).get('accelerator', 'gpu')
-    ).lower()
-    configured_devices = config.get('trainer', {}).get('devices', [1])
-    if accelerator in {'gpu', 'cuda'}:
-        # This workstation has a faulty GPU 0.  Requiring an explicit index
-        # also prevents Lightning's ``devices=1`` shorthand from selecting it.
-        if not isinstance(configured_devices, (list, tuple)) or list(
-            configured_devices
-        ) != [1]:
-            raise ValueError(
-                "GPU 0 is faulty; training must use exactly --devices 1 "
-                "(do not combine this with CUDA_VISIBLE_DEVICES remapping)"
-            )
     # Use Tensor Cores for the fp32 local-matching matrices used by semantic
     # targets (and remove PyTorch's repeated 3090 performance warning).
     torch.set_float32_matmul_precision("high")

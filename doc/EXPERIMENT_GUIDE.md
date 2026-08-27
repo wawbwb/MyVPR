@@ -24,10 +24,11 @@ Optional overrides: `--batch_size 80`, `--lr 0.0001`, `--seed 1`,
 `logs/<backbone>/MixVPR/version_*/` and hyperparameters in that version's
 `hparams.yaml`. The metric monitored for the best checkpoint is `msls-val/R1`.
 
-> Before starting, smoke-test the new code path once (no dataset required):
+> The one-time `smoke_phase_c.py` helper was removed after this route was
+> archived; it can be restored from Git commit `8a08e81`. The retained unit
+> check for the old code path is:
 > ```bash
 > pytest -q tests/test_phase_c_attention.py
-> python scripts/smoke_phase_c.py
 > ```
 > Then run one real data batch:
 > ```bash

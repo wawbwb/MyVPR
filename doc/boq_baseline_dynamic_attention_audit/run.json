@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "method": "baseline_ru_boq_dynamic_attention_audit",
+  "baseline_definition": "repeatability+uniqueness checkpoint with its trained semantic_region_gate active and BoQ attention_bias=None",
+  "checkpoint": {
+    "path": "/home/wt/workspace/OpenVPRLab/logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt",
+    "sha256": "38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e",
+    "size_bytes": 563443107,
+    "validated_config": {
+      "aggregator_class": "BoQ",
+      "backbone_class": "DinoV2",
+      "val_image_size": [
+        280,
+        280
+      ],
+      "semantic_region": {
+        "enabled": true,
+        "mode": "repeatability_uniqueness_only",
+        "alpha": 0.2,
+        "lambda_target": 0.02,
+        "match_grid": 10,
+        "target_scale": 2.0,
+        "place_chunk_size": 8
+      }
+    }
+  },
+  "mask_cache": {
+    "path": "/home/wt/workspace/OpenVPRLab/.cache/dynamic_prior/msls_val_full_db_condition_union_deeplabv3_mbv3_grid20.npz",
+    "sha256": "841bfc9ff7f5b4d5ee08b924e38cf1774c5f875df46f3456a421e71055895f61",
+    "size_bytes": 2004599,
+    "schema_version": 1,
+    "image_paths_sha256": "f59284424942b9285230fc83d3bc683d9d6c209e87084632966f68870aedb8c4",
+    "num_references": 18871,
+    "grid_size": [
+      20,
+      20
+    ],
+    "segmentation_size": [
+      520,
+      520
+    ],
+    "mask_definition": "hard_argmax_dynamic_pixel_area_fraction",
+    "model_name": "deeplabv3_mobilenet_v3_large",
+    "weights_name": "DeepLabV3_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1",
+    "weights_url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+    "dynamic_class_names": [
+      "person",
+      "bicycle",
+      "car",
+      "motorbike",
+      "bus",
+      "train"
+    ],
+    "dynamic_class_ids": [
+      15,
+      2,
+      7,
+      14,
+      6,
+      19
+    ]
+  },
+  "dataset": {
+    "path": "/home/wt/workspace/OpenVPRLab/datasets/msls-val",
+    "num_images": 20565,
+    "num_references": 18871,
+    "num_standard_queries": 740,
+    "num_union_queries": 1694,
+    "groups": {
+      "all": 20565,
+      "references": 18871,
+      "union_queries": 1694,
+      "standard_queries": 740,
+      "night": 55,
+      "winter2summer": 586,
+      "summer2winter": 402
+    },
+    "query_condition_stratum_counts": {
+      "0": 651,
+      "1": 55,
+      "2": 586,
+      "4": 402
+    }
+  },
+  "attention": {
+    "num_layers": 2,
+    "num_heads": 6,
+    "num_queries": 64,
+    "num_tokens": 400,
+    "grid_size": [
+      20,
+      20
+    ],
+    "returned_weights": "post-softmax BoQ cross-attention probabilities, per head; each learned query sums to one across spatial keys",
+    "primary_layer_map": "equal mean over heads and learned queries",
+    "primary_consensus_map": "equal mean over BoQ layers",
+    "density_visualisation": "num_tokens * attention; uniform routing equals 1; one shared p99-derived scale, no per-image min-max",
+    "density_scale_max": 4.7332763671875,
+    "max_spatial_sum_error": 4.76837158203125e-07,
+    "top_fractions": [
+      0.1,
+      0.2
+    ],
+    "fc_energy_proxy": "query-slot weights proportional to squared final-FC column norm; secondary heuristic, not causal contribution"
+  },
+  "mask_overlap": {
+    "primary_mass": "sum_n attention[n] * dynamic_patch_fraction[n]",
+    "uniform_expected_mass": "mean_n dynamic_patch_fraction[n]",
+    "micro_enrichment": "sum_images mass / sum_images area",
+    "aligned": "the image's own cached mask",
+    "shuffled": "seeded no-fixed-point donor preserving reference/query role and exact query condition-membership stratum",
+    "random": "same image mask values spatially permuted exactly",
+    "donor_indices_sha256": "de3c596f9a05d51b9eaab4f02c14dbd7a6bbf44e029ea463fd6598ebee76b709"
+  },
+  "per_head_extraction_validation": {
+    "descriptor_exact_equal": true,
+    "descriptor_max_abs_delta": 0.0,
+    "per_head_mean_vs_legacy_attention_max_abs_delta": 0.0
+  },
+  "runtime": {
+    "device": "cuda:1",
+    "batch_size": 32,
+    "num_workers": 8,
+    "image_size": [
+      280,
+      280
+    ],
+    "amp": true,
+    "seed": 42,
+    "torch_version": "2.10.0+cu128"
+  },
+  "visualisations": {
+    "balanced_random_indices": [
+      6536,
+      19493,
+      19153,
+      20034,
+      20550,
+      11449,
+      19484,
+      19637,
+      18897,
+      20334,
+      3533,
+      19317
+    ],
+    "high_aligned_minus_random_indices": [
+      1434,
+      8636,
+      10757,
+      9278,
+      8213,
+      15218
+    ],
+    "low_aligned_minus_random_indices": [
+      16904,
+      13276,
+      16556,
+      17352,
+      16432,
+      17576
+    ],
+    "head_detail_indices": [
+      6536,
+      19493,
+      19153
+    ],
+    "selection_min_dynamic_area": 0.01
+  },
+  "files": [
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/summary.csv",
+      "sha256": "7a67ad8c7914766ba1ed88fd559e8c8e2d11bf221f3365c692f1828796d4c8a2",
+      "size_bytes": 17255
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/per_image.csv",
+      "sha256": "af855187cb522d9255f26c42f71cc870939621046d81ffed441a41696f104da9",
+      "size_bytes": 34365235
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/head_summary.csv",
+      "sha256": "522b2f03a93005467971ae0fa2da65c81976721332a086d136a44c9e71ea7c50",
+      "size_bytes": 24066
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/query_slot_summary.csv",
+      "sha256": "c0029a2fcae09dcd70a24ee75fb7827e054650c44c6f644796ef5f8cf07b2aa8",
+      "size_bytes": 253299
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/fc_energy_slot_weights.csv",
+      "sha256": "236fe7f1c85b67db34c5a7410d9a6cfc7944978eac958944ce227af4f579e74d",
+      "size_bytes": 3458
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/attention_layer_maps.npy",
+      "sha256": "5316964fc419ac5ecabe78f672f5c3c58207a639e2ffc13d570a97f654ff0b39",
+      "size_bytes": 32904128
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/attention_fc_energy_proxy_maps.npy",
+      "sha256": "e65a5e573ca97d5ffe3a4a1800a2dcdd0e1976d167dcd298315966dc3694dcdc",
+      "size_bytes": 16452128
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/mean_component_attention_maps.npz",
+      "sha256": "83fba10ef701a69bc6221c40152c995873b75f08062e4b768303bdd13a895b81",
+      "size_bytes": 41508
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/mean_head_attention_maps.npz",
+      "sha256": "ea7b459dc08a4c5ea0f3299bafb18d7572bd67a61feed9de4373241c58910af6",
+      "size_bytes": 121794
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/mean_query_slot_attention_maps.npz",
+      "sha256": "4c1f62119a9787269a31da68da38730cbb34874587a66e1c45aaa393be49e74a",
+      "size_bytes": 1284852
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/mean_position_attention.jpg",
+      "sha256": "b74bdd11773ee980566b91aab6c4e468109adcf2bc43af881e9b2be724124271",
+      "size_bytes": 252516
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/attention_balanced_random.jpg",
+      "sha256": "f39dd13c0773b76fb11ba648bca73b3abcec174fdc2d0ff7f0f4117ab142e003",
+      "size_bytes": 1499664
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/attention_high_aligned_minus_random.jpg",
+      "sha256": "f0875c526854924f9a40f71e064ce736b2cadbfd4713c173bc8ab8fb3dd7984e",
+      "size_bytes": 773749
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/attention_low_aligned_minus_random.jpg",
+      "sha256": "bea879f176ba693e3832cce19aa68ac2aeaa0a51f766eddf5ee68b55e301b0da",
+      "size_bytes": 729540
+    },
+    {
+      "path": "/home/wt/workspace/OpenVPRLab/doc/boq_baseline_dynamic_attention_audit/visualization_selection.csv",
+      "sha256": "23e05a774f98555b5fdc899ab4e6838e96fa9d6a05229b6fe3e60c128eed0c9d",
+      "size_bytes": 3721
+    }
+  ],
+  "limitations": [
+    "BoQ cross-attention describes learned-query routing, not a causal pixel saliency or complete descriptor contribution.",
+    "The baseline contains the trained RU semantic_region_gate; it is not the photometric-only visual checkpoint.",
+    "The second BoQ layer attends to spatially indexed tokens that have already undergone encoder mixing.",
+    "The dynamic mask is a Pascal-VOC hard-argmax class prior and does not label roads, sky, vegetation, or buildings."
+  ]
+}

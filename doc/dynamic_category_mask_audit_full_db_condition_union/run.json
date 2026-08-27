@@ -1,0 +1,137 @@
+{
+  "schema_version": 2,
+  "method": "dynamic_category_mask_cache",
+  "cache": {
+    "path": "/home/wt/workspace/OpenVPRLab/.cache/dynamic_prior/msls_val_full_db_condition_union_deeplabv3_mbv3_grid20.npz",
+    "sha256": "841bfc9ff7f5b4d5ee08b924e38cf1774c5f875df46f3456a421e71055895f61",
+    "size_bytes": 2004599,
+    "image_paths_sha256": "f59284424942b9285230fc83d3bc683d9d6c209e87084632966f68870aedb8c4"
+  },
+  "dataset": {
+    "path": "/home/wt/workspace/OpenVPRLab/datasets/msls-val",
+    "num_images": 20565,
+    "num_references": 18871,
+    "num_standard_queries": 740,
+    "num_union_queries": 1694,
+    "num_condition_only_queries": 954,
+    "query_union_manifest": {
+      "path": "/home/wt/workspace/OpenVPRLab/datasets/msls-val/msls_val_condition_union_qImages.npy",
+      "sha256": "d9819a32120cdbc4af77e6a4c8668520d4d71618dc6d33d36742f1e1aa088cce"
+    }
+  },
+  "teacher": {
+    "source": "torchvision_default",
+    "weights_name": "DeepLabV3_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1",
+    "weights_url": "https://download.pytorch.org/models/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+    "cached_path": "/home/wt/.cache/torch/hub/checkpoints/deeplabv3_mobilenet_v3_large-fc3c493d.pth",
+    "weights_sha256": "fc3c493d68e89cc31ef488c803d5d7dd2f3190fb570598faa49fef69be8e5e70",
+    "architecture": "deeplabv3_mobilenet_v3_large"
+  },
+  "segmentation_size": [
+    520,
+    520
+  ],
+  "grid_size": [
+    20,
+    20
+  ],
+  "mask_definition": "hard argmax dynamic-pixel area fraction per patch",
+  "dynamic_classes": {
+    "person": 15,
+    "bicycle": 2,
+    "car": 7,
+    "motorbike": 14,
+    "bus": 6,
+    "train": 19
+  },
+  "missing_cityscapes_dynamic_classes": [
+    "rider",
+    "truck"
+  ],
+  "class_pixel_fractions": {
+    "person": 0.0035841184755508945,
+    "bicycle": 0.001203550008128362,
+    "car": 0.05260215318869165,
+    "motorbike": 0.00020821788182081062,
+    "bus": 0.0043600697096951935,
+    "train": 0.0010716216585598844
+  },
+  "mask_statistics": {
+    "all": {
+      "image_count": 20565,
+      "patch_value_mean": 0.06302981823682785,
+      "patch_value_p50": 0.0,
+      "patch_value_p90": 0.00887298583984375,
+      "patch_value_p99": 1.0,
+      "per_image_coverage_mean": 0.06302979588508606,
+      "per_image_coverage_p50": 0.034381408244371414,
+      "per_image_coverage_p90": 0.16809711456298837,
+      "per_image_coverage_max": 0.9496763348579407,
+      "empty_image_fraction": 0.08460977388767323
+    },
+    "references": {
+      "image_count": 18871,
+      "patch_value_mean": 0.06348251551389694,
+      "patch_value_p50": 0.0,
+      "patch_value_p90": 0.01035308837890625,
+      "patch_value_p99": 1.0,
+      "per_image_coverage_mean": 0.06348251551389694,
+      "per_image_coverage_p50": 0.0348522774875164,
+      "per_image_coverage_p90": 0.16858838498592377,
+      "per_image_coverage_max": 0.9496763348579407,
+      "empty_image_fraction": 0.08457421440305231
+    },
+    "queries": {
+      "image_count": 1694,
+      "patch_value_mean": 0.057986654341220856,
+      "patch_value_p50": 0.0,
+      "patch_value_p90": 0.0,
+      "patch_value_p99": 1.0,
+      "per_image_coverage_mean": 0.057986658066511154,
+      "per_image_coverage_p50": 0.029802355915308,
+      "per_image_coverage_p90": 0.1586439043283463,
+      "per_image_coverage_max": 0.5394178628921509,
+      "empty_image_fraction": 0.08500590318772137
+    }
+  },
+  "montage": {
+    "selection": "seeded uniform random without replacement",
+    "seed": 42,
+    "indices": [
+      1767,
+      1834,
+      1936,
+      4142,
+      8901,
+      9022,
+      10826,
+      13455,
+      14338,
+      15908,
+      17651,
+      20063
+    ],
+    "paths": [
+      "cph/database/images/jU6_2HSiJMCRujC8M8AQMA.jpg",
+      "cph/database/images/4CSHnTWGdSdtesrl7agxQg.jpg",
+      "cph/database/images/J7P2zYXZ1lgVPVUB6f5haA.jpg",
+      "cph/database/images/BBgnsuziDenxn4tGFETaQA.jpg",
+      "cph/database/images/bkd4Me8foc-4GgIzeABKtg.jpg",
+      "cph/database/images/EiRGTRvLm54P4juovgixQw.jpg",
+      "cph/database/images/7FztKCgkxetyo8zT0h5xtg.jpg",
+      "sf/database/images/dk4dhHv1uQsnF3kWRElClw.jpg",
+      "sf/database/images/VIDXbCC1D8izIGumdAfs-g.jpg",
+      "sf/database/images/PAjmto6Ubp2ZU7CBdeh6Yw.jpg",
+      "sf/database/images/2rg4RxZBh4bJPdFkQuLSsA.jpg",
+      "sf/query/images/65xaDAf9cVirJ7-x9NkUAA.jpg"
+    ],
+    "file": "mask_montage.jpg"
+  },
+  "amp": false,
+  "limitations": [
+    "The Pascal-VOC label space has no rider or truck category.",
+    "The mask is a segmentation argmax area prior, not place evidence.",
+    "The cache contains no per-image z-score or confidence threshold.",
+    "Condition queries are searched against the standard full DB; this cache does not define an official MSLS condition subtask."
+  ]
+}
