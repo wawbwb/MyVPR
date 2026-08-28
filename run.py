@@ -21,6 +21,11 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from src.core.vpr_datamodule import VPRDataModule
 from src.core.vpr_framework import VPRFramework, VPRFrameworkDistill
 from src.losses.vpr_losses import VPRLossFunction
+from src.query_semantic_cache import (
+    QUERY_SEMANTIC_CACHE_SCHEMA,
+    QUERY_SEMANTIC_CACHE_VERSION,
+    QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
+)
 
 from rich.traceback import install
 install() # this is for better traceback formatting
@@ -422,8 +427,9 @@ def train(config):
                 query_manifest = json.load(handle)
             if (
                 query_manifest.get('schema')
-                != 'openvpr_ade20k_patch_labels'
-                or query_manifest.get('version') != 1
+                != QUERY_SEMANTIC_CACHE_SCHEMA
+                or query_manifest.get('version')
+                != QUERY_SEMANTIC_CACHE_VERSION
                 or not query_manifest.get('complete', False)
             ):
                 raise ValueError(
@@ -482,6 +488,7 @@ def train(config):
                     'round(clamp(top1_probability,0,1)*255)'
                 ),
                 'inference_precision': 'amp_float16',
+                'shuffle_algorithm': QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
             }
             for field, expected_value in expected_cache_protocol.items():
                 if query_manifest.get(field) != expected_value:

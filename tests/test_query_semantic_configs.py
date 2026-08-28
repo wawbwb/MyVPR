@@ -15,6 +15,11 @@ from src.models.query_semantic import (
     freeze_for_query_semantic_screen,
     warm_start_query_semantic_model,
 )
+from src.query_semantic_cache import (
+    QUERY_SEMANTIC_CACHE_SCHEMA,
+    QUERY_SEMANTIC_CACHE_VERSION,
+    QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -153,6 +158,20 @@ def test_dinov2_hub_ref_matches_recorded_ru_training_path() -> None:
         REPO_ROOT / "src" / "models" / "backbones" / "dinov2.py"
     ).read_text(encoding="utf-8")
     assert "facebookresearch/dinov2:main" in source
+
+
+def test_training_entrypoint_uses_shared_query_cache_protocol() -> None:
+    source = (REPO_ROOT / "run.py").read_text(encoding="utf-8")
+    assert "QUERY_SEMANTIC_CACHE_SCHEMA" in source
+    assert "QUERY_SEMANTIC_CACHE_VERSION" in source
+    assert "QUERY_SEMANTIC_SHUFFLE_ALGORITHM" in source
+    assert "query_manifest.get('version') != 1" not in source
+    assert QUERY_SEMANTIC_CACHE_SCHEMA == "openvpr_ade20k_patch_labels"
+    assert QUERY_SEMANTIC_CACHE_VERSION == 2
+    assert (
+        QUERY_SEMANTIC_SHUFFLE_ALGORITHM
+        == "stable_place_group_rotation_v1"
+    )
 
 
 def test_query_semantic_cli_warm_start_arguments_override_yaml() -> None:
