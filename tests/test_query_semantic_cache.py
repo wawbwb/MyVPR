@@ -14,6 +14,11 @@ from scripts.cache_gsv_patch_semantics import (
 )
 from src.dataloaders.train.gsv_cities import GSVCitiesDataset
 from src.models.query_semantic import verify_query_semantic_cache_hashes
+from src.query_semantic_cache import (
+    QUERY_SEMANTIC_CACHE_VERSION,
+    QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
+    build_cross_place_bijection,
+)
 
 
 def _row(place_id: int = 123) -> pd.Series:
@@ -64,7 +69,7 @@ def test_cache_manifest_records_exact_patch_protocol(tmp_path: Path) -> None:
                 "count": 8,
                 "sha256": "0" * 64,
                 "eligible_count": 8,
-                "eligible_shuffle_shift": 4,
+                "eligible_shuffle_rotation": 4,
             }
         ],
         image_count=8,
@@ -89,6 +94,39 @@ def test_cache_manifest_records_exact_patch_protocol(tmp_path: Path) -> None:
         "round(clamp(top1_probability,0,1)*255)"
     )
     assert manifest["inference_precision"] == "amp_float16"
+    assert manifest["version"] == QUERY_SEMANTIC_CACHE_VERSION
+    assert (
+        manifest["shuffle_algorithm"]
+        == QUERY_SEMANTIC_SHUFFLE_ALGORITHM
+    )
+
+
+def test_cross_place_bijection_handles_no_raw_circular_shift() -> None:
+    # Every raw-order circular shift has at least one same-place collision.
+    # A valid bijection still exists because the largest group is only 4/12.
+    place_ids = np.asarray([0, 2, 2, 1, 0, 0, 1, 2, 0, 1, 2, 1])
+    raw_positions = np.arange(place_ids.size)
+    assert all(
+        np.any(place_ids == place_ids[(raw_positions + shift) % place_ids.size])
+        for shift in range(1, place_ids.size)
+    )
+
+    donors, rotation = build_cross_place_bijection(
+        place_ids,
+        context="Boston-like test city",
+    )
+
+    assert rotation == 4
+    assert np.array_equal(np.sort(donors), raw_positions)
+    assert np.all(place_ids != place_ids[donors])
+
+
+def test_cross_place_bijection_rejects_mathematically_impossible_case() -> None:
+    with pytest.raises(ValueError, match="largest place has 5 of 8"):
+        build_cross_place_bijection(
+            np.asarray([0, 0, 0, 0, 0, 1, 1, 2]),
+            context="unbalanced test city",
+        )
 
 
 def test_shuffled_control_is_bijection_on_training_eligible_rows(
@@ -96,8 +134,10 @@ def test_shuffled_control_is_bijection_on_training_eligible_rows(
 ) -> None:
     dataframe_dir = tmp_path / "Dataframes"
     dataframe_dir.mkdir()
+    # The first 12 rows reproduce the raw-order pattern from the regression
+    # above; place 40 is deliberately below K=4 and must remain self-mapped.
     place_ids = np.asarray(
-        [10, 10, 10, 10, 20, 20, 20, 20, 30, 30, 30],
+        [10, 30, 30, 20, 10, 10, 20, 30, 10, 20, 30, 20, 40, 40, 40],
         dtype=np.int64,
     )
     pd.DataFrame({"place_id": place_ids}).to_csv(
@@ -110,14 +150,15 @@ def test_shuffled_control_is_bijection_on_training_eligible_rows(
 
     assert image_count == len(place_ids)
     assert len(entries) == 1
-    assert entries[0]["eligible_count"] == 8
-    eligible = np.arange(8, dtype=np.int64)
+    assert entries[0]["eligible_count"] == 12
+    assert entries[0]["eligible_shuffle_rotation"] == 4
+    eligible = np.arange(12, dtype=np.int64)
     donors = shuffled[eligible].astype(np.int64)
     assert np.array_equal(np.sort(donors), eligible)
     assert np.all(place_ids[eligible] != place_ids[donors])
     # Rows from places filtered out by K=4 are never sampled during training
     # and remain self-mapped, preserving a full-city bijection on disk.
-    assert np.array_equal(shuffled[8:], np.arange(8, 11, dtype=np.int32))
+    assert np.array_equal(shuffled[12:], np.arange(12, 15, dtype=np.int32))
     assert np.unique(shuffled).size == len(place_ids)
 
 
@@ -144,7 +185,7 @@ def test_gsv_loader_reads_fixed_cross_place_donor(tmp_path: Path) -> None:
     np.save(cache_dir / "shuffled_indices.npy", shuffled)
     manifest = {
         "schema": "openvpr_ade20k_patch_labels",
-        "version": 1,
+        "version": QUERY_SEMANTIC_CACHE_VERSION,
         "complete": True,
         "num_images": image_count,
         "grid_size": [2, 2],
@@ -154,6 +195,7 @@ def test_gsv_loader_reads_fixed_cross_place_donor(tmp_path: Path) -> None:
         "confidence_dtype": "uint8",
         "shuffled_indices_dtype": "int32",
         "eligible_min_views": 4,
+        "shuffle_algorithm": QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
         "cities": entries,
     }
     (cache_dir / "manifest.json").write_text(

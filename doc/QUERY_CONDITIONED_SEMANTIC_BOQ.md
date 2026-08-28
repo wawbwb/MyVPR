@@ -86,6 +86,9 @@ python scripts/cache_gsv_patch_semantics.py \
 
 中断后使用完全相同的命令并在末尾增加 `--resume`。完成后必须看到 `manifest.json` 中 `"complete": true`。这里固定的是 Hugging Face 模型仓库当前最新提交，而不是会漂移的 `main`；manifest 还会记录实际解析到的完整 commit 和三个数组的 SHA256。`summary.json` 会给出类别分布及 confidence 0.5/0.6/0.7 的覆盖率；若 coverage@0.5 接近 0，应先停止而不是启动监督实验。
 
+缓存协议 v2 的 shuffled donor 不是直接旋转 CSV 原始行。它先按
+`place_id` 稳定分组，再按该城市最大地点组的大小旋转，因此即使原始行序不存在任何合法的统一 shift，也能构造严格的同城、异地点双射。只有某一个地点占 eligible 行数超过一半时，这种双射在数学上才不存在，脚本会明确报告最大组和总行数。缓存生成端和训练加载端共享同一个构造函数，加载时还会依据 CSV SHA256 重新构造并逐项核对 donor 数组。
+
 ## 6. 训练命令
 
 先选择现有 RU 最佳 checkpoint：

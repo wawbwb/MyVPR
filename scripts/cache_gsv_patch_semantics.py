@@ -9,8 +9,10 @@ over exact non-overlapping DINO patch cells; the cache stores the winning
 class as uint8 and its probability quantised to uint8.
 
 For the wrong-image semantic control, ``shuffled_indices.npy`` contains a
-fixed bijection within every city.  Each city uses a circular shift for which
-the donor row belongs to a different ``place_id`` than the receiving row.
+fixed bijection within every city.  Training-eligible rows are first stably
+grouped by ``place_id`` and then rotated so every donor belongs to a different
+place than its receiver, including when the original CSV row order admits no
+single valid circular shift.
 
 Fresh runs refuse to reuse an existing output directory.  Interrupted runs
 can be continued with ``--resume``.  Array data is flushed before the durable
@@ -43,9 +45,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.query_semantic_cache import (
+    QUERY_SEMANTIC_CACHE_SCHEMA,
+    QUERY_SEMANTIC_CACHE_VERSION,
+    QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
+    build_cross_place_bijection,
+)
 
-SCHEMA = "openvpr_ade20k_patch_labels"
-VERSION = 1
+SCHEMA = QUERY_SEMANTIC_CACHE_SCHEMA
+VERSION = QUERY_SEMANTIC_CACHE_VERSION
 DEFAULT_MODEL_NAME = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_REVISION = "489d5cd81a0b59fab9b7ea758d3548ebe99677da"
 
@@ -85,54 +93,6 @@ def image_name(row: pd.Series) -> str:
     )
 
 
-def choose_cross_place_shift(place_ids: np.ndarray, city: str) -> int:
-    """Choose a deterministic near-half rotation with no same-place donor.
-
-    A shift is invalid when any two occurrences of the same place ID differ by
-    that amount modulo the city row count.  Computing those forbidden
-    differences is O(sum K_place^2), which is small for GSV-Cities and avoids
-    an O(N^2) scan over every possible shift.
-    """
-
-    place_ids = np.asarray(place_ids)
-    row_count = int(place_ids.size)
-    if row_count < 2:
-        raise ValueError(f"city {city!r} needs at least two rows for shuffling")
-    if bool(pd.isna(place_ids).any()):
-        raise ValueError(f"city {city!r} contains a missing place_id")
-
-    positions_by_place: dict[Any, list[int]] = {}
-    for position, place_id in enumerate(place_ids.tolist()):
-        positions_by_place.setdefault(place_id, []).append(position)
-    if len(positions_by_place) < 2:
-        raise ValueError(
-            f"city {city!r} has only one place_id; no cross-place shift exists"
-        )
-
-    forbidden = np.zeros(row_count, dtype=np.bool_)
-    forbidden[0] = True
-    for positions_list in positions_by_place.values():
-        positions = np.asarray(positions_list, dtype=np.int64)
-        for receiver in positions.tolist():
-            forbidden[(positions - receiver) % row_count] = True
-
-    valid = np.flatnonzero(~forbidden)
-    if valid.size == 0:
-        raise ValueError(
-            f"city {city!r} has no circular shift that avoids every same-place pair"
-        )
-
-    # A near-half rotation is deterministic and avoids the weak control caused
-    # by pairing adjacent rows from nearby capture sequences.
-    target = row_count / 2.0
-    order = np.lexsort((valid, np.abs(valid.astype(np.float64) - target)))
-    shift = int(valid[order[0]])
-    donors = (np.arange(row_count, dtype=np.int64) + shift) % row_count
-    if bool(np.any(place_ids == place_ids[donors])):
-        raise RuntimeError(f"internal error: invalid cross-place shift for {city}")
-    return shift
-
-
 def discover_cities(
     dataset_root: Path,
     eligible_min_views: int,
@@ -165,14 +125,12 @@ def discover_cities(
                 f"images at min_views={eligible_min_views}"
             )
         eligible_place_ids = place_ids[eligible_positions]
-        shift = choose_cross_place_shift(
-            eligible_place_ids, csv_path.stem
+        eligible_donors, rotation = build_cross_place_bijection(
+            eligible_place_ids,
+            context=f"city {csv_path.stem!r}",
         )
         local_donors = np.arange(count, dtype=np.int64)
-        local_donors[eligible_positions] = eligible_positions[
-            (np.arange(eligible_positions.size, dtype=np.int64) + shift)
-            % eligible_positions.size
-        ]
+        local_donors[eligible_positions] = eligible_positions[eligible_donors]
         if bool(
             np.any(
                 place_ids[eligible_positions]
@@ -191,7 +149,7 @@ def discover_cities(
                 "count": count,
                 "sha256": file_sha256(csv_path),
                 "eligible_count": int(eligible_positions.size),
-                "eligible_shuffle_shift": shift,
+                "eligible_shuffle_rotation": rotation,
             }
         )
         offset += count
@@ -411,11 +369,12 @@ def build_manifest(
         "labels_dtype": "uint8",
         "confidence_dtype": "uint8",
         "shuffled_indices_dtype": "int32",
+        "shuffle_algorithm": QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
         "confidence_quantization": "round(clamp(top1_probability,0,1)*255)",
         "shuffle_definition": (
             "rows from places with at least eligible_min_views form a fixed "
-            "within-city cross-place circular-shift bijection; other rows map "
-            "to themselves"
+            "within-city bijection made by stable place grouping followed by "
+            "a largest-place-size rotation; other rows map to themselves"
         ),
         "teacher_input": "clean_rgb",
         "pooling": (
@@ -446,6 +405,7 @@ def resume_signature(manifest: dict[str, Any]) -> dict[str, Any]:
         "labels_dtype",
         "confidence_dtype",
         "shuffled_indices_dtype",
+        "shuffle_algorithm",
         "confidence_quantization",
         "shuffle_definition",
         "teacher_input",
@@ -700,14 +660,14 @@ def main() -> None:
     )
     use_amp = bool(args.amp)
 
+    city_entries, image_count, expected_shuffle = discover_cities(
+        dataset_root, eligible_min_views=args.eligible_min_views
+    )
     processor, teacher, transformers_version, commit = load_teacher(
         args.model_name, args.revision, device
     )
     processor_info = processor_record(processor)
     classes = model_classes(teacher)
-    city_entries, image_count, expected_shuffle = discover_cities(
-        dataset_root, eligible_min_views=args.eligible_min_views
-    )
     desired_manifest = build_manifest(
         dataset_root=dataset_root,
         city_entries=city_entries,

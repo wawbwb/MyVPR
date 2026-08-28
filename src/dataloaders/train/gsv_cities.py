@@ -42,6 +42,12 @@ from torch.utils.data import Dataset
 import torchvision.transforms as T
 
 from src.utils import config_manager
+from src.query_semantic_cache import (
+    QUERY_SEMANTIC_CACHE_SCHEMA,
+    QUERY_SEMANTIC_CACHE_VERSION,
+    QUERY_SEMANTIC_SHUFFLE_ALGORITHM,
+    build_cross_place_bijection,
+)
 
 
 
@@ -350,11 +356,11 @@ class GSVCitiesDataset(Dataset):
             )
         with manifest_path.open('r', encoding='utf-8') as handle:
             manifest = json.load(handle)
-        if manifest.get('schema') != 'openvpr_ade20k_patch_labels':
+        if manifest.get('schema') != QUERY_SEMANTIC_CACHE_SCHEMA:
             raise ValueError(
                 f"unsupported query semantic cache schema in {manifest_path}"
             )
-        if manifest.get('version') != 1:
+        if manifest.get('version') != QUERY_SEMANTIC_CACHE_VERSION:
             raise ValueError(
                 f"unsupported query semantic cache version in {manifest_path}: "
                 f"{manifest.get('version')}"
@@ -412,6 +418,13 @@ class GSVCitiesDataset(Dataset):
             raise ValueError(
                 "query semantic cache eligible_min_views must be at least 2"
             )
+        if (
+            manifest.get('shuffle_algorithm')
+            != QUERY_SEMANTIC_SHUFFLE_ALGORITHM
+        ):
+            raise ValueError(
+                "query semantic cache has an unsupported shuffle algorithm"
+            )
 
         city_entries = manifest.get('cities')
         if not isinstance(city_entries, list) or not city_entries:
@@ -431,10 +444,10 @@ class GSVCitiesDataset(Dataset):
             offset = entry.get('offset')
             count = entry.get('count')
             eligible_count = entry.get('eligible_count')
-            shift = entry.get('eligible_shuffle_shift')
+            rotation = entry.get('eligible_shuffle_rotation')
             if any(
                 isinstance(value, bool) or not isinstance(value, int)
-                for value in (offset, count, eligible_count, shift)
+                for value in (offset, count, eligible_count, rotation)
             ):
                 raise ValueError(
                     f"query semantic cache city {name!r} has non-integer "
@@ -445,7 +458,10 @@ class GSVCitiesDataset(Dataset):
                     "query semantic cache city offsets must form a contiguous "
                     "index and every city must contain at least two images"
                 )
-            if not 2 <= eligible_count <= count or not 0 < shift < eligible_count:
+            if (
+                not 2 <= eligible_count <= count
+                or not 0 < rotation < eligible_count
+            ):
                 raise ValueError(
                     f"query semantic cache city {name!r} has invalid eligible "
                     "shuffle metadata"
@@ -634,14 +650,22 @@ class GSVCitiesDataset(Dataset):
                     raise ValueError(
                         f"query semantic eligible row count changed for {city!r}"
                     )
-                shuffle_shift = int(cache_city['eligible_shuffle_shift'])
+                eligible_donors, expected_rotation = (
+                    build_cross_place_bijection(
+                        place_ids[eligible_positions],
+                        context=f"city {city!r}",
+                    )
+                )
+                recorded_rotation = int(
+                    cache_city['eligible_shuffle_rotation']
+                )
+                if recorded_rotation != expected_rotation:
+                    raise ValueError(
+                        f"query semantic shuffle rotation mismatch for {city!r}"
+                    )
                 expected_donors = np.arange(len(df), dtype=np.int64)
                 expected_donors[eligible_positions] = eligible_positions[
-                    (
-                        np.arange(eligible_positions.size, dtype=np.int64)
-                        + shuffle_shift
-                    )
-                    % eligible_positions.size
+                    eligible_donors
                 ]
                 offset = int(cache_city['offset'])
                 actual_donors = np.asarray(
