@@ -88,6 +88,16 @@ def parse_args():
     )
     parser.add_argument("--my-ckpt", default=DEFAULT_MY_CKPT, help="path to your best checkpoint")
     parser.add_argument("--origin-ckpt", default=DEFAULT_ORIGIN_CKPT, help="path to original best checkpoint")
+    parser.add_argument(
+        "--my-name",
+        default="My Semantic-Gated",
+        help="display name for --my-ckpt",
+    )
+    parser.add_argument(
+        "--origin-name",
+        default="Visual Baseline",
+        help="display name for --origin-ckpt",
+    )
     parser.add_argument("--msls-path", default="datasets/msls-val", help="path to msls-val folder")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--num-workers", type=int, default=8)
@@ -376,8 +386,8 @@ def main():
 
     checkpoints = OrderedDict(
         {
-            "My Semantic-Gated": my_ckpt,
-            "Visual Baseline": origin_ckpt,
+            str(args.my_name): my_ckpt,
+            str(args.origin_name): origin_ckpt,
         }
     )
 

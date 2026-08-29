@@ -1,6 +1,8 @@
 # Query-conditioned Semantic BoQ 实验说明
 
-更新日期：2026-08-27
+更新日期：2026-08-28
+
+> 状态：首筛已完成，最终判定 FAIL。前八节保留原实验协议与复现说明，第九节记录实际结果。
 
 ## 1. 要检验的假设
 
@@ -49,12 +51,12 @@ SegFormer 只离线运行一次。缓存保存 20x20 hard label 和 top-1 confid
 
 ## 4. 四个必要对照
 
-| 配置 | 语义目标 | 目的 |
-| --- | --- | --- |
-| `boq_dinov2_query_semantic_architecture_only.yaml` | 无辅助标签 | 测量新结构和 VPR loss 自身的收益 |
-| `boq_dinov2_query_semantic_aligned.yaml` | 本图 ADE20K patch 标签 | 主实验 |
-| `boq_dinov2_query_semantic_shuffled.yaml` | 同 city、不同 place 的固定 donor | 排除标签分布/正则化收益 |
-| `boq_dinov2_query_semantic_random.yaml` | 本图 label-confidence 对在空间上稳定置乱 | 排除每图类别直方图收益 |
+| 配置 | 语义目标 | 目的 | 状态 |
+| --- | --- | --- | --- |
+| `boq_dinov2_query_semantic_architecture_only.yaml` | 无辅助标签 | 测量新结构和 VPR loss 自身的收益 | 已完成 |
+| `boq_dinov2_query_semantic_aligned.yaml` | 本图 ADE20K patch 标签 | 主实验 | 已完成 |
+| `boq_dinov2_query_semantic_shuffled.yaml` | 同 city、不同 place 的固定 donor | 排除标签分布/正则化收益 | 未运行：提前停止 |
+| `boq_dinov2_query_semantic_random.yaml` | 本图 label-confidence 对在空间上稳定置乱 | 排除每图类别直方图收益 | 未运行：提前停止 |
 
 四组都从同一 RU checkpoint、同一 seed 42 开始，冻结同一组参数，训练 10 epochs。除 `mode`、cache 使用和语义 loss 权重外，模型与优化设置一致。
 
@@ -90,6 +92,8 @@ python scripts/cache_gsv_patch_semantics.py \
 `place_id` 稳定分组，再按该城市最大地点组的大小旋转，因此即使原始行序不存在任何合法的统一 shift，也能构造严格的同城、异地点双射。只有某一个地点占 eligible 行数超过一半时，这种双射在数学上才不存在，脚本会明确报告最大组和总行数。缓存生成端和训练加载端共享同一个构造函数，加载时还会依据 CSV SHA256 重新构造并逐项核对 donor 数组。
 
 ## 6. 训练命令
+
+以下命令是预注册执行协议的归档，不表示 shuffled/random 仍待补跑。
 
 先选择现有 RU 最佳 checkpoint：
 
@@ -134,6 +138,8 @@ TensorBoard 重点检查：
 - 四组 MSLS-val/Pitts30k 的 R@1，而不是只比较训练 loss。
 
 ## 7. 判定规则
+
+以下为训练前固定的判定规则；实际结果在第 9 节按该规则终止。
 
 语义归因成立必须同时满足：
 
@@ -192,3 +198,41 @@ python run.py \
 ```
 
 启动正式训练前确认输出明确包含 RU checkpoint 的 SHA256 前缀、载入 tensor 数，以及“Frozen RU base”。监督组还会在构建模型前逐一核验 `labels.npy`、`confidence.npy`、`shuffled_indices.npy` 的完整 SHA256。任何 provenance、missing key、cache grid/commit/hash 不匹配都应直接停止，不要绕过检查。
+
+## 9. 实际结果与终止判定
+
+### 9.1 完整性
+
+- cache 完成，confidence coverage@0.5/0.6/0.7 分别为 89.0344%/81.0140%/73.0192%；
+- architecture-only 与 aligned 都从预注册 RU SHA256 启动，载入 233 个历史 tensor、新增 7 个 tensor，只训练 350,658 个参数；
+- 两组均完成 10 epochs、seed 42、完整 GSV-Cities 训练。
+
+### 9.2 常规验证
+
+| 模型 | 首个最佳-MSLS checkpoint | MSLS R@1/R@5/R@10 | Pitts R@1 |
+| --- | --- | ---: | ---: |
+| Architecture-only | epoch 0 | 91.22 / 95.14 / 96.08 | 94.10 |
+| Aligned | epoch 2 | 91.22 / 95.27 / 95.95 | 94.11 |
+
+architecture-only 的 10/10 epochs 都是 MSLS R@1 91.22%；aligned 仅 epoch 2、3 为 91.22%，其余 8/10 epochs 为 91.08%。aligned 的最佳 MSLS R@1 相对 architecture-only 与冻结 RU 均为 `+0.00 pp`；Pitts 的 `+0.01 pp` 是约一个 query 的舍入尺度波动。
+
+### 9.3 条件 query + 完整 database 审计
+
+本次 matched comparator 是 architecture-only checkpoint。脚本输出中的 `Visual Baseline` 是显示标签，不代表这里使用了冻结 RU 作为条件对照。
+
+| 条件 | Queries | Architecture-only R@1/R@5/R@10 | Aligned R@1/R@5/R@10 | 差异 |
+| --- | ---: | ---: | ---: | ---: |
+| Night | 55 | 89.09 / 98.18 / 100.00 | 89.09 / 98.18 / 100.00 | 0/0/0 query |
+| Season | 988 | 88.66 / 93.83 / 94.03 | 88.66 / 93.83 / 94.03 | 0/0/0 query |
+
+这是自定义 full-db 审计，不是官方 MSLS condition benchmark。相同 top-k 命中数不等于描述子逐元素相同。
+
+### 9.4 Verdict
+
+```text
+FAIL
+```
+
+aligned 未胜 architecture-only，overall 没有达到 `+0.3 pp`，困难条件六项 recall 也没有改变一个 query。因此触发预注册提前停止：shuffled/random 不运行，不延长到 40 epochs，不增加 seed，不复制到 SALAD，也不扫描 `lambda`、confidence threshold 或 bias scale。
+
+证据：`doc/boq_dinov2_query_semantic_architecture_only.txt`、`doc/boq_dinov2_query_semantic_aligned.txt`、`doc/boq_dinov2_query_semantic_condition_eval.txt`。

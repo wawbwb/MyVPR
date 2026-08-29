@@ -331,6 +331,9 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_semantic_region=0.0,
         query_semantic_target=None,
         lambda_query_semantic=0.0,
+        crop_semantic_target=None,
+        lambda_crop_semantic=0.0,
+        crop_semantic_diagnostic_interval=100,
     ):
         super().__init__(
             backbone=backbone,
@@ -353,6 +356,7 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_positive", lambda_positive),
             ("lambda_semantic_region", lambda_semantic_region),
             ("lambda_query_semantic", lambda_query_semantic),
+            ("lambda_crop_semantic", lambda_crop_semantic),
         ):
             if not math.isfinite(value) or value < 0:
                 raise ValueError(
@@ -410,6 +414,40 @@ class VPRFrameworkDistill(VPRFramework):
             raise ValueError(
                 "query semantic supervision requires an aggregator semantic head"
             )
+        self.crop_semantic_target = crop_semantic_target
+        self.lambda_crop_semantic = float(lambda_crop_semantic)
+        self.crop_semantic_enabled = (
+            getattr(self.backbone, "crop_semantic_film", None) is not None
+        )
+        if self.lambda_crop_semantic > 0 and self.crop_semantic_target is None:
+            raise ValueError(
+                "crop semantic target is required when its lambda is non-zero"
+            )
+        if self.crop_semantic_target is not None and not (
+            self.crop_semantic_enabled
+        ):
+            raise ValueError(
+                "crop semantic target requires backbone.crop_semantic_film"
+            )
+        if self.crop_semantic_enabled and self.lambda_crop_semantic <= 0:
+            # This 128->512 projection exists only to match the training-time
+            # crop teacher. It is outside the retrieval path and would be an
+            # unused optimizer parameter in the architecture-only control.
+            self.backbone.crop_semantic_film.semantic_projection.requires_grad_(
+                False
+            )
+        if (
+            isinstance(crop_semantic_diagnostic_interval, bool)
+            or int(crop_semantic_diagnostic_interval) < 1
+        ):
+            raise ValueError(
+                "crop_semantic_diagnostic_interval must be a positive integer"
+            )
+        self.crop_semantic_diagnostic_interval = int(
+            crop_semantic_diagnostic_interval
+        )
+        self._crop_semantic_zero_start_verified = False
+        self._crop_semantic_zero_start_error = None
 
     def train(self, mode=True):
         super().train(mode)
@@ -434,9 +472,33 @@ class VPRFrameworkDistill(VPRFramework):
             return backbone_output[0], lambda local: [local, *backbone_output[1:]]
         return backbone_output, lambda local: local
 
-    def _student_forward(self, images, return_query_semantic=False):
+    def _student_forward(
+        self,
+        images,
+        return_query_semantic=False,
+        return_crop_semantic=False,
+        crop_semantic_batch_indices=None,
+    ):
         """Run the exact student path shared by train, validation and inference."""
-        backbone_output = self.backbone(images)
+        crop_semantic_tokens = None
+        crop_semantic_raw_scale = None
+        if return_crop_semantic:
+            if not self.crop_semantic_enabled or not hasattr(
+                self.backbone, "forward_with_crop_semantics"
+            ):
+                raise RuntimeError(
+                    "crop semantic output requested from an incompatible backbone"
+                )
+            (
+                backbone_output,
+                crop_semantic_tokens,
+                crop_semantic_raw_scale,
+            ) = self.backbone.forward_with_crop_semantics(
+                images,
+                semantic_batch_indices=crop_semantic_batch_indices,
+            )
+        else:
+            backbone_output = self.backbone(images)
         raw_featmap, restore_output = self._split_backbone_output(backbone_output)
         featmap = raw_featmap
         student_attn = None
@@ -468,7 +530,13 @@ class VPRFrameworkDistill(VPRFramework):
             semantic_gate,
         )
         if return_query_semantic:
-            return (*result, query_semantic_logits)
+            result = (*result, query_semantic_logits)
+        if return_crop_semantic:
+            result = (
+                *result,
+                crop_semantic_tokens,
+                crop_semantic_raw_scale,
+            )
         return result
 
     def _attention_for_distillation(self, raw_featmap, student_attn):
@@ -483,6 +551,126 @@ class VPRFrameworkDistill(VPRFramework):
     def forward(self, x):
         model_output, _, _, _, _, _ = self._student_forward(x)
         return model_output
+
+    @staticmethod
+    def _descriptor_tensor(model_output):
+        if isinstance(model_output, (tuple, list)):
+            return model_output[0]
+        return model_output
+
+    @torch.no_grad()
+    def _verify_crop_semantic_zero_start(self, images):
+        """Verify the new branch reproduces the loaded RU descriptor at step 0."""
+
+        if not self.crop_semantic_enabled:
+            return None
+        if self._crop_semantic_zero_start_verified:
+            # Keep emitting the verified value. Lightning only flushes
+            # training scalars every ``log_every_n_steps``; a metric emitted
+            # solely on batch zero can otherwise be absent from TensorBoard.
+            return images.new_tensor(self._crop_semantic_zero_start_error)
+        film = self.backbone.crop_semantic_film
+        if torch.count_nonzero(film.channel_scale.weight).item() or (
+            torch.count_nonzero(film.channel_scale.bias).item()
+        ):
+            raise RuntimeError(
+                "crop-semantic FiLM is not zero-initialised before step 0"
+            )
+
+        was_training = self.training
+        try:
+            self.eval()
+            with torch.autocast(
+                device_type=images.device.type, enabled=False
+            ):
+                enabled_output = self._student_forward(images.float())[0]
+                with film.bypass():
+                    bypass_output = self._student_forward(images.float())[0]
+            enabled_descriptor = self._descriptor_tensor(enabled_output)
+            bypass_descriptor = self._descriptor_tensor(bypass_output)
+            max_abs_error = (
+                enabled_descriptor.float() - bypass_descriptor.float()
+            ).abs().amax()
+        finally:
+            self.train(was_training)
+
+        if not bool(torch.isfinite(max_abs_error)) or max_abs_error.item() > 1e-6:
+            raise RuntimeError(
+                "crop-semantic zero-start descriptor check failed: max absolute "
+                f"error={max_abs_error.item():.3e}, required <=1e-6"
+            )
+        self._crop_semantic_zero_start_verified = True
+        self._crop_semantic_zero_start_error = float(max_abs_error.item())
+        self.print(
+            "Crop-semantic zero-start descriptor max_abs_error="
+            f"{max_abs_error.item():.3e}"
+        )
+        return max_abs_error.detach()
+
+    @torch.no_grad()
+    def _measure_crop_descriptor_drift(self, images):
+        film = self.backbone.crop_semantic_film
+        was_training = self.training
+        try:
+            self.eval()
+            enabled_output = self._student_forward(images)[0]
+            with film.bypass():
+                bypass_output = self._student_forward(images)[0]
+        finally:
+            self.train(was_training)
+        enabled_descriptor = self._descriptor_tensor(enabled_output)
+        bypass_descriptor = self._descriptor_tensor(bypass_output)
+        delta = enabled_descriptor.float() - bypass_descriptor.float()
+        return {
+            "crop_film_descriptor_drift_rms": delta.square().mean().sqrt(),
+            "crop_film_descriptor_drift_max_abs": delta.abs().amax(),
+        }
+
+    def on_after_backward(self):
+        super_method = getattr(super(), "on_after_backward", None)
+        if callable(super_method):
+            super_method()
+        if not self.crop_semantic_enabled:
+            return
+        def gradient_rms(parameters):
+            squared_sum = None
+            element_count = 0
+            for parameter in parameters:
+                if parameter.grad is None:
+                    continue
+                gradient = parameter.grad.detach().float()
+                contribution = gradient.square().sum()
+                squared_sum = (
+                    contribution
+                    if squared_sum is None
+                    else squared_sum + contribution
+                )
+                element_count += gradient.numel()
+            if squared_sum is None or not element_count:
+                return None
+            return (squared_sum / element_count).sqrt()
+
+        film = self.backbone.crop_semantic_film
+        gradient_groups = {
+            "crop_film_grad_rms": film.parameters(),
+            "crop_film_channel_scale_grad_rms": (
+                film.channel_scale.parameters()
+            ),
+            "crop_semantic_projection_grad_rms": (
+                film.semantic_projection.parameters()
+            ),
+        }
+        for metric_name, parameters in gradient_groups.items():
+            value = gradient_rms(parameters)
+            if value is not None:
+                self.log(
+                    metric_name,
+                    value,
+                    prog_bar=False,
+                    logger=True,
+                    on_step=True,
+                    on_epoch=False,
+                )
 
     def _optimizer_param_groups(self):
         optimizer_params = super()._optimizer_param_groups()
@@ -553,12 +741,14 @@ class VPRFrameworkDistill(VPRFramework):
         images = images.view(P * K, c, h, w)
         if images_aug is not None:
             images_aug = images_aug.view(P * K, c, h, w)
+        place_labels = labels.reshape(P, K)
         labels = labels.view(-1)
         coordinates = None
         teacher_images = None
         years = None
         months = None
         headings = None
+        crop_view_indices = None
         if metadata is not None:
             coordinates = metadata.get("coordinates")
             if coordinates is not None:
@@ -581,24 +771,80 @@ class VPRFrameworkDistill(VPRFramework):
                 months = months.reshape(P * K)
             if headings is not None:
                 headings = headings.reshape(P * K)
+            crop_view_indices = metadata.get("crop_semantic_view_index")
+
+        crop_semantic_batch_indices = None
+        if self.lambda_crop_semantic > 0:
+            if crop_view_indices is None:
+                raise RuntimeError(
+                    "crop semantic metadata contains no view index"
+                )
+            if crop_view_indices.ndim != 1 or crop_view_indices.numel() != P:
+                raise ValueError(
+                    "metadata.crop_semantic_view_index must have shape (P,)"
+                )
+            crop_view_indices = crop_view_indices.to(
+                device=images.device, dtype=torch.long
+            )
+            if bool(
+                ((crop_view_indices < 0) | (crop_view_indices >= K)).any()
+            ):
+                raise ValueError(
+                    f"crop semantic view indices must be in [0, {K - 1}]"
+                )
+            crop_semantic_batch_indices = (
+                torch.arange(P, device=images.device) * K
+                + crop_view_indices
+            )
 
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
         # cannot silently bypass the phase-C module.
-        (
-            model_output,
-            featmap,
-            student_attn,
-            raw_featmap,
-            semantic_score,
-            semantic_gate,
-            query_semantic_logits,
-        ) = self._student_forward(images, return_query_semantic=True)
-
-        if isinstance(model_output, (tuple, list)):
-            descriptors = model_output[0]
+        crop_zero_start_error = self._verify_crop_semantic_zero_start(images)
+        if self.lambda_crop_semantic > 0:
+            (
+                model_output,
+                featmap,
+                student_attn,
+                raw_featmap,
+                semantic_score,
+                semantic_gate,
+                query_semantic_logits,
+                crop_semantic_tokens,
+                crop_semantic_raw_scale,
+            ) = self._student_forward(
+                images,
+                return_query_semantic=True,
+                return_crop_semantic=True,
+                crop_semantic_batch_indices=crop_semantic_batch_indices,
+            )
+            if (
+                crop_semantic_tokens is None
+                or crop_semantic_raw_scale is None
+            ):
+                raise RuntimeError(
+                    "enabled crop-semantic backbone returned no student tokens"
+                )
+            crop_film_stats = self.backbone.crop_semantic_diagnostics()
         else:
-            descriptors = model_output
+            (
+                model_output,
+                featmap,
+                student_attn,
+                raw_featmap,
+                semantic_score,
+                semantic_gate,
+                query_semantic_logits,
+            ) = self._student_forward(images, return_query_semantic=True)
+            crop_semantic_tokens = None
+            crop_semantic_raw_scale = None
+            crop_film_stats = (
+                self.backbone.crop_semantic_diagnostics()
+                if self.crop_semantic_enabled
+                else {}
+            )
+
+        descriptors = self._descriptor_tensor(model_output)
 
         # VPR loss
         loss_vpr, batch_accuracy = self.compute_loss(descriptors, labels)
@@ -673,6 +919,65 @@ class VPRFrameworkDistill(VPRFramework):
         else:
             loss_query_semantic = loss_vpr.new_zeros(())
 
+        crop_semantic_stats = {}
+        if self.lambda_crop_semantic > 0:
+            if metadata is None:
+                raise RuntimeError(
+                    "crop semantic loss requires a clean teacher view in "
+                    "batch metadata"
+                )
+            crop_teacher_images = metadata.get(
+                "crop_semantic_teacher_image"
+            )
+            if crop_teacher_images is None or crop_view_indices is None:
+                raise RuntimeError(
+                    "crop semantic metadata must contain teacher image and "
+                    "view index"
+                )
+            if (
+                crop_teacher_images.ndim != 4
+                or crop_teacher_images.shape[:2] != (P, 3)
+            ):
+                raise ValueError(
+                    "metadata.crop_semantic_teacher_image must have shape "
+                    "(P,3,H,W)"
+                )
+            if not bool((place_labels == place_labels[:, :1]).all()):
+                raise ValueError(
+                    "each crop-semantic batch item must contain K views from "
+                    "one place"
+                )
+            if (
+                getattr(self.crop_semantic_target, "mode", None)
+                == "wrong_place"
+                and torch.unique(place_labels[:, 0]).numel() != P
+            ):
+                raise ValueError(
+                    "wrong_place requires P distinct place labels so rolled "
+                    "teacher donors cannot be positives"
+                )
+            loss_crop_semantic, crop_semantic_stats = (
+                self.crop_semantic_target(
+                    crop_semantic_tokens,
+                    teacher_images=crop_teacher_images,
+                    global_step=int(self.trainer.global_step),
+                )
+            )
+        else:
+            loss_crop_semantic = loss_vpr.new_zeros(())
+
+        crop_descriptor_stats = {}
+        if (
+            self.crop_semantic_enabled
+            and int(self.trainer.global_step) > 0
+            and int(self.trainer.global_step)
+            % self.crop_semantic_diagnostic_interval
+            == 0
+        ):
+            crop_descriptor_stats = self._measure_crop_descriptor_drift(
+                images
+            )
+
         # Distillation losses. The lambda=0 architecture control skips CLIP
         # entirely while retaining the exact same student inference path.
         distillation_active = self.distill_module is not None and any(
@@ -729,6 +1034,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_positive * distill_out["loss_positive"]
             + warmup_scale * self.lambda_semantic_region * loss_semantic_region
             + warmup_scale * self.lambda_query_semantic * loss_query_semantic
+            + warmup_scale * self.lambda_crop_semantic * loss_crop_semantic
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -752,6 +1058,31 @@ class VPRFrameworkDistill(VPRFramework):
         )
         for metric_name, metric_value in query_semantic_stats.items():
             self.log(metric_name, metric_value, prog_bar=False, logger=True)
+        self.log(
+            "loss_crop_semantic",
+            loss_crop_semantic,
+            prog_bar=False,
+            logger=True,
+        )
+        for diagnostics in (
+            crop_semantic_stats,
+            crop_film_stats,
+            crop_descriptor_stats,
+        ):
+            for metric_name, metric_value in diagnostics.items():
+                self.log(
+                    metric_name,
+                    metric_value,
+                    prog_bar=False,
+                    logger=True,
+                )
+        if crop_zero_start_error is not None:
+            self.log(
+                "crop_film_zero_start_max_abs_error",
+                crop_zero_start_error,
+                prog_bar=False,
+                logger=True,
+            )
         if query_semantic_logits is not None:
             self.log(
                 "query_semantic_logit_std",
@@ -810,6 +1141,14 @@ class VPRFrameworkDistill(VPRFramework):
             "effective_lambda_query_semantic",
             loss_vpr.new_tensor(
                 warmup_scale * self.lambda_query_semantic
+            ),
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "effective_lambda_crop_semantic",
+            loss_vpr.new_tensor(
+                warmup_scale * self.lambda_crop_semantic
             ),
             prog_bar=False,
             logger=True,

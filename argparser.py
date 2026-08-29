@@ -44,13 +44,18 @@ def parse_args() -> Dict[str, Any]:
     parser.add_argument('--milestones', nargs='+', type=int, help='Milestones for learning rate scheduler')
     parser.add_argument('--lr_mult', type=float, help='Learning rate multiplier for scheduler')
     parser.add_argument('--max_epochs', type=int, help='Maximum number of epochs')
+    parser.add_argument(
+        '--max-steps',
+        type=int,
+        help='Maximum optimizer steps; -1 keeps the epoch limit',
+    )
     parser.add_argument('--accelerator', type=str, help='Lightning accelerator (for example gpu or cpu)')
     parser.add_argument('--devices', nargs='+', type=int, help='Lightning device indices, for example --devices 0')
     parser.add_argument('--precision', type=str, help='Lightning precision, for example 16-mixed or 32-true')
     parser.add_argument(
         '--init-checkpoint',
         type=str,
-        help='Warm-start checkpoint for a frozen query-semantic screen',
+        help='Warm-start checkpoint for a query/crop semantic screen',
     )
     parser.add_argument(
         '--freeze-base',
@@ -122,6 +127,7 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
             'milestones': [10, 20, 30],
             'lr_mult': 0.1,
             'max_epochs': 40,
+            'max_steps': -1,
             'accelerator': "gpu",
             'devices': [1],
             'precision': "16-mixed",
@@ -187,6 +193,8 @@ def update_config_with_args_and_defaults(config: Dict[str, Any], args: argparse.
         config['trainer']['lr_mult'] = arg_dict['lr_mult']
     if arg_dict['max_epochs'] is not None:
         config['trainer']['max_epochs'] = arg_dict['max_epochs']
+    if arg_dict.get('max_steps') is not None:
+        config['trainer']['max_steps'] = arg_dict['max_steps']
     if arg_dict['accelerator'] is not None:
         config['trainer']['accelerator'] = arg_dict['accelerator']
     if arg_dict['devices'] is not None:

@@ -1,11 +1,11 @@
 # Experiment Guide — Phases C–F
 
-> **Status (2026-08-27): this C–F plan is archived.** Do not run the C/D
+> **Status (2026-08-29): this C–F plan is archived.** Do not run the C/D
 > commands below. Semantic reliability and the later alias/region/dynamic-prior
-> routes failed their matched controls. The active frozen-RU screen is
-> Query-conditioned Semantic BoQ; use
-> `doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`. Consolidated prior results are in
-> `doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md`.
+> routes failed their matched controls; Query-conditioned Semantic BoQ also
+> finished negative and was stopped. The active screen is Crop-CLS Local
+> Semantic FiLM-BoQ; use `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`. Consolidated
+> prior results are in `doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md`.
 
 Run everything from the project root with the `openvpr` conda environment:
 

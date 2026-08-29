@@ -19,7 +19,7 @@ by Ali-bey et al., published in Neurocomputing, 2022.
 Citation:
     @article{ali2022gsv,
         title={{GSV-Cities}: Toward appropriate supervised visual place recognition},
-        author={Ali-bey, Amar and Chaib-draa, Brahim and Gigu{\`e}re, Philippe},
+  author={Ali-bey, Amar and Chaib-draa, Brahim and Gigu{\\`e}re, Philippe},
         journal={Neurocomputing},
         volume={513},
         pages={194--203},
@@ -75,6 +75,7 @@ class GSVCitiesDataset(Dataset):
                  aug_transform=None,
                  return_metadata=False,
                  return_teacher_view=False,
+                 return_crop_semantic_view=False,
                  teacher_transform=None,
                  semantic_cache_dir=None,
                  query_semantic_cache_dir=None,
@@ -95,8 +96,12 @@ class GSVCitiesDataset(Dataset):
                 condition diagnostics in the exact sampled-image order.
             return_teacher_view (bool): Add a deterministic, clean image tensor
                 to metadata for frozen-teacher pair selection.
+            return_crop_semantic_view (bool): Add exactly one clean full-image
+                teacher view per place. It uses the first view from the
+                seed-controlled sampled set and is consumed by the online
+                crop-CLS semantic target.
             teacher_transform (callable): Deterministic transform for the clean
-                teacher view. Required when ``return_teacher_view`` is true.
+                teacher view. Required when either teacher-view option is true.
             semantic_cache_dir (path-like): Directory containing the sparse
                 CLIP semantic-affinity cache.  Enabling it appends the sampled
                 cache rows to metadata in exactly the same order as the K
@@ -164,13 +169,16 @@ class GSVCitiesDataset(Dataset):
             raise ValueError(
                 "query_semantic_selection requires query_semantic_cache_dir"
             )
-        # Cached targets are transported through the existing metadata path.
+        self.return_teacher_view = bool(return_teacher_view)
+        self.return_crop_semantic_view = bool(return_crop_semantic_view)
+        # Cached targets and online crop-teacher inputs are transported through
+        # the existing metadata path.
         self.return_metadata = (
             return_metadata
+            or self.return_crop_semantic_view
             or self.semantic_cache_dir is not None
             or self.query_semantic_cache_dir is not None
         )
-        self.return_teacher_view = return_teacher_view
         self.teacher_transform = teacher_transform
         self._semantic_cache_manifest = None
         self._semantic_cache_cities = None
@@ -191,14 +199,23 @@ class GSVCitiesDataset(Dataset):
                     f"img_per_place={self.query_semantic_eligible_min_views}, "
                     f"but the dataset uses {self.img_per_place}"
                 )
-        if self.return_teacher_view and not self.return_metadata:
+        if self.return_teacher_view and self.return_crop_semantic_view:
             raise ValueError(
-                "return_teacher_view requires return_metadata so the legacy "
-                "training tuple remains unambiguous"
+                "return_teacher_view and return_crop_semantic_view are "
+                "mutually exclusive"
             )
-        if self.return_teacher_view and self.teacher_transform is None:
+        if (
+            self.return_teacher_view or self.return_crop_semantic_view
+        ) and not self.return_metadata:
             raise ValueError(
-                "teacher_transform is required when return_teacher_view is true"
+                "teacher views require return_metadata so the legacy training "
+                "tuple remains unambiguous"
+            )
+        if (
+            self.return_teacher_view or self.return_crop_semantic_view
+        ) and self.teacher_transform is None:
+            raise ValueError(
+                "teacher_transform is required when a teacher view is enabled"
             )
         # generate the dataframe contraining images metadata
         self.dataframe = self.__getdataframes()
@@ -718,11 +735,19 @@ class GSVCitiesDataset(Dataset):
             place = place.sort_values(
                 by=['year', 'month', 'lat'], ascending=False)
             place = place[: self.img_per_place]
+
+        crop_teacher_view_index = None
+        crop_teacher_image = None
+        if self.return_crop_semantic_view:
+            # The K sampled views already change with the seeded sampler. Use
+            # the first sampled view so matched runs consume exactly the same
+            # clean photograph without maintaining worker-local epoch state.
+            crop_teacher_view_index = 0
             
         imgs = []
         imgs_aug = []
         imgs_teacher = []
-        for i, row in place.iterrows():
+        for view_index, (_, row) in enumerate(place.iterrows()):
             img_name = self.get_img_name(row)
             img_path = self.base_path / 'Images' / row['city_id'] / img_name
             img = self.image_loader(img_path)
@@ -742,6 +767,14 @@ class GSVCitiesDataset(Dataset):
                 # This path must stay deterministic.  CLIP disagreement should
                 # describe the sampled photographs, not RandAugment artefacts.
                 imgs_teacher.append(self.teacher_transform(img))
+            elif (
+                self.return_crop_semantic_view
+                and view_index == crop_teacher_view_index
+            ):
+                # Return one clean full image per place. Cropping happens in
+                # the main training process so all places share exactly the
+                # same quadrant at a given global step.
+                crop_teacher_image = self.teacher_transform(img)
 
             imgs.append(img_t)
 
@@ -777,6 +810,13 @@ class GSVCitiesDataset(Dataset):
             }
             if self.return_teacher_view:
                 metadata['teacher_images'] = torch.stack(imgs_teacher)
+            if self.return_crop_semantic_view:
+                if crop_teacher_image is None:
+                    raise RuntimeError("failed to construct crop teacher view")
+                metadata['crop_semantic_teacher_image'] = crop_teacher_image
+                metadata['crop_semantic_view_index'] = torch.tensor(
+                    crop_teacher_view_index, dtype=torch.long
+                )
             if self.semantic_cache_dir is not None:
                 metadata.update(
                     self._read_semantic_cache(

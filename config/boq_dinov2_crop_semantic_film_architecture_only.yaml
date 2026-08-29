@@ -1,0 +1,101 @@
+# Crop-CLS Local Semantic FiLM-BoQ architecture control.
+# Supply the audited RU checkpoint with --init-checkpoint at launch time.
+seed: 42
+
+datamodule:
+  train_set_name: "gsv-cities"
+  cities: "all"
+  train_image_size: [280, 280]
+  val_image_size: [280, 280]
+  augmentation_mode: "photometric"
+  img_per_place: 4
+  batch_size: 40
+  num_workers: 8
+  val_set_names: ["msls-val", "pitts30k-val"]
+
+backbone:
+  module: src.models.backbones
+  class: DinoV2
+  params:
+    backbone_name: "dinov2_vitb14"
+    num_unfrozen_blocks: 2
+    crop_semantic_film:
+      enabled: true
+      hidden_dim: 128
+      semantic_dim: 512
+      alpha: 0.1
+      insert_before_last_n_blocks: 2
+
+aggregator:
+  module: src.models.aggregators
+  class: BoQ
+  params:
+    in_channels:
+    proj_channels: 384
+    num_queries: 64
+    num_layers: 2
+    row_dim: 32
+
+loss_function:
+  module: src.losses
+  class: VPRLossFunction
+  params:
+    loss_fn_name: "MultiSimilarityLoss"
+    miner_name: "MultiSimilarityMiner"
+
+distillation:
+  enabled: true
+  mode: "global_only"
+  lambda_global: 0.0
+  lambda_region: 0.0
+  spatial_attn:
+    enabled: false
+    lambda_kl: 0.0
+  semantic_alias:
+    enabled: false
+    lambda: 0.0
+  semantic_positive:
+    enabled: false
+    lambda: 0.0
+  distill_warmup_steps: 500
+  semantic_region:
+    enabled: true
+    mode: "repeatability_uniqueness_only"
+    apply_pretrained_gate: true
+    alpha: 0.2
+    lambda_target: 0.0
+    match_grid: 10
+    target_scale: 2.0
+    place_chunk_size: 8
+  query_semantic:
+    enabled: false
+    mode: "architecture_only"
+    lambda_target: 0.0
+  crop_semantic_film:
+    enabled: true
+    mode: "architecture_only"
+    run_tag:
+    lambda_target: 0.0
+    crop_grid: [2, 2]
+    teacher_chunk_size: 20
+    diagnostic_interval: 100
+    teacher:
+      model_name: "ViT-B-16"
+      pretrained: "openai"
+      hf_mirror: "https://hf-mirror.com"
+
+trainer:
+  optimizer: adamw
+  lr: 0.0002
+  wd: 0.001
+  warmup: 500
+  max_epochs: 5
+  max_steps: -1
+  milestones: [3, 4]
+  lr_mult: 0.1
+  accelerator: gpu
+  devices: [1]
+  precision: "16-mixed"
+  init_checkpoint:
+  init_checkpoint_sha256: "38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e"
+  freeze_base: false

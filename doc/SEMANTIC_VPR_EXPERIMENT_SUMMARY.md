@@ -1,6 +1,6 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-08-27
+更新日期：2026-08-29
 
 ## 1. 总结结论
 
@@ -11,7 +11,9 @@
 
 因此，现有实验不能证明“语义在 VPR 中理论上无效”，但已经较有力地否定了本项目中这些具体实现：全局 CLIP 描述子拟合、CLIP 单图空间 attention 拟合、标量 patch reliability、CLIP 语义负样本/正样本选择、CLIP affinity 平滑区域目标，以及固定动态类别负偏置。继续只扫 `alpha`、`lambda`、`beta` 或温度，信息收益很低。
 
-下一条仍值得做的路线是 **Query-conditioned Semantic BoQ**：把冻结分割教师产生的局部类别向量压缩为训练期监督，让不同 BoQ query 学习不同的语义条件化读取方式；推理时只保留学生分支。它应以 DINOv2-BoQ 的 repeatability+uniqueness（RU）模型为强匹配基线，并保留 shuffled-label、图内空间随机 label-confidence、architecture-only 三类对照。该路线现已实现，具体结构、配置、命令和判据见 `doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`。
+Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 的最佳 R@1 为 91.22%，与 architecture-only 和冻结 RU 均持平；在 night-full-db 与 season-full-db 上，R@1/R@5/R@10 相对 matched architecture-only 全部相差 0 query。该实现没有通过预注册门槛，按规则停止，不运行 shuffled/random、多 seed、40 epochs、SALAD 复制或 `lambda`/bias-scale 扫描。
+
+下一条仍有信息价值的路线是参考 SemVPR，但不照搬本轮已经失败的 hard class attention bias：使用 **crop-CLS 连续局部语义蒸馏 + patch×channel 特征调制**。该路线的代码、配置、测试和预飞审计已经实现，但尚未运行，不能记作实验结果。它首先验证教师的局部语义信号确实可学，再让语义在 BoQ 前直接改变视觉特征通道；最少只需 architecture-only 与 aligned 两个 5-epoch run。完整协议见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -143,7 +145,8 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - 本项目中已测试的 CLIP 全局/局部直接拟合和 affinity propagation 不能稳定提高 MSLS；
 - aligned 不胜 shuffled/random 时，不能把变化归因于语义；
 - semantic-region 的插值 round trip 与逐图单位方差化是实现层面的真实混杂，但修复它们只说明 target 更干净，不保证 retrieval 会转正；
-- BoQ query/head 的偏好高度异质，固定类别、所有 query 共用的负 bias 过于粗糙。
+- BoQ query/head 的偏好高度异质，固定类别、所有 query 共用的负 bias 过于粗糙；但本次 query-specific ADE20K class bias 同样没有改善检索，因此“改成 query-specific”本身也不是充分条件；
+- 当前证据更具体地否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter 即可获得语义收益”，尚未检验 SemVPR 的连续局部特征蒸馏和 feature-level modulation。
 
 现有结果不支持：
 
@@ -152,21 +155,118 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - “所有动态物体都应该被抑制”；
 - “只需减小权重就能救回现有方案”。
 
-## 7. 已实现、待运行：Query-conditioned Semantic BoQ
+## 7. Query-conditioned Semantic BoQ：已完成首筛，FAIL
 
-建议让冻结分割教师为每个 DINO patch 提供低维类别/属性向量，由一个轻量学生头预测这些向量；每个 BoQ learned query 再根据自身状态产生类别条件，形成 query-specific 的 key/value modulation 或 attention bias。这样语义不是检索后的重排，而是在描述子生成阶段参与局部聚合；同时避免所有 query 使用同一张“动态=坏”的 mask。
+该路线让 SegFormer ADE20K hard label 监督轻量语义学生头，再由每个 BoQ learned query 学习独立的类别偏好，并把 query-specific signed bias 加到 cross-attention logits。它不是后处理，但 DINOv2、RU gate 与原 BoQ 全部冻结，仅训练 semantic head 和 query-to-class adapter。
 
-最短、信息量最高的执行顺序：
+### 7.1 数据与运行完整性
 
-1. 冻结 RU checkpoint，只训练语义学生头和 query-conditioned adapter，先做 5–10 epoch screen；
-2. matched controls：architecture-only、aligned label、shuffled label、图内空间随机 label-confidence，所有组参数量与训练预算一致；
-3. 同时报告 MSLS overall、night/winter2summer/summer2winter full-db 和 Pitts30k；
-4. aligned 必须优于 RU、architecture-only、shuffled、random；overall 至少 +0.3 pp，或某个足够大的困难子集至少 +1.0 pp 且 overall 不下降超过 0.2 pp，才进入 40 epochs；
-5. 通过后再做三个 seed，最后才考虑 SALAD 复制。
+- 教师为 150 类 SegFormer ADE20K，固定 revision `489d5cd81a0b59fab9b7ea758d3548ebe99677da`；cache manifest 为 complete；
+- cache confidence coverage：`>=0.5` 为 89.0344%，`>=0.6` 为 81.0140%，`>=0.7` 为 73.0192%；
+- cache SHA256 前缀：`labels=4841aa2cca57...`、`confidence=f676ae84ba71...`、`shuffled_indices=9065ad66a7c1...`；
+- RU checkpoint SHA256 为 `38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e`；两组都严格载入 233 个历史 tensor，并初始化 7 个新 tensor；
+- architecture-only 与 aligned 均使用完整 GSV-Cities（524,701 张图）、280×280、P=40、K=4、10 epochs、seed 42；各有 350,658 个可训练参数，RU 基座冻结。
 
-若 aligned 与 random/shuffled 相同，应立即停止；若只有某几个 query slot 有稳定收益，再把 adapter 限制到这些 slot，而不是增加全局语义权重。
+### 7.2 常规验证结果
 
-## 8. 证据索引与归档说明
+下表采用各组**首次达到最佳 MSLS R@1** 的 checkpoint，避免事后按 Pitts 指标挑选。
+
+| 模型 | checkpoint | MSLS R@1 | R@5 | R@10 | Pitts R@1 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Architecture-only | epoch 0 | 91.22 | 95.14 | 96.08 | 94.10 |
+| Aligned semantics | epoch 2 | 91.22 | 95.27 | 95.95 | 94.11 |
+
+architecture-only 的 10/10 epochs 均为 MSLS R@1 91.22%；aligned 只有 epoch 2、3 达到 91.22%，其余 8/10 epochs 为 91.08%，即少 1/740 query。aligned 相对 architecture-only 和冻结 RU 的最佳 MSLS R@1 都是 `+0.00 pp`。Pitts 的 `+0.01 pp` 约为一个 query 的舍入尺度，不能解释为有效收益。
+
+### 7.3 困难条件 full-db 审计
+
+这里的比较对象是 matched architecture-only checkpoint，不是冻结源 RU。评测采用“条件 query + 18,871 张完整标准 database”的自定义审计协议，不是官方 condition benchmark。
+
+| 条件 | Queries | Architecture-only R@1/R@5/R@10 | Aligned R@1/R@5/R@10 | 命中数差异 |
+| --- | ---: | ---: | ---: | ---: |
+| Night | 55 | 89.09 / 98.18 / 100.00 | 89.09 / 98.18 / 100.00 | 0 / 0 / 0 query |
+| Season | 988 | 88.66 / 93.83 / 94.03 | 88.66 / 93.83 / 94.03 | 0 / 0 / 0 query |
+
+对应命中数为 night 49/55、54/55、55/55，season 876/988、927/988、929/988。六项 top-k 命中数完全相同，只能说明排名没有跨过这些 recall 阈值，不能据此断言两个描述子逐元素相同。
+
+### 7.4 终止判定
+
+```text
+Query-conditioned Semantic BoQ: FAIL
+
+- aligned 未优于 architecture-only；
+- overall 未达到 +0.3 pp；
+- season 未达到 +1.0 pp，六项条件指标实际均为 0 query 差异；
+- shuffled/random 因预注册提前停止规则而未运行。
+```
+
+因此不延长到 40 epochs，不增加 seed，不做 SALAD 复制，也不扫描 semantic-loss 权重、confidence threshold 或 bias scale。现有文本日志没有 TensorBoard 语义分支统计，所以不能断言语义分支“完全没学到”；可以确定的是，它没有带来可测的检索收益。
+
+## 8. 参考 SemVPR 的下一方案：Crop-CLS Local Semantic FiLM-BoQ
+
+### 8.1 SemVPR 真正有效的组成
+
+[Efficient Visual Place Recognition Through Multimodal Semantic Knowledge Integration（SemVPR，ICCV 2025）](https://openaccess.thecvf.com/content/ICCV2025/html/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.html)不是把分割类别直接变成 mask 或 attention bias。它在 DINOv2 中间层增加连续局部语义描述子分支，用经过 Local Semantics Alignment（LSA）的 CLIP 局部 feature map 做逐 patch cosine 蒸馏，再通过 Semantic-Aware Aggregation（SAA）把语义描述子映射为逐 patch、逐 channel 的乘性调制，最后才聚合全局描述子。教师只在训练期使用。
+
+LSA 很关键：论文明确指出原始 CLIP 只受全局图文目标训练，raw local feature map 不适合直接充当局部教师；它先把图像划成区域，让教师的区域平均 patch feature 对齐相应 crop 的 CLIP CLS。Pitts30k 的 1024 维消融中，SemVPR w/o SAA、w/o LSA、完整模型的 R@1 分别为 91.7、93.5、94.2，说明连续局部表示与 feature-level aggregation 都是方法的一部分。同一维度下 w/o NDL 为 94.4、完整模型为 94.2；NDL 主要服务于低维描述子压缩，本项目当前只验证语义是否增益，不应在首筛中加入这一额外混杂。方法公式与完整消融见[论文 PDF](https://openaccess.thecvf.com/content/ICCV2025/papers/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.pdf)。
+
+与本轮失败方案的关键差别是：
+
+| 维度 | Query-conditioned 失败方案 | 新的 SemVPR-lite 首筛 |
+| --- | --- | --- |
+| 教师信号 | ADE20K hard class + confidence | CLIP crop CLS 连续 512D embedding |
+| 空间语义 | 分割类别网格 | crop 对应区域的连续概念表示 |
+| 注入位置 | BoQ cross-attention logit | BoQ 前的 patch×channel visual feature |
+| 注入形式 | 每 query 一个有界标量 bias | signed channel-wise FiLM |
+| 局部 CLIP 可靠性 | 依赖类别教师，不做 CLIP LSA | 直接用 crop CLS，避开 raw CLIP patch map |
+| 首筛训练范围 | 冻结 RU/DINO/BoQ，仅 class head/bias | 恢复 RU 原训练范围，联合训练 continuous head/FiLM |
+
+### 8.2 最短可行实现
+
+推荐名称为 **Crop-CLS Local Semantic FiLM-BoQ（SemVPR-lite）**。它是对 SemVPR 最小核心的低成本因果筛选，不是官方实现或完整复现；目前也没有在论文官方页面发现可直接复用的作者代码。
+
+```text
+first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
+                |                    |--> crop-CLS cosine loss
+                +--> channel-wise FiLM --> last 2 DINO blocks --> RU gate --> BoQ
+```
+
+具体固定为：
+
+- 语义教师复用训练机已有的 OpenCLIP `ViT-B-16/openai`，不用 raw patch token；
+- 每个 P=40、K=4 batch 中，每个 place 只选一个 view，并按稳定轮换选择一个 2×2 象限；clean 140×140 crop resize 到 224 后取冻结 CLIP CLS，因此每 step 只增加 40 个 crop forward，无需生成新的全量大 cache；
+- DINO wrapper 暴露进入最后两个 block 前的 20×20 token；学生支路为 `768 -> 128 -> 512` 连续语义投影，并由同一 128D bottleneck 经零初始化 `128 -> 768` 产生逐 patch、逐 channel 调制；
+- 融合采用 `X_fused = X_k * (1 + 0.1 * tanh(delta))`，再送入最后两个 DINO block。零初始化保证第一个 forward 复现 RU，而后 VPR loss 可以直接决定哪些 token channel 应增强或抑制；
+- 损失固定为 `L = L_MS + 0.05 * L_crop_cosine`，500-step linear warmup；teacher 看 clean crop，student 看 photometric augmentation，二者空间几何一致；
+- 从 RU checkpoint warm start，冻结前 10 个 DINO block，但恢复 RU 原训练范围：最后 2 个 DINO block、RU gate、BoQ 与新语义支路共同训练。新支路约 26.4 万参数；推理完全移除 CLIP，并跳过仅用于蒸馏的 `128 -> 512` projection，实际执行的额外路径约 19.7 万参数的 bottleneck/FiLM（checkpoint 仍保留小型 projection 权重以便严格恢复）。
+
+该设计刻意不使用 ADE20K hard class、confidence threshold、CLIP raw patch attention/affinity、空间插值、逐图单位方差化、固定动态负先验或 attention-logit bias，因而不会机械重复前面已经失败的路径。
+
+### 8.3 预飞、对照与停止规则
+
+先做固定 500 step 预飞，不计为正式结果：
+
+1. 连续记录的因果指标至少到达 optimizer step 490，证明 500-step run 没有中途退出；
+2. step 0 的 fp32 descriptor 相对 RU 最大绝对误差必须 `<=1e-6`；
+3. 训练后 aligned crop cosine 必须比同图 wrong-region 和同 batch wrong-place 至少高 0.05；
+4. channel-scale/semantic-projection gradient、modulation RMS 与 descriptor drift 必须都非零。
+
+任一条件失败，先修实现或停止，不启动正式训练。通过后按顺序运行：
+
+1. architecture-only：相同推理架构、数据 I/O 与 VPR trainable scope，`lambda_crop=0`；跳过并冻结不参与描述子生成的 teacher-only `128 -> 512` projection，5 epochs；
+2. aligned：正确 crop CLS，5 epochs；
+3. 仅当 aligned 胜过 architecture-only 时，运行 wrong-region：把已计算的 crop CLS 固定配给同图对角象限的 student region，5 epochs；
+4. 继续通过后运行 wrong-place：把同 batch 异地点的已计算 crop CLS 固定轮换给当前 region，5 epochs。
+
+最少 2 个、最多 4 个短 run，不扫描 `lambda` 或 FiLM scale。最终只有 aligned 同时胜过 RU、architecture-only、wrong-region、wrong-place，且 MSLS overall 至少 `+0.3 pp`；或 season 至少 `+1.0 pp` 且 overall 不低于 RU `0.2 pp`，才进入三个 seed。
+
+主要风险是完整 SemVPR 使用经过 LSA 训练的 dense teacher，并在最后一个 ViT block 内以 CLS 聚合；这个首筛则用稀疏 crop CLS 直接近似 LSA 锚点，并保留 RU+BoQ 聚合。若它失败，只能否定这套 BoQ 适配版 SemVPR-lite，不能否定完整 SemVPR；只有它接近或达到门槛，才值得训练真正的 dense LSA teacher或复现 SemVPR 的 CLS aggregator，并做 matched control。
+
+### 8.4 实现状态（2026-08-29）
+
+已实现 `backbone.crop_semantic_film.*`、每 place 一张 clean teacher view、P 个选中 view 的 crop-CLS cosine target、真正的对角 wrong-region、不同地点轮换 wrong-place、严格 RU/SHA warm-start、step-0 fp32 descriptor 等价检查、显存受限的 teacher chunk、训练/推理分离和 TensorBoard 诊断。提供 500-step preflight、四个 5-epoch 配置以及自动 PASS/FAIL 脚本。当前状态是“等待训练机测试与预飞”，不是“实验成功”。详见 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+
+## 9. 证据索引与归档说明
 
 保留的主要证据：
 
@@ -176,5 +276,7 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - 传播诊断的 compact evidence：`doc/semantic_region_delta_batch0_clean/{run.json,summary.csv}` 与 `doc/semantic_region_counterfactual_batch0/{counterfactual_run.json,counterfactual_summary.csv,aligned_mask_montage.png}`；
 - 动态先验：`doc/dynamic_category_mask_audit_full_db_condition_union/run.json` 与 `doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries/{run.json,summary.csv,paired_comparisons.csv}`；
 - BoQ attention compact evidence：`run.json`、`summary.csv`、`head_summary.csv`、`query_slot_summary.csv`、`fc_energy_slot_weights.csv`、`mean_position_attention.jpg`、`attention_balanced_random.jpg`。
+- Query-conditioned Semantic BoQ：`doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`、`doc/boq_dinov2_query_semantic_architecture_only.txt`、`doc/boq_dinov2_query_semantic_aligned.txt` 与 `doc/boq_dinov2_query_semantic_condition_eval.txt`。
+- Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现与预注册协议；尚无训练结果）。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

@@ -147,6 +147,61 @@ def train(config):
     query_semantic_random_seed = int(
         query_semantic_cfg.get('random_seed', config['seed'])
     )
+    crop_semantic_cfg = distill_cfg.get('crop_semantic_film', {}) or {}
+    crop_semantic_enabled = bool(
+        crop_semantic_cfg.get('enabled', False)
+    )
+    crop_semantic_mode = str(
+        crop_semantic_cfg.get('mode', 'architecture_only')
+    ).lower()
+    lambda_crop_semantic = float(
+        crop_semantic_cfg.get('lambda_target', 0.0)
+    )
+    crop_semantic_teacher_cfg = (
+        crop_semantic_cfg.get('teacher', {}) or {}
+    )
+    crop_semantic_teacher_model = str(
+        crop_semantic_teacher_cfg.get('model_name', 'ViT-B-16')
+    )
+    crop_semantic_teacher_pretrained = str(
+        crop_semantic_teacher_cfg.get('pretrained', 'openai')
+    )
+    crop_semantic_teacher_hf_mirror = crop_semantic_teacher_cfg.get(
+        'hf_mirror', 'https://hf-mirror.com'
+    )
+    crop_semantic_run_tag = str(
+        crop_semantic_cfg.get('run_tag') or ''
+    ).strip()
+    raw_crop_teacher_chunk_size = crop_semantic_cfg.get(
+        'teacher_chunk_size', 20
+    )
+    if isinstance(raw_crop_teacher_chunk_size, bool):
+        raise TypeError(
+            "crop_semantic_film.teacher_chunk_size must be an integer"
+        )
+    try:
+        crop_semantic_teacher_chunk_size = operator.index(
+            raw_crop_teacher_chunk_size
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "crop_semantic_film.teacher_chunk_size must be an integer"
+        ) from exc
+    raw_crop_diagnostic_interval = crop_semantic_cfg.get(
+        'diagnostic_interval', 100
+    )
+    if isinstance(raw_crop_diagnostic_interval, bool):
+        raise TypeError(
+            "crop_semantic_film.diagnostic_interval must be an integer"
+        )
+    try:
+        crop_semantic_diagnostic_interval = operator.index(
+            raw_crop_diagnostic_interval
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "crop_semantic_film.diagnostic_interval must be an integer"
+        ) from exc
     initial_checkpoint = config['trainer'].get('init_checkpoint')
     initial_checkpoint_sha256 = config['trainer'].get(
         'init_checkpoint_sha256'
@@ -227,6 +282,7 @@ def train(config):
         ('semantic_positive.lambda', lambda_positive),
         ('semantic_region.lambda_target', lambda_semantic_region),
         ('query_semantic.lambda_target', lambda_query_semantic),
+        ('crop_semantic_film.lambda_target', lambda_crop_semantic),
     ):
         if not math.isfinite(value) or value < 0:
             raise ValueError(
@@ -356,6 +412,22 @@ def train(config):
         raise ValueError(
             "distillation.query_semantic.mode must be architecture_only, "
             "aligned, shuffled, or random"
+        )
+    if query_semantic_enabled and crop_semantic_enabled:
+        raise ValueError(
+            "query_semantic and crop_semantic_film are mutually exclusive "
+            "experiments"
+        )
+    configured_backbone_crop_enabled = bool(
+        (
+            config['backbone']['params'].get('crop_semantic_film', {})
+            or {}
+        ).get('enabled', False)
+    )
+    if configured_backbone_crop_enabled != crop_semantic_enabled:
+        raise ValueError(
+            "backbone.params.crop_semantic_film.enabled must exactly match "
+            "distillation.crop_semantic_film.enabled"
         )
     query_semantic_supervision_active = (
         query_semantic_enabled and lambda_query_semantic > 0
@@ -553,10 +625,215 @@ def train(config):
                 "the preregistered query_semantic screen requires "
                 "trainer.freeze_base=true"
             )
-    elif initial_checkpoint or initial_checkpoint_sha256 or freeze_base:
+    crop_semantic_supervision_active = (
+        crop_semantic_enabled and lambda_crop_semantic > 0
+    )
+    valid_crop_semantic_modes = {
+        'architecture_only', 'aligned', 'wrong_region', 'wrong_place'
+    }
+    if crop_semantic_mode not in valid_crop_semantic_modes:
+        raise ValueError(
+            "distillation.crop_semantic_film.mode must be architecture_only, "
+            "aligned, wrong_region, or wrong_place"
+        )
+    if lambda_crop_semantic > 0 and not crop_semantic_enabled:
+        raise ValueError(
+            "crop_semantic_film.lambda_target is non-zero but enabled is false"
+        )
+    if crop_semantic_enabled:
+        if not distill_enabled:
+            raise ValueError(
+                "crop_semantic_film requires distillation.enabled=true"
+            )
+        if config.get('compile', False):
+            raise ValueError(
+                "crop_semantic_film zero-start verification does not support "
+                "--compile"
+            )
+        if config['backbone']['class'] != 'DinoV2':
+            raise ValueError(
+                "crop_semantic_film currently requires the DinoV2 backbone"
+            )
+        if config['aggregator']['class'] != 'BoQ':
+            raise ValueError(
+                "crop_semantic_film currently requires the BoQ aggregator"
+            )
+        if crop_semantic_mode == 'architecture_only':
+            if lambda_crop_semantic != 0:
+                raise ValueError(
+                    "architecture_only requires crop_semantic_film."
+                    "lambda_target=0"
+                )
+        elif lambda_crop_semantic <= 0:
+            raise ValueError(
+                f"crop_semantic_film mode {crop_semantic_mode} requires a "
+                "positive lambda_target"
+            )
+        elif lambda_crop_semantic != 0.05:
+            raise ValueError(
+                "the registered crop-semantic screen fixes lambda_target=0.05"
+            )
+        if crop_semantic_teacher_chunk_size < 1:
+            raise ValueError(
+                "crop_semantic_film.teacher_chunk_size must be at least 1"
+            )
+        if crop_semantic_diagnostic_interval < 1:
+            raise ValueError(
+                "crop_semantic_film.diagnostic_interval must be at least 1"
+            )
+        if list(crop_semantic_cfg.get('crop_grid', [2, 2])) != [2, 2]:
+            raise ValueError(
+                "the preregistered crop-semantic screen requires crop_grid=[2,2]"
+            )
+        try:
+            train_height, train_width = (
+                int(value)
+                for value in config['datamodule']['train_image_size']
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "crop_semantic_film requires train_image_size=[280,280]"
+            ) from exc
+        if (train_height, train_width) != (280, 280):
+            raise ValueError(
+                "the registered crop-CLS protocol requires "
+                "train_image_size=[280,280] so each teacher crop is 140x140"
+            )
+        if str(
+            config['datamodule'].get('augmentation_mode', 'randaugment')
+        ).lower() != 'photometric':
+            raise ValueError(
+                "crop_semantic_film requires augmentation_mode=photometric"
+            )
+        if int(config['datamodule']['batch_size']) != 40 or int(
+            config['datamodule']['img_per_place']
+        ) != 4:
+            raise ValueError(
+                "the registered crop-semantic screen requires P=40 and K=4"
+            )
+        if int(config['seed']) != 42:
+            raise ValueError(
+                "the registered crop-semantic screen requires seed=42"
+            )
+        if config['datamodule']['train_set_name'] != 'gsv-cities' or (
+            config['datamodule'].get('cities', 'all') != 'all'
+        ):
+            raise ValueError(
+                "the registered crop-semantic screen requires full "
+                "gsv-cities with cities=all"
+            )
+        if int(distill_cfg.get('distill_warmup_steps', -1)) != 500:
+            raise ValueError(
+                "the registered crop-semantic screen requires a 500-step "
+                "semantic-loss warmup"
+            )
+        if int(config['trainer']['max_epochs']) != 5:
+            raise ValueError(
+                "the registered crop-semantic screen requires max_epochs=5"
+            )
+        if config['backbone']['params'].get('num_unfrozen_blocks') != 2:
+            raise ValueError(
+                "crop_semantic_film requires exactly the last two DINO blocks "
+                "to remain trainable"
+            )
+        backbone_crop_cfg = config['backbone']['params'].get(
+            'crop_semantic_film', {}
+        ) or {}
+        expected_backbone_crop = {
+            'enabled': True,
+            'hidden_dim': 128,
+            'semantic_dim': 512,
+            'alpha': 0.1,
+            'insert_before_last_n_blocks': 2,
+        }
+        for field, expected_value in expected_backbone_crop.items():
+            if backbone_crop_cfg.get(field) != expected_value:
+                raise ValueError(
+                    "backbone.params.crop_semantic_film does not match the "
+                    f"registered architecture: {field} must be {expected_value!r}"
+                )
+        if (
+            crop_semantic_teacher_model != 'ViT-B-16'
+            or crop_semantic_teacher_pretrained != 'openai'
+        ):
+            raise ValueError(
+                "the registered crop-CLS teacher must be OpenCLIP "
+                "ViT-B-16/openai"
+            )
+        if not semantic_region_gate_active or semantic_region_mode != (
+            'repeatability_uniqueness_only'
+        ):
+            raise ValueError(
+                "crop_semantic_film requires the pretrained RU semantic gate"
+            )
+        if semantic_region_target_active:
+            raise ValueError(
+                "crop_semantic_film must set semantic_region.lambda_target=0"
+            )
+        if spatial_attn_enabled or any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+                lambda_query_semantic,
+            )
+        ):
+            raise ValueError(
+                "crop_semantic_film must disable all legacy CLIP/query semantic "
+                "loss paths"
+            )
+        if not initial_checkpoint:
+            raise ValueError(
+                "crop_semantic_film requires --init-checkpoint (or trainer."
+                "init_checkpoint) pointing to the trained RU checkpoint"
+            )
+        if not initial_checkpoint_sha256:
+            raise ValueError(
+                "crop_semantic_film requires trainer.init_checkpoint_sha256"
+            )
+        if freeze_base:
+            raise ValueError(
+                "crop_semantic_film must set trainer.freeze_base=false so the "
+                "last two DINO blocks, RU gate and BoQ train jointly"
+            )
+        device_list = (
+            list(configured_devices)
+            if isinstance(configured_devices, (list, tuple))
+            else [configured_devices]
+        )
+        if len(device_list) != 1:
+            raise ValueError(
+                "crop_semantic_film is registered for one GPU; multi-device "
+                "teacher execution is not supported in this screen"
+            )
+        crop_max_steps = int(config['trainer'].get('max_steps', -1))
+        if crop_semantic_run_tag:
+            if crop_semantic_run_tag != 'preflight':
+                raise ValueError(
+                    "the registered crop-semantic screen only permits the "
+                    "run_tag 'preflight'"
+                )
+            if crop_semantic_mode != 'aligned' or crop_max_steps != 500:
+                raise ValueError(
+                    "the crop-semantic preflight must use aligned mode and "
+                    "exactly 500 optimizer steps"
+                )
+        elif crop_max_steps != -1:
+            raise ValueError(
+                "formal crop-semantic runs require trainer.max_steps=-1; use "
+                "the preregistered preflight config for the 500-step screen"
+            )
+    if (
+        not query_semantic_enabled
+        and not crop_semantic_enabled
+        and (initial_checkpoint or initial_checkpoint_sha256 or freeze_base)
+    ):
         raise ValueError(
             "trainer.init_checkpoint/freeze_base are reserved for the "
-            "query-semantic screen"
+            "query-semantic or crop-semantic screen"
         )
 
     semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
@@ -684,12 +961,19 @@ def train(config):
             semantic_alias_active
             or semantic_positive_active
             or query_semantic_supervision_active
+            or crop_semantic_enabled
             or (
                 semantic_region_target_active
                 and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
             )
         ),
         return_teacher_view=semantic_positive_active,
+        return_crop_semantic_view=crop_semantic_enabled,
+        teacher_image_size=(
+            config['datamodule']['train_image_size']
+            if crop_semantic_enabled
+            else (224, 224)
+        ),
         augmentation_mode=config['datamodule'].get(
             'augmentation_mode', 'randaugment'
         ),
@@ -860,11 +1144,28 @@ def train(config):
             random_seed=query_semantic_random_seed,
         )
 
+    crop_semantic_target = None
+    if crop_semantic_supervision_active:
+        from src.models.crop_semantic_film import CropCLSSemanticTarget
+
+        crop_semantic_target = CropCLSSemanticTarget(
+            mode=crop_semantic_mode,
+            teacher_model_name=crop_semantic_teacher_model,
+            teacher_pretrained=crop_semantic_teacher_pretrained,
+            teacher_hf_mirror=crop_semantic_teacher_hf_mirror,
+            teacher_chunk_size=crop_semantic_teacher_chunk_size,
+            expected_teacher_image_size=tuple(
+                int(value)
+                for value in config['datamodule']['train_image_size']
+            ),
+        )
+
     if (
         teacher_required
         or spatial_attn_enabled
         or semantic_region_gate_active
         or query_semantic_enabled
+        or crop_semantic_enabled
     ):
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
@@ -892,6 +1193,11 @@ def train(config):
             lambda_semantic_region=lambda_semantic_region,
             query_semantic_target=query_semantic_target,
             lambda_query_semantic=lambda_query_semantic,
+            crop_semantic_target=crop_semantic_target,
+            lambda_crop_semantic=lambda_crop_semantic,
+            crop_semantic_diagnostic_interval=(
+                crop_semantic_diagnostic_interval
+            ),
         )
     else:
         vpr_model = VPRFramework(
@@ -936,6 +1242,48 @@ def train(config):
             "Frozen RU base; query-semantic trainable tensors: "
             f"{len(trainable_names)} ({trainable_count:,} parameters)"
         )
+    if crop_semantic_enabled and initial_checkpoint:
+        from src.models.crop_semantic_film import (
+            warm_start_crop_semantic_film_model,
+        )
+
+        warm_start_report = warm_start_crop_semantic_film_model(
+            vpr_model,
+            initial_checkpoint,
+            expected_sha256=initial_checkpoint_sha256,
+        )
+        trainable_names = [
+            name
+            for name, parameter in vpr_model.named_parameters()
+            if parameter.requires_grad
+        ]
+        trainable_count = sum(
+            parameter.numel()
+            for parameter in vpr_model.parameters()
+            if parameter.requires_grad
+        )
+        print(
+            "Crop-semantic RU warm start: "
+            f"{warm_start_report['checkpoint']} "
+            f"sha256={warm_start_report['checkpoint_sha256'][:12]}...; "
+            f"({warm_start_report['loaded_keys']} tensors loaded; "
+            f"{len(warm_start_report['new_keys'])} FiLM tensors initialized)"
+        )
+        print(
+            "Jointly trainable Crop-FiLM/RU scope: "
+            f"{len(trainable_names)} tensors ({trainable_count:,} parameters)"
+        )
+        if crop_semantic_target is not None:
+            # Construct only after the checkpoint has passed strict provenance
+            # and SHA checks. The final seed reset below removes any RNG side
+            # effects, and this plain target remains outside the state dict.
+            crop_semantic_target.prepare_teacher('cpu')
+            print(
+                "Prepared frozen crop-CLS teacher: "
+                f"{crop_semantic_teacher_model}/"
+                f"{crop_semantic_teacher_pretrained}; "
+                f"chunk_size={crop_semantic_teacher_chunk_size}"
+            )
 
     if config["compile"]:
         vpr_model = torch.compile(vpr_model)
@@ -949,6 +1297,14 @@ def train(config):
     experiment_name = aggregator.__class__.__name__
     if query_semantic_enabled:
         experiment_name += f"_query_semantic_{query_semantic_mode}"
+    elif crop_semantic_enabled:
+        experiment_name += f"_crop_semantic_film_{crop_semantic_mode}"
+        if crop_semantic_run_tag:
+            experiment_name += f"_{crop_semantic_run_tag}"
+        elif int(config['trainer'].get('max_steps', -1)) > 0:
+            experiment_name += (
+                f"_preflight_{int(config['trainer']['max_steps'])}steps"
+            )
     elif semantic_region_gate_active:
         experiment_name += f"_semantic_region_{semantic_region_mode}"
     elif str(
@@ -989,6 +1345,18 @@ def train(config):
     # sampler/augmentation RNG stream for a given seed.
     seed_everything(config["seed"], workers=True)
 
+    crop_step_preflight = (
+        crop_semantic_enabled
+        and int(config['trainer'].get('max_steps', -1)) > 0
+    )
+    trainer_callbacks = [
+        data_summary_cb,
+        model_summary_cb,
+        progress_bar_cb,
+    ]
+    if not crop_step_preflight:
+        trainer_callbacks.insert(0, checkpoint_cb)
+
     trainer = Trainer(
         accelerator=accelerator,
         devices=configured_devices,
@@ -996,13 +1364,10 @@ def train(config):
         num_sanity_val_steps=0, # is -1 to run one pass on all validation sets before training starts
         precision=config['trainer'].get('precision', '16-mixed'),
         max_epochs=config['trainer']['max_epochs'],
+        max_steps=int(config['trainer'].get('max_steps', -1)),
         check_val_every_n_epoch=1,
-        callbacks=[
-            checkpoint_cb,
-            data_summary_cb,    # this will print the data summary
-            model_summary_cb,   # this will print the model summary
-            progress_bar_cb,    # this will print the progress bar
-            ],
+        callbacks=trainer_callbacks,
+        enable_checkpointing=not crop_step_preflight,
         reload_dataloaders_every_n_epochs=1,
         log_every_n_steps=10,
         fast_dev_run=config["dev"], # dev mode (only runs one train iteration and one valid iteration, no checkpointing and no performance tracking).

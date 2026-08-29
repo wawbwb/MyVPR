@@ -57,6 +57,7 @@ class VPRDataModule(L.LightningDataModule):
         return_augmented=False,
         return_metadata=False,
         return_teacher_view=False,
+        return_crop_semantic_view=False,
         teacher_image_size=(224, 224),
         augmentation_mode="randaugment",
         semantic_cache_dir=None,
@@ -97,8 +98,10 @@ class VPRDataModule(L.LightningDataModule):
             return_metadata
             or semantic_cache_dir is not None
             or query_semantic_cache_dir is not None
+            or return_crop_semantic_view
         )
         self.return_teacher_view = return_teacher_view
+        self.return_crop_semantic_view = bool(return_crop_semantic_view)
         self.teacher_image_size = teacher_image_size
         self.augmentation_mode = str(augmentation_mode).lower()
         if self.augmentation_mode not in {"randaugment", "photometric"}:
@@ -113,9 +116,16 @@ class VPRDataModule(L.LightningDataModule):
                 "offline semantic caches require augmentation_mode='photometric'; "
                 "RandAugment can geometrically misalign cached patch targets"
             )
-        if self.return_teacher_view and not self.return_metadata:
+        if self.return_teacher_view and self.return_crop_semantic_view:
             raise ValueError(
-                "return_teacher_view requires return_metadata"
+                "return_teacher_view and return_crop_semantic_view are "
+                "mutually exclusive"
+            )
+        if (
+            self.return_teacher_view or self.return_crop_semantic_view
+        ) and not self.return_metadata:
+            raise ValueError(
+                "teacher views require return_metadata"
             )
 
         # check that the training dataset exists
@@ -257,8 +267,11 @@ class VPRDataModule(L.LightningDataModule):
             aug_transform=self.aug_transform if self.return_augmented else None,
             return_metadata=self.return_metadata,
             return_teacher_view=self.return_teacher_view,
+            return_crop_semantic_view=self.return_crop_semantic_view,
             teacher_transform=(
-                self.teacher_transform if self.return_teacher_view else None
+                self.teacher_transform
+                if self.return_teacher_view or self.return_crop_semantic_view
+                else None
             ),
             semantic_cache_dir=self.semantic_cache_dir,
             query_semantic_cache_dir=self.query_semantic_cache_dir,

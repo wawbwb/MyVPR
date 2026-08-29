@@ -1,0 +1,42 @@
+Query-conditioned Semantic BoQ condition full-db evaluation archive
+Archived: 2026-08-28
+Source: training-machine console output supplied by the experiment operator
+
+Protocol
+--------
+Query set: MSLS night / season condition queries
+Database: full standard MSLS validation database (18,871 images)
+Image size: 280 x 280
+Device used: cuda:1
+
+Aligned checkpoint
+logs/dinov2_vitb14/BoQ_query_semantic_aligned/version_0/checkpoints/epoch(02)_step(4689)_R1[0.9122]_R5[0.9527].ckpt
+
+Matched architecture-only checkpoint
+logs/dinov2_vitb14/BoQ_query_semantic_architecture_only/version_0/checkpoints/epoch(00)_step(1563)_R1[0.9122]_R5[0.9514].ckpt
+
+Results
+-------
+Dataset           Queries  Variant             R@1      R@5      R@10
+msls-val-night         55  aligned           0.8909   0.9818   1.0000
+msls-val-night         55  architecture-only 0.8909   0.9818   1.0000
+msls-val-season       988  aligned           0.8866   0.9383   0.9403
+msls-val-season       988  architecture-only 0.8866   0.9383   0.9403
+
+Exact hit counts inferred from the reported recalls
+---------------------------------------------------
+night:  R@1 49/55, R@5 54/55, R@10 55/55
+season: R@1 876/988, R@5 927/988, R@10 929/988
+
+Paired metric difference (aligned - architecture-only)
+-------------------------------------------------------
+night:  R@1 0 query, R@5 0 query, R@10 0 query
+season: R@1 0 query, R@5 0 query, R@10 0 query
+
+Interpretation boundary
+-----------------------
+This is a custom condition-query plus full-database audit, not an official
+MSLS condition benchmark. Equal top-k hit counts do not imply element-wise
+identical descriptors. The comparator is the matched architecture-only
+checkpoint; the evaluation script's display label "Visual Baseline" referred
+to that supplied checkpoint, not to the frozen source RU checkpoint.
