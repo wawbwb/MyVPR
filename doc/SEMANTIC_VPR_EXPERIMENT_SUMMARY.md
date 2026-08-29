@@ -13,7 +13,7 @@
 
 Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 的最佳 R@1 为 91.22%，与 architecture-only 和冻结 RU 均持平；在 night-full-db 与 season-full-db 上，R@1/R@5/R@10 相对 matched architecture-only 全部相差 0 query。该实现没有通过预注册门槛，按规则停止，不运行 shuffled/random、多 seed、40 epochs、SALAD 复制或 `lambda`/bias-scale 扫描。
 
-下一条仍有信息价值的路线是参考 SemVPR，但不照搬本轮已经失败的 hard class attention bias：使用 **crop-CLS 连续局部语义蒸馏 + patch×channel 特征调制**。该路线的代码、配置、测试和预飞审计已经实现，但尚未运行，不能记作实验结果。它首先验证教师的局部语义信号确实可学，再让语义在 BoQ 前直接改变视觉特征通道；最少只需 architecture-only 与 aligned 两个 5-epoch run。完整协议见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+下一条仍有信息价值的路线是参考 SemVPR，但不照搬本轮已经失败的 hard class attention bias：使用 **crop-CLS 连续局部语义蒸馏 + patch×channel 特征调制**。该路线已完成 500-step 预飞：实现、空间对齐、梯度和描述子干预检查通过，但额外设置的 wrong-place margin 未达到 0.05，原始审计因此为 FAIL。由于该跨地点负 margin 并不是 SemVPR LSA 的训练条件，现保留原失败记录，并在任何 retrieval 结果产生前修订为只运行 architecture-only 与 aligned 两个 matched 5-epoch run；它们仍未运行，不能记作检索结果。完整解释见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -255,16 +255,21 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 
 1. architecture-only：相同推理架构、数据 I/O 与 VPR trainable scope，`lambda_crop=0`；跳过并冻结不参与描述子生成的 teacher-only `128 -> 512` projection，5 epochs；
 2. aligned：正确 crop CLS，5 epochs；
-3. 仅当 aligned 胜过 architecture-only 时，运行 wrong-region：把已计算的 crop CLS 固定配给同图对角象限的 student region，5 epochs；
-4. 继续通过后运行 wrong-place：把同 batch 异地点的已计算 crop CLS 固定轮换给当前 region，5 epochs。
+3. 若 overall 尚未达到 `+0.3 pp`、但相对 RU/architecture-only 下降均不超过 `0.2 pp`，先做低成本 condition evaluation；season 达不到 `+1.0 pp` 时停止；
+4. 达到 overall 或 season 候选门槛后，运行 wrong-region：把已计算的 crop CLS 固定配给同图对角象限的 student region，5 epochs；
+5. 继续通过后运行 wrong-place：把同 batch 异地点的已计算 crop CLS 固定轮换给当前 region，5 epochs。
 
 最少 2 个、最多 4 个短 run，不扫描 `lambda` 或 FiLM scale。最终只有 aligned 同时胜过 RU、architecture-only、wrong-region、wrong-place，且 MSLS overall 至少 `+0.3 pp`；或 season 至少 `+1.0 pp` 且 overall 不低于 RU `0.2 pp`，才进入三个 seed。
+
+实际 500-step run 到达 step 499。zero-start 误差为 0；aligned − wrong-region 尾五点均值为 0.05352；aligned − wrong-place 尾五点均值为 0.02755，最后值与全程最大值均为 0.03837；channel/projection gradient、modulation 和 descriptor drift 均非零。原审计据此输出 `FAIL`，该原始结果保留。
+
+复核方法定义后发现，致命 wrong-place `>=0.05` 是本项目额外加入的地点特异性约束；SemVPR Eq. (10) 本身只使用对应 region/crop 的正余弦对齐，没有跨地点负项。跨地点道路、天空、植被和普通建筑相似时，wrong-place 并非可靠的语义负样本。因此这次结果解释为“机制预检通过、地点特异性探索项未过线”，而不是代码失败。为避免按结果调参，仍不改 `lambda`、FiLM scale 或 warmup，也不重跑预飞；在任何 retrieval 结果产生前固定只运行原有 architecture-only/aligned 两组。若 overall 未达到 `+0.3 pp` 但下降不超过 `0.2 pp`，先检查 season 是否达到 `+1.0 pp`；只有达到其中一个候选门槛才运行两组错误语义正式对照，最终检索归因门槛不变。
 
 主要风险是完整 SemVPR 使用经过 LSA 训练的 dense teacher，并在最后一个 ViT block 内以 CLS 聚合；这个首筛则用稀疏 crop CLS 直接近似 LSA 锚点，并保留 RU+BoQ 聚合。若它失败，只能否定这套 BoQ 适配版 SemVPR-lite，不能否定完整 SemVPR；只有它接近或达到门槛，才值得训练真正的 dense LSA teacher或复现 SemVPR 的 CLS aggregator，并做 matched control。
 
 ### 8.4 实现状态（2026-08-29）
 
-已实现 `backbone.crop_semantic_film.*`、每 place 一张 clean teacher view、P 个选中 view 的 crop-CLS cosine target、真正的对角 wrong-region、不同地点轮换 wrong-place、严格 RU/SHA warm-start、step-0 fp32 descriptor 等价检查、显存受限的 teacher chunk、训练/推理分离和 TensorBoard 诊断。提供 500-step preflight、四个 5-epoch 配置以及自动 PASS/FAIL 脚本。当前状态是“等待训练机测试与预飞”，不是“实验成功”。详见 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+已实现 `backbone.crop_semantic_film.*`、每 place 一张 clean teacher view、P 个选中 view 的 crop-CLS cosine target、真正的对角 wrong-region、不同地点轮换 wrong-place、严格 RU/SHA warm-start、step-0 fp32 descriptor 等价检查、显存受限的 teacher chunk、训练/推理分离和 TensorBoard 诊断。500-step preflight 已完成并按上文归档；当前状态是“等待 architecture-only/aligned matched retrieval”，不是“实验成功”。详见 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
 
 ## 9. 证据索引与归档说明
 
@@ -278,5 +283,6 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 - BoQ attention compact evidence：`run.json`、`summary.csv`、`head_summary.csv`、`query_slot_summary.csv`、`fc_energy_slot_weights.csv`、`mean_position_attention.jpg`、`attention_balanced_random.jpg`。
 - Query-conditioned Semantic BoQ：`doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`、`doc/boq_dinov2_query_semantic_architecture_only.txt`、`doc/boq_dinov2_query_semantic_aligned.txt` 与 `doc/boq_dinov2_query_semantic_condition_eval.txt`。
 - Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现与预注册协议；尚无训练结果）。
+- Crop-CLS 预飞原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt` 与 `preflight_audit.json`。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

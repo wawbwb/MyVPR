@@ -1,0 +1,89 @@
+{
+  "schema": "openvpr_crop_cls_film_preflight_audit",
+  "version": 1,
+  "run_dir": "/home/wt/workspace/OpenVPRLab/logs/dinov2_vitb14/BoQ_crop_semantic_film_aligned_preflight/version_0",
+  "thresholds": {
+    "zero_start_tolerance": 1e-06,
+    "minimum_margin": 0.05,
+    "minimum_last_step": 490,
+    "tail_points": 5
+  },
+  "resolved_tags": {
+    "crop_film_zero_start_max_abs_error": "crop_film_zero_start_max_abs_error",
+    "crop_semantic_aligned_minus_wrong_region": "crop_semantic_aligned_minus_wrong_region",
+    "crop_semantic_aligned_minus_wrong_place": "crop_semantic_aligned_minus_wrong_place",
+    "crop_film_channel_scale_grad_rms": "crop_film_channel_scale_grad_rms",
+    "crop_semantic_projection_grad_rms": "crop_semantic_projection_grad_rms",
+    "crop_film_modulation_rms": "crop_film_modulation_rms",
+    "crop_film_descriptor_drift_rms": "crop_film_descriptor_drift_rms"
+  },
+  "metrics": {
+    "crop_film_zero_start_max_abs_error": {
+      "count": 50,
+      "last_step": 499,
+      "last": 0.0,
+      "tail_mean": 0.0,
+      "maximum": 0.0,
+      "minimum": 0.0
+    },
+    "crop_semantic_aligned_minus_wrong_region": {
+      "count": 50,
+      "last_step": 499,
+      "last": 0.04908102750778198,
+      "tail_mean": 0.05352188348770141,
+      "maximum": 0.06808233261108398,
+      "minimum": -0.024049751460552216
+    },
+    "crop_semantic_aligned_minus_wrong_place": {
+      "count": 50,
+      "last_step": 499,
+      "last": 0.038374483585357666,
+      "tail_mean": 0.02755235433578491,
+      "maximum": 0.038374483585357666,
+      "minimum": -0.0007503330707550049
+    },
+    "crop_film_channel_scale_grad_rms": {
+      "count": 50,
+      "last_step": 499,
+      "last": 0.6946291923522949,
+      "tail_mean": 0.5150832295417785,
+      "maximum": 2.479175567626953,
+      "minimum": 0.0
+    },
+    "crop_semantic_projection_grad_rms": {
+      "count": 50,
+      "last_step": 499,
+      "last": 1.2018359899520874,
+      "tail_mean": 1.6058656930923463,
+      "maximum": 3.212855577468872,
+      "minimum": 0.16491803526878357
+    },
+    "crop_film_modulation_rms": {
+      "count": 50,
+      "last_step": 499,
+      "last": 0.00934477150440216,
+      "tail_mean": 0.008740191161632539,
+      "maximum": 0.00934477150440216,
+      "minimum": 2.847338873834815e-05
+    },
+    "crop_film_descriptor_drift_rms": {
+      "count": 40,
+      "last_step": 499,
+      "last": 0.0003663231327664107,
+      "tail_mean": 0.0003663231327664107,
+      "maximum": 0.0003663231327664107,
+      "minimum": 5.757848339271732e-05
+    }
+  },
+  "checks": {
+    "preflight_reached_registered_step": true,
+    "zero_start_reproduces_ru": true,
+    "aligned_beats_wrong_region": true,
+    "aligned_beats_wrong_place": false,
+    "film_gradient_nonzero": true,
+    "semantic_gradient_nonzero": true,
+    "modulation_nonzero": true,
+    "descriptor_drift_nonzero": true
+  },
+  "verdict": "FAIL"
+}

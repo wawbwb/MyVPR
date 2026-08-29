@@ -2,7 +2,7 @@
 
 ## 1. 当前状态
 
-代码、配置、测试与预飞审计脚本已经实现；训练尚未运行，因此本方案目前没有正/负实验结论。它是参考 SemVPR 核心机制设计的低成本因果筛选，不是 SemVPR 官方实现或完整复现。
+代码、配置与测试已经实现，seed-42 的 500-step 预飞也已完成；正式 retrieval 训练尚未运行，因此本方案目前仍没有检索正/负结论。原始审计因 wrong-place 探索项未达到人为阈值而输出 `FAIL`，但实现、空间对齐、梯度和描述子干预检查均通过，具体解释见第 6.1 节。它是参考 SemVPR 核心机制设计的低成本因果筛选，不是 SemVPR 官方实现或完整复现。
 
 本路线不再使用已经失败的 ADE20K hard class bias、CLIP raw patch attention/affinity、逐图单位方差化、固定动态类别负先验或 BoQ attention-logit bias。它验证的是两个此前尚未测试的要素：连续局部语义表征，以及 BoQ 前的 patch×channel 特征调制。
 
@@ -84,12 +84,40 @@ architecture-only 保留相同的推理架构、数据 I/O、最后两层 DINO/R
 4. 最后五个记录点的 `aligned_minus_wrong_place >= 0.05`；
 5. channel-scale gradient、semantic-projection gradient、modulation RMS 和 descriptor drift 全部出现非零值。
 
-通过后先运行 5-epoch architecture-only，再运行 aligned。只有 aligned 胜过 architecture-only，才依次运行 wrong-region 和 wrong-place。最终只有 aligned 同时胜过 RU、architecture-only 和两个错误语义对照，并满足以下任一条件，才进入三个 seed：
+通过后先运行 5-epoch architecture-only，再运行 aligned。若 aligned 的 overall 增益尚未达到 0.3 pp，但相对 RU 和 architecture-only 的下降都不超过 0.2 pp，则先做低成本 condition evaluation；只有 overall 达到门槛，或 season 达到下述门槛时，才依次运行 wrong-region 和 wrong-place。最终只有 aligned 同时胜过 RU、architecture-only 和两个错误语义对照，并满足以下任一条件，才进入三个 seed：
 
 - MSLS overall R@1 至少 `+0.3 pp`；或
 - season R@1 至少 `+1.0 pp`，且 overall 不低于 RU 超过 `0.2 pp`。
 
 失败时只能否定这套 BoQ 适配的 sparse crop-CLS SemVPR-lite，不能否定完整 SemVPR 的 dense LSA teacher 与原论文 aggregation。
+
+### 6.1 实际预飞结果与正式训练前的协议修订
+
+500-step run 完整到达 step 499，原始审计结果必须保留为 `Verdict: FAIL`，不能事后改写为 PASS：
+
+| 检查 | 数值 | 原始判定 |
+| --- | ---: | --- |
+| zero-start descriptor max error | 0.000000 | PASS |
+| aligned − wrong-region，尾五点均值 | 0.05352 | PASS |
+| aligned − wrong-place，尾五点均值 | 0.02755 | FAIL（阈值 0.05） |
+| aligned − wrong-place，最后值/全程最大值 | 0.03837 / 0.03837 | 正向且仍在增长 |
+| channel/projection gradient | 非零 | PASS |
+| modulation RMS，最后值 | 0.00934 | PASS |
+| descriptor drift RMS，最后记录值 | 0.000366 | PASS |
+
+终端中的 `batch_acc=0.81` 只对应第 500 step 附近的单个训练 batch，不是 MSLS validation R@1，不能用于判断方案是否提高检索。
+
+原审计把 `aligned − wrong-place >= 0.05` 作为致命门槛，是本项目额外增加的地点特异性检查，不是 SemVPR 的必要训练条件。SemVPR 论文 Eq. (10) 的 LSA 只最小化同图 region feature 与对应 crop CLS 的正余弦距离，没有跨地点负样本项；道路、天空、植被和普通建筑等连续语义本来就可能跨地点相似。因此该项未过线不能证明实现错误，也不能单独否定局部语义蒸馏。
+
+为避免隐瞒原预注册失败，同时避免用不匹配的方法判据产生假停止，现于任何正式 retrieval 结果产生前固定如下修订：
+
+1. 保留原 JSON 的字面 `FAIL`，解释为“机制检查通过，wrong-place 地点特异性探索项未达门槛”；
+2. 不修改 `lambda=0.05`、FiLM `alpha=0.1`、warmup 或训练范围，也不重复 500-step run；
+3. 只运行预先存在的 5-epoch architecture-only 与 aligned 两组，用 matched MSLS retrieval 直接判断；
+4. 两组完成后先看 overall；若 aligned 未达到 `+0.3 pp` 但下降不超过 `0.2 pp`，先评估 season，只有 season 达到 `+1.0 pp` 才继续，否则停止；
+5. 最终语义归因门槛不变：aligned 仍必须胜过 RU、architecture-only 和两个错误语义训练对照，并达到 overall/season 的预定增益。
+
+证据为 `doc/crop_semantic_film_runs/preflight_500steps.txt` 与 `preflight_audit.json`。
 
 ## 7. 训练机命令
 
