@@ -18,6 +18,7 @@ class DinoV2(nn.Module):
         num_unfrozen_blocks=2,
         return_cls_token=False,
         crop_semantic_film=None,
+        residual_clip_fusion=None,
     ):
         """DinoV2 backbone with the ability to keep only the last num_unfrozen_blocks trainable.
 
@@ -90,6 +91,63 @@ class DinoV2(nn.Module):
                 alpha=float(crop_semantic_film.get("alpha", 0.1)),
             )
 
+        self.residual_clip_fusion = None
+        self._residual_clip_provider = None
+        residual_clip_fusion = residual_clip_fusion or {}
+        if not isinstance(residual_clip_fusion, Mapping):
+            raise TypeError("residual_clip_fusion must be a mapping or null")
+        if bool(residual_clip_fusion.get("enabled", False)):
+            if self.crop_semantic_film is not None:
+                raise ValueError(
+                    "crop_semantic_film and residual_clip_fusion are mutually "
+                    "exclusive"
+                )
+            from src.models.residual_clip_fusion import (
+                ResidualCLIPFeatureProvider,
+                ResidualCLIPFusion,
+            )
+
+            self.residual_clip_fusion = ResidualCLIPFusion(
+                in_channels=self.dino.embed_dim,
+                clip_dim=int(residual_clip_fusion.get("clip_dim", 512)),
+                clip_grid_size=residual_clip_fusion.get(
+                    "clip_grid_size", (14, 14)
+                ),
+                mode=str(residual_clip_fusion.get("mode", "aligned")),
+                views_per_place=int(
+                    residual_clip_fusion.get("views_per_place", 4)
+                ),
+            )
+            encoder_cfg = residual_clip_fusion.get("encoder", {}) or {}
+            if not isinstance(encoder_cfg, Mapping):
+                raise TypeError(
+                    "residual_clip_fusion.encoder must be a mapping or null"
+                )
+            # This provider is intentionally not an nn.Module.  Its frozen
+            # OpenCLIP weights are reconstructed from the pinned config and
+            # stay out of every Lightning checkpoint.
+            self._residual_clip_provider = ResidualCLIPFeatureProvider(
+                model_name=str(encoder_cfg.get("model_name", "ViT-B-16")),
+                pretrained=str(encoder_cfg.get("pretrained", "openai")),
+                hf_mirror=encoder_cfg.get(
+                    "hf_mirror", "https://hf-mirror.com"
+                ),
+                chunk_size=int(
+                    residual_clip_fusion.get("clip_chunk_size", 20)
+                ),
+                expected_clip_dim=int(
+                    residual_clip_fusion.get("clip_dim", 512)
+                ),
+                expected_patch_count=(
+                    int(residual_clip_fusion.get("clip_grid_size", (14, 14))[0])
+                    * int(
+                        residual_clip_fusion.get(
+                            "clip_grid_size", (14, 14)
+                        )[1]
+                    )
+                ),
+            )
+
     def _forward_impl(
         self,
         x,
@@ -98,6 +156,7 @@ class DinoV2(nn.Module):
         semantic_batch_indices=None,
     ):
         B, _, H, W = x.shape
+        input_images = x
         # No need to compute gradients for frozen layers
         with torch.no_grad():
             x = self.dino.prepare_tokens_with_masks(x)
@@ -128,6 +187,23 @@ class DinoV2(nn.Module):
         # reshape the output tensor to B, C, H, W
         _, _, C = x.shape # we know C == self.dino.embed_dim, but still...
         x = x.permute(0, 2, 1).contiguous().view(B, C, H//14, W//14)
+
+        if self.residual_clip_fusion is not None:
+            if self._residual_clip_provider is None:
+                raise RuntimeError(
+                    "residual CLIP fusion has no frozen feature provider"
+                )
+            clip_global, clip_patches = self._residual_clip_provider.encode(
+                input_images
+            )
+            x, _ = self.residual_clip_fusion(
+                x,
+                clip_patches,
+                clip_global,
+                # The VPR framework keeps frozen DINO in eval mode while
+                # explicitly leaving this small branch in train mode.
+                apply_training_control=self.residual_clip_fusion.training,
+            )
         
         backbone_output = (x, x_cls) if self.return_cls_token else x
         if return_crop_semantics:
@@ -163,3 +239,24 @@ class DinoV2(nn.Module):
         if self.crop_semantic_film is None:
             return {}
         return self.crop_semantic_film.diagnostics()
+
+    def residual_clip_diagnostics(self):
+        if self.residual_clip_fusion is None:
+            return {}
+        return self.residual_clip_fusion.diagnostics()
+
+    def prepare_residual_clip_provider(
+        self, device: torch.device | str = "cpu"
+    ):
+        if self._residual_clip_provider is None:
+            raise RuntimeError("residual CLIP provider is not enabled")
+        return self._residual_clip_provider.prepare(device)
+
+    def residual_clip_provider_audit(self):
+        if self._residual_clip_provider is None:
+            return {
+                "prepared": False,
+                "trainable_parameters": 0,
+                "training": False,
+            }
+        return self._residual_clip_provider.audit()

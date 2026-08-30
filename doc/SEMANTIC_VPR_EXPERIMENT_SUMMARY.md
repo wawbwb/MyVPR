@@ -1,6 +1,6 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-08-29
+更新日期：2026-08-30
 
 ## 1. 总结结论
 
@@ -13,7 +13,9 @@
 
 Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 的最佳 R@1 为 91.22%，与 architecture-only 和冻结 RU 均持平；在 night-full-db 与 season-full-db 上，R@1/R@5/R@10 相对 matched architecture-only 全部相差 0 query。该实现没有通过预注册门槛，按规则停止，不运行 shuffled/random、多 seed、40 epochs、SALAD 复制或 `lambda`/bias-scale 扫描。
 
-下一条仍有信息价值的路线是参考 SemVPR，但不照搬本轮已经失败的 hard class attention bias：使用 **crop-CLS 连续局部语义蒸馏 + patch×channel 特征调制**。该路线已完成 500-step 预飞：实现、空间对齐、梯度和描述子干预检查通过，但额外设置的 wrong-place margin 未达到 0.05，原始审计因此为 FAIL。由于该跨地点负 margin 并不是 SemVPR LSA 的训练条件，现保留原失败记录，并在任何 retrieval 结果产生前修订为只运行 architecture-only 与 aligned 两个 matched 5-epoch run；它们仍未运行，不能记作检索结果。完整解释见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+参考 SemVPR 设计的 **Crop-CLS 连续局部语义蒸馏 + patch×channel FiLM** 也已完成四组 seed-42、5-epoch 正式训练。aligned 最佳 R@1 为 90.95%，比 architecture-only 高 0.54 pp（4/740 query），但仍比冻结 RU 低 0.27 pp（2 query），并比 wrong-place 低 0.13 pp（1 query）。因此训练机制正常，且局部配对比 wrong-region 有一定作用，但正确地点语义并非取得结果所必需，语义因果归因判定为 **FAIL**。按修订后的预注册停止规则，本应在 aligned 低于 RU 0.2 pp 时停止；已经完成的 wrong-region/wrong-place 只能作为超出停止点的探索性诊断，不进入正式通过判据。完整结果见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+
+下一条候选路线改为 **DINO-anchor Residual CLIP Fusion → VLAQ（DC-VLAQ-lite）**：让冻结 CLIP 成为训练和推理中的第二路连续特征，以零初始化残差注入 DINO token，而不是再次把 CLIP 当监督目标、mask、gate 或 FiLM 条件。Phase A 的 residual-RU-BoQ、500-step preflight、aligned 3-epoch 配置和三个 matched controls 已实现，尚未取得训练结果；只有 aligned 严格胜过冻结 RU 和三个对照，才实现仍未编写的 VLAQ 聚合器。见第 9 节。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -146,7 +148,7 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - aligned 不胜 shuffled/random 时，不能把变化归因于语义；
 - semantic-region 的插值 round trip 与逐图单位方差化是实现层面的真实混杂，但修复它们只说明 target 更干净，不保证 retrieval 会转正；
 - BoQ query/head 的偏好高度异质，固定类别、所有 query 共用的负 bias 过于粗糙；但本次 query-specific ADE20K class bias 同样没有改善检索，因此“改成 query-specific”本身也不是充分条件；
-- 当前证据更具体地否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter 即可获得语义收益”，尚未检验 SemVPR 的连续局部特征蒸馏和 feature-level modulation。
+- 当前证据否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter”以及本项目的“稀疏 crop-CLS 蒸馏 + FiLM + RU/BoQ 联合微调”两种实现；尚未检验的是 SemVPR 的完整 dense LSA teacher、原论文 CLS aggregation，以及把 CLIP 保留为推理特征流的残差式多模态融合。
 
 现有结果不支持：
 
@@ -202,7 +204,7 @@ Query-conditioned Semantic BoQ: FAIL
 
 因此不延长到 40 epochs，不增加 seed，不做 SALAD 复制，也不扫描 semantic-loss 权重、confidence threshold 或 bias scale。现有文本日志没有 TensorBoard 语义分支统计，所以不能断言语义分支“完全没学到”；可以确定的是，它没有带来可测的检索收益。
 
-## 8. 参考 SemVPR 的下一方案：Crop-CLS Local Semantic FiLM-BoQ
+## 8. Crop-CLS Local Semantic FiLM-BoQ：正式筛选完成，FAIL
 
 ### 8.1 SemVPR 真正有效的组成
 
@@ -267,11 +269,89 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 
 主要风险是完整 SemVPR 使用经过 LSA 训练的 dense teacher，并在最后一个 ViT block 内以 CLS 聚合；这个首筛则用稀疏 crop CLS 直接近似 LSA 锚点，并保留 RU+BoQ 聚合。若它失败，只能否定这套 BoQ 适配版 SemVPR-lite，不能否定完整 SemVPR；只有它接近或达到门槛，才值得训练真正的 dense LSA teacher或复现 SemVPR 的 CLS aggregator，并做 matched control。
 
-### 8.4 实现状态（2026-08-29）
+### 8.4 正式训练结果（2026-08-30）
 
-已实现 `backbone.crop_semantic_film.*`、每 place 一张 clean teacher view、P 个选中 view 的 crop-CLS cosine target、真正的对角 wrong-region、不同地点轮换 wrong-place、严格 RU/SHA warm-start、step-0 fp32 descriptor 等价检查、显存受限的 teacher chunk、训练/推理分离和 TensorBoard 诊断。500-step preflight 已完成并按上文归档；当前状态是“等待 architecture-only/aligned matched retrieval”，不是“实验成功”。详见 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
+四组运行均从同一个 RU checkpoint 启动，使用 full GSV-Cities、280×280、P=40、K=4、seed 42 和 5 epochs。architecture-only 与 aligned 的本地原始日志确认：严格载入 233 个历史 tensor、只初始化 6 个 FiLM tensor、step-0 descriptor 最大误差为 0，并正常到达 `max_epochs=5`。下表统一采用**每组最高 R@1 checkpoint，并报告该 checkpoint 配对的 R@5**；wrong-region/wrong-place 数值来自训练机 checkpoint 清单，原始日志尚未下载归档。
 
-## 9. 证据索引与归档说明
+| 模型 | 最佳 checkpoint | MSLS R@1 | R@5 | 相对 RU R@1 | 相对 architecture-only R@1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 冻结 RU | epoch 26 | 91.22（675/740） | 95.14（704/740） | — | +0.81 pp（+6 query） |
+| Architecture-only | epoch 3 | 90.41（669/740） | 95.27（705/740） | -0.81 pp（-6） | — |
+| Aligned crop-CLS | epoch 4 | 90.95（673/740） | 95.54（707/740） | -0.27 pp（-2） | +0.54 pp（+4） |
+| Wrong-region | epoch 2 | 90.54（670/740） | 95.00（703/740） | -0.68 pp（-5） | +0.13 pp（+1） |
+| Wrong-place | epoch 4 | **91.08（674/740）** | **95.68（708/740）** | -0.14 pp（-1） | +0.67 pp（+5） |
+
+结果包含三个不同层面的结论：
+
+1. **工程与优化成功。** 零起点、梯度、modulation、descriptor drift 和完整训练均正常；不能把负结果归因于“分支没接上”或训练卡死。
+2. **aligned 相对 architecture-only 的 +0.54 pp 不能单独证明语义有效。** 它只说明加入 crop cosine 约束比没有该约束少退化 4 个 query。
+3. **语义因果归因失败。** aligned 胜 wrong-region 0.41 pp（3 query），说明局部空间配对可能有作用；但 aligned 比 wrong-place 低 0.13 pp（1 query），正确地点配对不是获得该变化的必要条件。wrong-place 甚至是四个训练变体中最强者，更符合辅助正则化/优化轨迹差异，而不是地点相关语义增益。
+
+按第 8.3 节在正式结果产生前固定的规则，aligned 相对 RU 下降 0.27 pp，已经超过允许的 0.2 pp，因此**正式停止点其实在 aligned 之后**。后续 wrong-region 与 wrong-place 是超出停止点完成的探索性诊断；它们加强了 FAIL 结论，但不能事后改变预注册流程。由此不再做 condition evaluation、更多 seed、40 epochs、SALAD 复制或 `lambda`/FiLM-scale 扫描。
+
+### 8.5 结论边界
+
+本实验否定的是这套具体组合：稀疏 2×2 crop-CLS 教师、每 step 每 place 一个 crop、cosine 蒸馏、最后两层 DINO 前的 FiLM，以及 RU/BoQ 联合微调。它没有复现 SemVPR 的 dense LSA teacher 和论文 CLS aggregation，因此不能外推为“SemVPR 无效”；但已有结果足以说明，不应再通过增加 crop 数、延长训练或微调 FiLM 强度来挽救当前实现。
+
+## 9. 新候选：DINO-anchor Residual CLIP Fusion → VLAQ
+
+### 9.1 为什么选择这条路线
+
+[DC-VLAQ](https://arxiv.org/html/2601.12729) 把 DINOv2 与 CLIP 都保留在训练和推理中，以 DINO token 为锚，只把 CLIP 相对 DINO 的互补部分作为残差修正，再用 query-residual aggregation 生成全局描述子。它目前只是 2026-01-19 的 arXiv v1 预印本，尚不能当作经过同行评审的确定证据，也没有发现可直接审计复用的官方实现；但它给出的消融与本项目现状高度相关：在其协议下，MSLS R@1 的 naive addition、cross-attention、FiLM、residual 分别为 93.0、93.2、93.0、94.2；DINO-only 与 DINO+CLIP 分别为 93.1 和 94.2；BoQ 与 VLAQ 分别为 93.4 和 94.2。论文配置与本项目的 batch、评测分辨率和聚合器不同，这些绝对数值不能直接横向比较，只能作为选择下一机制的依据。
+
+它与当前失败路线的本质差异是：
+
+| 维度 | Crop-CLS FiLM（已失败） | Residual CLIP + VLAQ（候选） |
+| --- | --- | --- |
+| CLIP 身份 | 训练期 teacher，推理移除 | 真实第二特征流，训练和推理均保留 |
+| 监督 | VPR loss + crop cosine | 只用地点检索损失决定是否采用 CLIP 信息 |
+| 融合 | 语义 bottleneck 乘性调制 DINO | 以原始 DINO 为基座的零起点加性残差 |
+| 空间信号 | 稀疏 2×2 crop | 同图 dense patch token |
+| 聚合 | 现有 BoQ 绝对 query response | 第二阶段才测试 query-relative residual |
+| 风险 | 教师目标与地点判别冲突 | 推理增加一套冻结 CLIP 的时间和显存 |
+
+这仍然明确属于“把语义加入 VPR”，而不是后处理：CLIP patch token 在生成每张图的全局检索描述子之前参与前向计算，最终表示无法脱离语义分支独立得到。
+
+### 9.2 Phase A：先筛 residual fusion，不立即重写聚合器
+
+为把融合收益与新聚合器收益分开，第一阶段保留 RU gate 与 BoQ：
+
+```text
+same photometric image
+    +--> DINOv2 20x20 raw token D ---------------------+
+    +--> frozen CLIP patch token --> P_C --> align 20x20+--> D + W_zero(C_norm - D_norm)
+                                                         --> RU gate --> BoQ --> VPR loss
+```
+
+仓库适配式固定为 `Z = D_raw + W_zero(P_C(C_norm) - D_norm)`，其中 DINO 的归一化支路是固定 identity，不引入可单独学习的 DINO adapter。这不是逐字复刻论文公式，而是为了同时满足两点：保留论文的 DINO-anchor residual 思想，并让 `W_zero=0` 时严格逐元素复现现有 RU 描述子。CLIP 与 DINO 看同一张 photometric-only 图，CLIP token 投影到 768D，并用确定性插值对齐到 20×20；不再使用 clean-image cache、类别标签、confidence threshold、teacher loss、mask、attention bias 或 FiLM。
+
+最低成本执行顺序：
+
+1. **500-step preflight**：冻结 RU/DINO/BoQ，只训练 CLIP 投影与零初始化 residual adapter；要求 step-0 descriptor 最大误差 `<=1e-6`，adapter/CLIP projection 梯度、residual RMS 与 descriptor drift 非零且有限。
+2. **aligned residual，3 epochs**：仍只训练 residual branch，先判断 CLIP 是否含有能被现成 RU+BoQ 利用的互补信息。
+3. 只有 aligned 达到候选门槛，才跑三组完全匹配对照：`global-only`（每个位置复制同一 CLIP 全局向量）、`wrong-region`（固定非恒等 patch permutation）、`wrong-place`（batch 内异地点稳定轮换）。所有组保持同一 CLIP forward、参数量、优化步数和 adapter。
+
+Phase A 的候选门槛固定为：aligned 相对冻结 RU 至少 `+0.5 pp`（MSLS 740 queries 上至少 4 个 query），并相对三个对照分别至少 `+0.5 pp`；或者 season-full-db 至少 `+1.0 pp`，同时 overall 不低于 RU 超过 0.2 pp。任何一项没有候选收益即停止，不扫描残差 scale、学习率或层数。
+
+### 9.3 Phase B：只有 Phase A 通过才实现 VLAQ
+
+VLAQ 先用 learned query 对 token 分配权重，再聚合 token 相对 query 的残差：
+
+```text
+alpha_jk = softmax_j(q_k^T z_j / sqrt(d))
+v_k      = sum_j alpha_jk * (z_j - q_k)
+```
+
+必须做 `DINO-only VLAQ` 与 `DINO+CLIP residual VLAQ` 的 matched 5-epoch 对照，并保持 descriptor 维度、query 数、训练范围和数据完全一致。这样才能把“VLAQ 本身优于 BoQ”和“CLIP 语义带来额外收益”分开。只有 residual VLAQ 胜过 DINO-only VLAQ 及 Phase A 的错误语义对照，才进入 3 seeds 和完整 40 epochs。
+
+### 9.4 已发表论文提供的边界与备选
+
+- [SemVPR（ICCV 2025）](https://openaccess.thecvf.com/content/ICCV2025/html/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.html)证明了连续局部 CLIP 对齐与 feature-level aggregation 是可行方向，但本项目的稀疏 BoQ 适配已经失败，下一步不应继续近似同一 FiLM 路线。
+- [StructVPR（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Shen_StructVPR_Distill_Structural_Knowledge_With_Weighting_Samples_for_Visual_Place_CVPR_2023_paper.html)强调语义结构知识和按样本可靠性加权；[DistilVPR（AAAI 2024）](https://ojs.aaai.org/index.php/AAAI/article/view/28905)则蒸馏样本间关系而非强迫不同模态逐点重合。若部署约束不允许推理时保留 CLIP，可把“可靠样本上的 semantic-layout relational distillation”作为无额外推理成本的备选，但它的优先级低于直接 residual screen，因为本项目已有多种 teacher-only 蒸馏/筛选负结果。
+
+当前状态：**Phase A 代码、配置、preflight 审计与 checkpoint/条件评测恢复测试已经实现，尚无训练机结果；Phase B/VLAQ 未实现。** CLIP 使用 `ViT-B-16/openai` 的 14×14 joint-space patch token，插值到 DINO 20×20 网格；冻结 CLIP provider 不进入 checkpoint，`P_C/W_zero` 严格进入并恢复。三个 control 的破坏只发生在训练期，验证/推理都使用本图 aligned CLIP，避免描述子依赖验证 batch。独立预注册与实现索引见 `doc/DC_VLAQ_LITE_EXPERIMENT.md`。
+
+## 10. 证据索引与归档说明
 
 保留的主要证据：
 
@@ -282,7 +362,8 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 - 动态先验：`doc/dynamic_category_mask_audit_full_db_condition_union/run.json` 与 `doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries/{run.json,summary.csv,paired_comparisons.csv}`；
 - BoQ attention compact evidence：`run.json`、`summary.csv`、`head_summary.csv`、`query_slot_summary.csv`、`fc_energy_slot_weights.csv`、`mean_position_attention.jpg`、`attention_balanced_random.jpg`。
 - Query-conditioned Semantic BoQ：`doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`、`doc/boq_dinov2_query_semantic_architecture_only.txt`、`doc/boq_dinov2_query_semantic_aligned.txt` 与 `doc/boq_dinov2_query_semantic_condition_eval.txt`。
-- Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现与预注册协议；尚无训练结果）。
-- Crop-CLS 预飞原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt` 与 `preflight_audit.json`。
+- Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现、预注册、正式结果与 FAIL 结论）。
+- Crop-CLS 原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt`、`preflight_audit.json`、`architecture_only_5ep.txt` 与 `aligned_5ep.txt`；wrong-region/wrong-place 当前仅有用户提供的训练机 checkpoint 清单，待原始日志下载后补归档。
+- 下一候选预注册与 Phase-A 实现索引：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（代码已实现、无训练结果；VLAQ 未实现）。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

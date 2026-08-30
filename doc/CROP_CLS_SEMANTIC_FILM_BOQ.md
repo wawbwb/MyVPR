@@ -2,9 +2,9 @@
 
 ## 1. 当前状态
 
-代码、配置与测试已经实现，seed-42 的 500-step 预飞也已完成；正式 retrieval 训练尚未运行，因此本方案目前仍没有检索正/负结论。原始审计因 wrong-place 探索项未达到人为阈值而输出 `FAIL`，但实现、空间对齐、梯度和描述子干预检查均通过，具体解释见第 6.1 节。它是参考 SemVPR 核心机制设计的低成本因果筛选，不是 SemVPR 官方实现或完整复现。
+代码、配置、测试、seed-42 的 500-step 预飞，以及四组 5-epoch retrieval 训练均已完成。工程检查通过，但 aligned 最佳 MSLS R@1 为 90.95%，低于冻结 RU 的 91.22%，也低于 wrong-place 的 91.08%；因此本路线的最终语义因果判定为 **FAIL**。完整数值与停止解释见第 6.2 节。
 
-本路线不再使用已经失败的 ADE20K hard class bias、CLIP raw patch attention/affinity、逐图单位方差化、固定动态类别负先验或 BoQ attention-logit bias。它验证的是两个此前尚未测试的要素：连续局部语义表征，以及 BoQ 前的 patch×channel 特征调制。
+本路线不再使用已经失败的 ADE20K hard class bias、CLIP raw patch attention/affinity、逐图单位方差化、固定动态类别负先验或 BoQ attention-logit bias。它实际检验了连续局部语义表征和 BoQ 前 patch×channel 特征调制，但只属于 SemVPR 的稀疏 BoQ 适配，不是 SemVPR 官方实现或完整复现。
 
 ## 2. 固定架构
 
@@ -119,6 +119,30 @@ architecture-only 保留相同的推理架构、数据 I/O、最后两层 DINO/R
 
 证据为 `doc/crop_semantic_film_runs/preflight_500steps.txt` 与 `preflight_audit.json`。
 
+### 6.2 正式 5-epoch 结果与最终判定
+
+四组均从同一 RU checkpoint 启动，使用 full GSV-Cities、280×280、P=40、K=4、seed 42。下表按每组最高 MSLS R@1 checkpoint 比较，R@5 是同一 checkpoint 的配对值，而不是另行挑选的最高 R@5。
+
+| 模型 | checkpoint | MSLS R@1 | R@5 | 相对 RU R@1 | 相对 architecture-only R@1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 冻结 RU | epoch 26 | 91.22（675/740） | 95.14（704/740） | — | +0.81 pp（+6 query） |
+| Architecture-only | epoch 3 | 90.41（669/740） | 95.27（705/740） | -0.81 pp（-6） | — |
+| Aligned crop-CLS | epoch 4 | 90.95（673/740） | 95.54（707/740） | -0.27 pp（-2） | +0.54 pp（+4） |
+| Wrong-region | epoch 2 | 90.54（670/740） | 95.00（703/740） | -0.68 pp（-5） | +0.13 pp（+1） |
+| Wrong-place | epoch 4 | **91.08（674/740）** | **95.68（708/740）** | -0.14 pp（-1） | +0.67 pp（+5） |
+
+architecture-only 与 aligned 原始日志均确认：严格载入 233 个 RU tensor、只初始化 6 个 FiLM tensor、zero-start descriptor error 为 0，并完整到达 `max_epochs=5`。所以这是有效的负结果，不是模型未载入、语义分支未接通或训练中断。
+
+判定分三层：
+
+1. aligned 比 architecture-only 高 0.54 pp（4 query），说明 crop loss 缓解了联合微调造成的部分退化；
+2. aligned 比 wrong-region 高 0.41 pp（3 query），局部区域对应可能有影响；
+3. aligned 比 wrong-place 低 0.13 pp（1 query），正确地点语义不是获得这种影响的必要条件。因此结果不能归因为地点相关语义，wrong-place 的优势更像辅助损失正则化或单 seed 优化波动。
+
+此外，aligned 相对 RU 低 0.27 pp，超过第 6.1 节事先固定的 0.2 pp 允许下降。严格按修订协议，实验应在 aligned 后停止；已经跑完的 wrong-region/wrong-place 只作为**超出停止点的探索性诊断**。它们加强了 FAIL 结论，但不构成事后放宽门槛的理由。故不再做困难条件评测、更多 seed、40 epochs、SALAD 复制或超参数扫描。
+
+wrong-region/wrong-place 的数值目前来自用户提供的训练机 checkpoint 清单；待对应原始日志下载后再补充逐 epoch 归档。当前结论只否定本实现，不否定 SemVPR 的 dense LSA teacher 与原论文 aggregation。
+
 ## 7. 训练机命令
 
 以下命令均从仓库根目录运行。不要设置 `CUDA_VISIBLE_DEVICES=1`，否则配置中的 `devices: [1]` 和 `cuda:1` 会被重新编号。
@@ -175,7 +199,7 @@ python scripts/audit_crop_semantic_preflight.py \
 
 审计脚本会自动选择父目录下最新的 event file；FAIL 时写出 JSON 并以状态 2 退出。预飞不保存 checkpoint，也不能当作 recall 结果。
 
-### 7.3 PASS 后的正式 5-epoch 顺序
+### 7.3 已完成的正式 5-epoch 复现命令
 
 ```bash
 python run.py \
@@ -189,7 +213,7 @@ python run.py \
   2>&1 | tee doc/crop_semantic_film_runs/aligned_5ep.txt
 ```
 
-只有 aligned 的 best MSLS R@1 胜过 architecture-only，才运行：
+下列两组当时因 aligned 胜过 architecture-only 而继续运行，但由于 aligned 已比 RU 低 0.27 pp，它们按更严格的修订协议属于探索性诊断：
 
 ```bash
 python run.py \
@@ -205,7 +229,7 @@ python run.py \
 
 ### 7.4 条件评测
 
-跨 `version_*` 选择 architecture-only 与 aligned 的最高 R@1 checkpoint 后运行：
+本路线已经在 overall 门槛处停止，**不再运行条件评测**。以下命令仅保留为历史复现模板，不是当前待执行任务；跨 `version_*` 选择 architecture-only 与 aligned 的最高 R@1 checkpoint 后可运行：
 
 ```bash
 ARCH_ROOT='logs/dinov2_vitb14/BoQ_crop_semantic_film_architecture_only'

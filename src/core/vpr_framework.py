@@ -334,6 +334,7 @@ class VPRFrameworkDistill(VPRFramework):
         crop_semantic_target=None,
         lambda_crop_semantic=0.0,
         crop_semantic_diagnostic_interval=100,
+        residual_clip_diagnostic_interval=100,
     ):
         super().__init__(
             backbone=backbone,
@@ -448,6 +449,21 @@ class VPRFrameworkDistill(VPRFramework):
         )
         self._crop_semantic_zero_start_verified = False
         self._crop_semantic_zero_start_error = None
+        self.residual_clip_enabled = (
+            getattr(self.backbone, "residual_clip_fusion", None) is not None
+        )
+        if (
+            isinstance(residual_clip_diagnostic_interval, bool)
+            or int(residual_clip_diagnostic_interval) < 1
+        ):
+            raise ValueError(
+                "residual_clip_diagnostic_interval must be a positive integer"
+            )
+        self.residual_clip_diagnostic_interval = int(
+            residual_clip_diagnostic_interval
+        )
+        self._residual_clip_zero_start_verified = False
+        self._residual_clip_zero_start_error = None
 
     def train(self, mode=True):
         super().train(mode)
@@ -457,6 +473,15 @@ class VPRFrameworkDistill(VPRFramework):
             # its semantic children remain trainable in either module mode.
             self.backbone.eval()
             self.semantic_region_gate.eval()
+        if mode and getattr(self, "_residual_clip_base_frozen", False):
+            # DINO, the pretrained RU gate and BoQ must remain deterministic;
+            # only the residual branch is in train mode.  The frozen CLIP
+            # provider is a non-registered object and enforces eval itself.
+            self.backbone.eval()
+            self.aggregator.eval()
+            if self.semantic_region_gate is not None:
+                self.semantic_region_gate.eval()
+            self.backbone.residual_clip_fusion.train(True)
         return self
 
     @staticmethod
@@ -626,12 +651,75 @@ class VPRFrameworkDistill(VPRFramework):
             "crop_film_descriptor_drift_max_abs": delta.abs().amax(),
         }
 
+    @torch.no_grad()
+    def _verify_residual_clip_zero_start(self, images):
+        """Verify P_C/W_zero reproduces the loaded RU descriptor exactly."""
+
+        if not self.residual_clip_enabled:
+            return None
+        if self._residual_clip_zero_start_verified:
+            return images.new_tensor(self._residual_clip_zero_start_error)
+        fusion = self.backbone.residual_clip_fusion
+        if torch.count_nonzero(fusion.residual_adapter.weight).item() or (
+            torch.count_nonzero(fusion.residual_adapter.bias).item()
+        ):
+            raise RuntimeError(
+                "residual-CLIP adapter is not zero-initialised before step 0"
+            )
+
+        was_training = self.training
+        try:
+            self.eval()
+            with torch.autocast(
+                device_type=images.device.type, enabled=False
+            ):
+                enabled_output = self._student_forward(images.float())[0]
+                with fusion.bypass():
+                    bypass_output = self._student_forward(images.float())[0]
+            enabled_descriptor = self._descriptor_tensor(enabled_output)
+            bypass_descriptor = self._descriptor_tensor(bypass_output)
+            max_abs_error = (
+                enabled_descriptor.float() - bypass_descriptor.float()
+            ).abs().amax()
+        finally:
+            self.train(was_training)
+
+        if not bool(torch.isfinite(max_abs_error)) or max_abs_error.item() > 1e-6:
+            raise RuntimeError(
+                "residual-CLIP zero-start descriptor check failed: max "
+                f"absolute error={max_abs_error.item():.3e}, required <=1e-6"
+            )
+        self._residual_clip_zero_start_verified = True
+        self._residual_clip_zero_start_error = float(max_abs_error.item())
+        self.print(
+            "Residual-CLIP zero-start descriptor max_abs_error="
+            f"{max_abs_error.item():.3e}"
+        )
+        return max_abs_error.detach()
+
+    @torch.no_grad()
+    def _measure_residual_clip_descriptor_drift(self, images):
+        fusion = self.backbone.residual_clip_fusion
+        was_training = self.training
+        try:
+            self.eval()
+            enabled_output = self._student_forward(images)[0]
+            with fusion.bypass():
+                bypass_output = self._student_forward(images)[0]
+        finally:
+            self.train(was_training)
+        enabled_descriptor = self._descriptor_tensor(enabled_output)
+        bypass_descriptor = self._descriptor_tensor(bypass_output)
+        delta = enabled_descriptor.float() - bypass_descriptor.float()
+        return {
+            "residual_clip_descriptor_drift_rms": delta.square().mean().sqrt(),
+            "residual_clip_descriptor_drift_max_abs": delta.abs().amax(),
+        }
+
     def on_after_backward(self):
         super_method = getattr(super(), "on_after_backward", None)
         if callable(super_method):
             super_method()
-        if not self.crop_semantic_enabled:
-            return
         def gradient_rms(parameters):
             squared_sum = None
             element_count = 0
@@ -649,6 +737,32 @@ class VPRFrameworkDistill(VPRFramework):
             if squared_sum is None or not element_count:
                 return None
             return (squared_sum / element_count).sqrt()
+
+        if self.residual_clip_enabled:
+            fusion = self.backbone.residual_clip_fusion
+            residual_gradient_groups = {
+                "residual_clip_grad_rms": fusion.parameters(),
+                "residual_clip_projection_grad_rms": (
+                    fusion.clip_projection.parameters()
+                ),
+                "residual_clip_adapter_grad_rms": (
+                    fusion.residual_adapter.parameters()
+                ),
+            }
+            for metric_name, parameters in residual_gradient_groups.items():
+                value = gradient_rms(parameters)
+                if value is not None:
+                    self.log(
+                        metric_name,
+                        value,
+                        prog_bar=False,
+                        logger=True,
+                        on_step=True,
+                        on_epoch=False,
+                    )
+
+        if not self.crop_semantic_enabled:
+            return
 
         film = self.backbone.crop_semantic_film
         gradient_groups = {
@@ -797,10 +911,34 @@ class VPRFrameworkDistill(VPRFramework):
                 + crop_view_indices
             )
 
+        if self.residual_clip_enabled:
+            fusion_mode = self.backbone.residual_clip_fusion.mode
+            if fusion_mode == "wrong_place":
+                if K != self.backbone.residual_clip_fusion.views_per_place:
+                    raise ValueError(
+                        "wrong_place residual control views_per_place does not "
+                        f"match the batch: configured "
+                        f"{self.backbone.residual_clip_fusion.views_per_place}, "
+                        f"found {K}"
+                    )
+                if not bool((place_labels == place_labels[:, :1]).all()):
+                    raise ValueError(
+                        "wrong_place residual control requires all K views "
+                        "in a row to share one place label"
+                    )
+                if torch.unique(place_labels[:, 0]).numel() != P:
+                    raise ValueError(
+                        "wrong_place residual control requires P distinct "
+                        "place labels"
+                    )
+
         # Student forward: backbone -> optional spatial gate -> aggregator.
         # ``forward`` uses this same helper, so validation/checkpoint inference
         # cannot silently bypass the phase-C module.
         crop_zero_start_error = self._verify_crop_semantic_zero_start(images)
+        residual_zero_start_error = self._verify_residual_clip_zero_start(
+            images
+        )
         if self.lambda_crop_semantic > 0:
             (
                 model_output,
@@ -842,6 +980,26 @@ class VPRFrameworkDistill(VPRFramework):
                 self.backbone.crop_semantic_diagnostics()
                 if self.crop_semantic_enabled
                 else {}
+            )
+
+        residual_clip_stats = (
+            self.backbone.residual_clip_diagnostics()
+            if self.residual_clip_enabled
+            else {}
+        )
+        if self.residual_clip_enabled:
+            provider_audit = self.backbone.residual_clip_provider_audit()
+            residual_clip_stats.update(
+                {
+                    "residual_clip_encoder_trainable_parameters": (
+                        images.new_tensor(
+                            float(provider_audit["trainable_parameters"])
+                        )
+                    ),
+                    "residual_clip_encoder_training": images.new_tensor(
+                        float(provider_audit["training"])
+                    ),
+                }
             )
 
         descriptors = self._descriptor_tensor(model_output)
@@ -978,6 +1136,18 @@ class VPRFrameworkDistill(VPRFramework):
                 images
             )
 
+        residual_descriptor_stats = {}
+        if (
+            self.residual_clip_enabled
+            and int(self.trainer.global_step) > 0
+            and int(self.trainer.global_step)
+            % self.residual_clip_diagnostic_interval
+            == 0
+        ):
+            residual_descriptor_stats = (
+                self._measure_residual_clip_descriptor_drift(images)
+            )
+
         # Distillation losses. The lambda=0 architecture control skips CLIP
         # entirely while retaining the exact same student inference path.
         distillation_active = self.distill_module is not None and any(
@@ -1068,6 +1238,8 @@ class VPRFrameworkDistill(VPRFramework):
             crop_semantic_stats,
             crop_film_stats,
             crop_descriptor_stats,
+            residual_clip_stats,
+            residual_descriptor_stats,
         ):
             for metric_name, metric_value in diagnostics.items():
                 self.log(
@@ -1080,6 +1252,13 @@ class VPRFrameworkDistill(VPRFramework):
             self.log(
                 "crop_film_zero_start_max_abs_error",
                 crop_zero_start_error,
+                prog_bar=False,
+                logger=True,
+            )
+        if residual_zero_start_error is not None:
+            self.log(
+                "residual_clip_zero_start_max_abs_error",
+                residual_zero_start_error,
                 prog_bar=False,
                 logger=True,
             )

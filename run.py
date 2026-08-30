@@ -202,6 +202,31 @@ def train(config):
         raise TypeError(
             "crop_semantic_film.diagnostic_interval must be an integer"
         ) from exc
+    residual_clip_cfg = distill_cfg.get('residual_clip', {}) or {}
+    residual_clip_enabled = bool(
+        residual_clip_cfg.get('enabled', False)
+    )
+    residual_clip_mode = str(
+        residual_clip_cfg.get('mode', 'aligned')
+    ).lower()
+    residual_clip_run_tag = str(
+        residual_clip_cfg.get('run_tag') or ''
+    ).strip()
+    raw_residual_diagnostic_interval = residual_clip_cfg.get(
+        'diagnostic_interval', 100
+    )
+    if isinstance(raw_residual_diagnostic_interval, bool):
+        raise TypeError(
+            "residual_clip.diagnostic_interval must be an integer"
+        )
+    try:
+        residual_clip_diagnostic_interval = operator.index(
+            raw_residual_diagnostic_interval
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "residual_clip.diagnostic_interval must be an integer"
+        ) from exc
     initial_checkpoint = config['trainer'].get('init_checkpoint')
     initial_checkpoint_sha256 = config['trainer'].get(
         'init_checkpoint_sha256'
@@ -407,16 +432,25 @@ def train(config):
         QUERY_SEMANTIC_MODES,
         verify_query_semantic_cache_hashes,
     )
+    from src.models.residual_clip_fusion import RESIDUAL_CLIP_MODES
 
     if query_semantic_mode not in QUERY_SEMANTIC_MODES:
         raise ValueError(
             "distillation.query_semantic.mode must be architecture_only, "
             "aligned, shuffled, or random"
         )
-    if query_semantic_enabled and crop_semantic_enabled:
+    enabled_semantic_screens = sum(
+        int(value)
+        for value in (
+            query_semantic_enabled,
+            crop_semantic_enabled,
+            residual_clip_enabled,
+        )
+    )
+    if enabled_semantic_screens > 1:
         raise ValueError(
-            "query_semantic and crop_semantic_film are mutually exclusive "
-            "experiments"
+            "query_semantic, crop_semantic_film, and residual_clip are "
+            "mutually exclusive experiments"
         )
     configured_backbone_crop_enabled = bool(
         (
@@ -428,6 +462,17 @@ def train(config):
         raise ValueError(
             "backbone.params.crop_semantic_film.enabled must exactly match "
             "distillation.crop_semantic_film.enabled"
+        )
+    backbone_residual_cfg = (
+        config['backbone']['params'].get('residual_clip_fusion', {}) or {}
+    )
+    configured_backbone_residual_enabled = bool(
+        backbone_residual_cfg.get('enabled', False)
+    )
+    if configured_backbone_residual_enabled != residual_clip_enabled:
+        raise ValueError(
+            "backbone.params.residual_clip_fusion.enabled must exactly match "
+            "distillation.residual_clip.enabled"
         )
     query_semantic_supervision_active = (
         query_semantic_enabled and lambda_query_semantic > 0
@@ -826,14 +871,197 @@ def train(config):
                 "formal crop-semantic runs require trainer.max_steps=-1; use "
                 "the preregistered preflight config for the 500-step screen"
             )
+
+    if residual_clip_mode not in RESIDUAL_CLIP_MODES:
+        raise ValueError(
+            "distillation.residual_clip.mode must be aligned, global_only, "
+            "wrong_region, or wrong_place"
+        )
+    if residual_clip_enabled:
+        if not distill_enabled:
+            raise ValueError("residual_clip requires distillation.enabled=true")
+        if config.get('compile', False):
+            raise ValueError(
+                "residual_clip zero-start verification does not support "
+                "--compile"
+            )
+        if config['backbone']['class'] != 'DinoV2':
+            raise ValueError("residual_clip currently requires DinoV2")
+        if config['aggregator']['class'] != 'BoQ':
+            raise ValueError("residual_clip currently requires BoQ")
+        if residual_clip_diagnostic_interval < 1:
+            raise ValueError(
+                "residual_clip.diagnostic_interval must be at least 1"
+            )
+        try:
+            train_size = tuple(
+                int(value)
+                for value in config['datamodule']['train_image_size']
+            )
+            val_size = tuple(
+                int(value)
+                for value in config['datamodule']['val_image_size']
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "residual_clip requires train/val image sizes [280,280]"
+            ) from exc
+        if train_size != (280, 280) or val_size != (280, 280):
+            raise ValueError(
+                "the registered residual-CLIP screen requires 280x280 "
+                "training and validation"
+            )
+        if str(
+            config['datamodule'].get('augmentation_mode', 'randaugment')
+        ).lower() != 'photometric':
+            raise ValueError(
+                "residual_clip requires augmentation_mode=photometric so "
+                "DINO and CLIP see the same spatial image"
+            )
+        if int(config['datamodule']['batch_size']) != 40 or int(
+            config['datamodule']['img_per_place']
+        ) != 4:
+            raise ValueError(
+                "the registered residual-CLIP screen requires P=40 and K=4"
+            )
+        if config['datamodule']['train_set_name'] != 'gsv-cities' or (
+            config['datamodule'].get('cities', 'all') != 'all'
+        ):
+            raise ValueError(
+                "the registered residual-CLIP screen requires full "
+                "GSV-Cities"
+            )
+        if list(config['datamodule']['val_set_names']) != ['msls-val']:
+            raise ValueError(
+                "the Phase-A short screen validates only on msls-val"
+            )
+        if int(config['seed']) != 42:
+            raise ValueError(
+                "the registered residual-CLIP screen requires seed=42"
+            )
+        if config['backbone']['params'].get('num_unfrozen_blocks') != 2:
+            raise ValueError(
+                "residual_clip must reconstruct the RU DINO with "
+                "num_unfrozen_blocks=2 before freezing it"
+            )
+        expected_backbone_residual = {
+            'enabled': True,
+            'mode': residual_clip_mode,
+            'clip_dim': 512,
+            'clip_grid_size': [14, 14],
+            'views_per_place': 4,
+            'clip_chunk_size': 20,
+        }
+        for field, expected_value in expected_backbone_residual.items():
+            if backbone_residual_cfg.get(field) != expected_value:
+                raise ValueError(
+                    "backbone.params.residual_clip_fusion does not match the "
+                    f"registered architecture: {field} must be "
+                    f"{expected_value!r}"
+                )
+        encoder_cfg = backbone_residual_cfg.get('encoder', {}) or {}
+        if not isinstance(encoder_cfg, dict) or encoder_cfg != {
+            'model_name': 'ViT-B-16',
+            'pretrained': 'openai',
+            'hf_mirror': 'https://hf-mirror.com',
+        }:
+            raise ValueError(
+                "the registered residual-CLIP encoder must be exactly "
+                "OpenCLIP ViT-B-16/openai with the pinned mirror field"
+            )
+        if not semantic_region_gate_active or semantic_region_mode != (
+            'repeatability_uniqueness_only'
+        ):
+            raise ValueError(
+                "residual_clip requires the pretrained RU semantic gate"
+            )
+        if semantic_region_target_active:
+            raise ValueError(
+                "residual_clip must set semantic_region.lambda_target=0"
+            )
+        if spatial_attn_enabled or any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+                lambda_query_semantic,
+                lambda_crop_semantic,
+            )
+        ):
+            raise ValueError(
+                "residual_clip must disable every legacy/query/crop semantic "
+                "loss path"
+            )
+        if not initial_checkpoint:
+            raise ValueError(
+                "residual_clip requires --init-checkpoint (or trainer."
+                "init_checkpoint) pointing to the trained RU checkpoint"
+            )
+        if not initial_checkpoint_sha256:
+            raise ValueError(
+                "residual_clip requires trainer.init_checkpoint_sha256"
+            )
+        if not freeze_base:
+            raise ValueError(
+                "the registered residual-CLIP screen requires "
+                "trainer.freeze_base=true"
+            )
+        if int(config['trainer']['max_epochs']) != 3:
+            raise ValueError(
+                "the registered Phase-A residual screen requires 3 epochs"
+            )
+        if int(config['trainer']['warmup']) != 500:
+            raise ValueError(
+                "the registered residual screen requires 500 optimizer "
+                "warmup steps"
+            )
+        if float(config['trainer']['lr']) != 0.0002 or float(
+            config['trainer']['wd']
+        ) != 0.001:
+            raise ValueError(
+                "the registered residual screen fixes lr=2e-4 and wd=1e-3"
+            )
+        if list(config['trainer']['milestones']) != [2]:
+            raise ValueError(
+                "the registered 3-epoch screen requires milestones=[2]"
+            )
+        device_list = (
+            list(configured_devices)
+            if isinstance(configured_devices, (list, tuple))
+            else [configured_devices]
+        )
+        if len(device_list) != 1:
+            raise ValueError(
+                "residual_clip is registered for one GPU only"
+            )
+        residual_max_steps = int(config['trainer'].get('max_steps', -1))
+        if residual_clip_run_tag:
+            if residual_clip_run_tag != 'preflight':
+                raise ValueError(
+                    "the registered residual screen only permits run_tag "
+                    "'preflight'"
+                )
+            if residual_clip_mode != 'aligned' or residual_max_steps != 500:
+                raise ValueError(
+                    "the residual preflight must use aligned mode and exactly "
+                    "500 optimizer steps"
+                )
+        elif residual_max_steps != -1:
+            raise ValueError(
+                "formal residual-CLIP runs require trainer.max_steps=-1"
+            )
     if (
         not query_semantic_enabled
         and not crop_semantic_enabled
+        and not residual_clip_enabled
         and (initial_checkpoint or initial_checkpoint_sha256 or freeze_base)
     ):
         raise ValueError(
             "trainer.init_checkpoint/freeze_base are reserved for the "
-            "query-semantic or crop-semantic screen"
+            "query-semantic, crop-semantic, or residual-CLIP screen"
         )
 
     semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
@@ -1166,6 +1394,7 @@ def train(config):
         or semantic_region_gate_active
         or query_semantic_enabled
         or crop_semantic_enabled
+        or residual_clip_enabled
     ):
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
@@ -1197,6 +1426,9 @@ def train(config):
             lambda_crop_semantic=lambda_crop_semantic,
             crop_semantic_diagnostic_interval=(
                 crop_semantic_diagnostic_interval
+            ),
+            residual_clip_diagnostic_interval=(
+                residual_clip_diagnostic_interval
             ),
         )
     else:
@@ -1284,6 +1516,52 @@ def train(config):
                 f"{crop_semantic_teacher_pretrained}; "
                 f"chunk_size={crop_semantic_teacher_chunk_size}"
             )
+    if residual_clip_enabled and initial_checkpoint:
+        from src.models.residual_clip_fusion import (
+            freeze_for_residual_clip_screen,
+            warm_start_residual_clip_model,
+        )
+
+        warm_start_report = warm_start_residual_clip_model(
+            vpr_model,
+            initial_checkpoint,
+            expected_sha256=initial_checkpoint_sha256,
+        )
+        trainable_names = freeze_for_residual_clip_screen(vpr_model)
+        trainable_count = sum(
+            parameter.numel()
+            for parameter in vpr_model.parameters()
+            if parameter.requires_grad
+        )
+        print(
+            "Residual-CLIP RU warm start: "
+            f"{warm_start_report['checkpoint']} "
+            f"sha256={warm_start_report['checkpoint_sha256'][:12]}...; "
+            f"({warm_start_report['loaded_keys']} tensors loaded; "
+            f"{len(warm_start_report['new_keys'])} residual tensors initialized)"
+        )
+        print(
+            "Frozen DINO/RU/BoQ; residual-CLIP trainable tensors: "
+            f"{len(trainable_names)} ({trainable_count:,} parameters)"
+        )
+        # Construct the frozen inference feature stream only after strict RU
+        # provenance/SHA validation.  It remains outside model.state_dict().
+        backbone.prepare_residual_clip_provider('cpu')
+        provider_audit = backbone.residual_clip_provider_audit()
+        if (
+            provider_audit['trainable_parameters'] != 0
+            or provider_audit['training']
+        ):
+            raise RuntimeError(
+                "residual CLIP encoder must be frozen and in eval mode"
+            )
+        print(
+            "Prepared frozen residual CLIP encoder: "
+            f"{provider_audit['model_name']}/"
+            f"{provider_audit['pretrained']}; "
+            f"chunk_size={provider_audit['chunk_size']}; excluded from "
+            "student checkpoints"
+        )
 
     if config["compile"]:
         vpr_model = torch.compile(vpr_model)
@@ -1305,6 +1583,10 @@ def train(config):
             experiment_name += (
                 f"_preflight_{int(config['trainer']['max_steps'])}steps"
             )
+    elif residual_clip_enabled:
+        experiment_name += f"_residual_clip_{residual_clip_mode}"
+        if residual_clip_run_tag:
+            experiment_name += f"_{residual_clip_run_tag}"
     elif semantic_region_gate_active:
         experiment_name += f"_semantic_region_{semantic_region_mode}"
     elif str(
@@ -1345,16 +1627,23 @@ def train(config):
     # sampler/augmentation RNG stream for a given seed.
     seed_everything(config["seed"], workers=True)
 
-    crop_step_preflight = (
-        crop_semantic_enabled
-        and int(config['trainer'].get('max_steps', -1)) > 0
+    step_preflight = (
+        (
+            crop_semantic_enabled
+            and int(config['trainer'].get('max_steps', -1)) > 0
+        )
+        or (
+            residual_clip_enabled
+            and residual_clip_run_tag == 'preflight'
+            and int(config['trainer'].get('max_steps', -1)) > 0
+        )
     )
     trainer_callbacks = [
         data_summary_cb,
         model_summary_cb,
         progress_bar_cb,
     ]
-    if not crop_step_preflight:
+    if not step_preflight:
         trainer_callbacks.insert(0, checkpoint_cb)
 
     trainer = Trainer(
@@ -1367,7 +1656,7 @@ def train(config):
         max_steps=int(config['trainer'].get('max_steps', -1)),
         check_val_every_n_epoch=1,
         callbacks=trainer_callbacks,
-        enable_checkpointing=not crop_step_preflight,
+        enable_checkpointing=not step_preflight,
         reload_dataloaders_every_n_epochs=1,
         log_every_n_steps=10,
         fast_dev_run=config["dev"], # dev mode (only runs one train iteration and one valid iteration, no checkpointing and no performance tracking).

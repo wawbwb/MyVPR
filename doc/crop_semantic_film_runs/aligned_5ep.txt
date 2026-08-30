@@ -1,0 +1,134 @@
+Seed set to 42
+/home/wt/.conda/envs/VPR/lib/python3.11/contextlib.py:105: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+Using cache found in /home/wt/.cache/torch/hub/facebookresearch_dinov2_main
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/swiglu_ffn.py:43: UserWarning: xFormers is available (SwiGLU)
+  warnings.warn("xFormers is available (SwiGLU)")
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/attention.py:27: UserWarning: xFormers is available (Attention)
+  warnings.warn("xFormers is available (Attention)")
+/home/wt/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/block.py:33: UserWarning: xFormers is available (Block)
+  warnings.warn("xFormers is available (Block)")
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+Seed set to 42
+Using 16bit Automatic Mixed Precision (AMP)
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/plugins/precision/amp.py:52: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+Missing logger folder: ./logs/dinov2_vitb14/BoQ_crop_semantic_film_aligned
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+Crop-semantic RU warm start: /home/wt/workspace/OpenVPRLab/logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt sha256=38feab0601f5...; (233 tensors loaded; 6 FiLM tensors initialized)
+Jointly trainable Crop-FiLM/RU scope: 96 tensors (23,072,289 parameters)
+Prepared frozen crop-CLS teacher: ViT-B-16/openai; chunk_size=20
+
+
+╭───── Training dataset stats ─────╮
+│                                  │
+│  number of cities       23       │
+│  number of places       62514    │
+│  number of images       524701   │
+│                                  │
+╰──────────────────────────────────╯
+╭──── Validation datasets ────╮
+│                             │
+│  msls-val                   │
+│  ├── queries     740        │
+│  └── references  18871      │
+│  pitts30k-val               │
+│  ├── queries     7608       │
+│  └── references  10000      │
+│                             │
+╰─────────────────────────────╯
+╭─────── Data configuration ────────╮
+│                                   │
+│  iterations per epoch    1562     │
+│  train batch size (PxK)  40x4     │
+│  training image size     280x280  │
+│  validation image size   280x280  │
+│                                   │
+╰───────────────────────────────────╯
+
+
+┏━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃   ┃ Name                 ┃ Type               ┃ Params ┃ Mode  ┃
+┡━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ 0 │ backbone             │ DinoV2             │ 86.8 M │ train │
+│ 1 │ aggregator           │ BoQ                │  8.6 M │ train │
+│ 2 │ loss_function        │ VPRLossFunction    │      0 │ train │
+│ 3 │ semantic_region_gate │ SemanticRegionGate │    769 │ train │
+└───┴──────────────────────┴────────────────────┴────────┴───────┘
+Trainable params: 23.1 M                                                                                                                           
+Non-trainable params: 72.4 M                                                                                                                       
+Total params: 95.5 M                                                                                                                               
+Total estimated model params size (MB): 381                                                                                                        
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+Crop-semantic zero-start descriptor max_abs_error=0.000e+00
+
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       89.86   94.19   95.68   96.49   │
+│   pitts30k-val   93.59   98.41   99.08   99.32   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       88.92   94.05   95.27   95.95   │
+│   pitts30k-val   93.48   98.50   99.19   99.45   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.00   95.14   96.76   97.16   │
+│   pitts30k-val   93.85   98.71   99.36   99.57   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.27   95.14   96.35   97.03   │
+│   pitts30k-val   93.80   98.62   99.32   99.51   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+
+/home/wt/.conda/envs/VPR/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+
+╭────────────── Recall@k Performance ──────────────╮
+│                                                  │
+│   Dataset         R@1     R@5    R@10    R@15    │
+│  ──────────────────────────────────────────────  │
+│   msls-val       90.95   95.54   96.22   97.03   │
+│   pitts30k-val   93.86   98.70   99.47   99.61   │
+│                                                  │
+╰──────────────────────────────────────────────────╯
+
+
+`Trainer.fit` stopped: `max_epochs=5` reached.
+Epoch 4/4  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1563/1563 0:16:49 • 0:00:00 1.53it/s v_num: 0.00    
+                                                                                         loss: 0.20     
+                                                                                         batch_acc: 0.82

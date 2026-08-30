@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------
-# CLIP Teacher Encoder for knowledge distillation in VPR.
+# Frozen CLIP visual encoder shared by distillation and residual fusion in VPR.
 # Wraps a frozen CLIP ViT model (via open_clip) and exposes both the
 # normalised global descriptor and the raw patch tokens.
 # ----------------------------------------------------------------------------
@@ -34,12 +34,12 @@ class CLIPTeacherEncoder(nn.Module):
             installed_version = version("open_clip_torch")
         except PackageNotFoundError as exc:
             raise ImportError(
-                "Phase C requires open_clip_torch==2.26.1. "
+                "CLIP-backed VPR paths require open_clip_torch==2.26.1. "
                 "Install the pinned project environment first."
             ) from exc
         if installed_version != "2.26.1":
             raise RuntimeError(
-                "Phase C attention extraction is validated against "
+                "The frozen CLIP encoder is validated against "
                 "open_clip_torch==2.26.1, but found "
                 f"{installed_version}. Install the pinned version to keep "
                 "the teacher target reproducible."
@@ -239,9 +239,10 @@ class CLIPTeacherEncoder(nn.Module):
     def project_patch_tokens(self, t_tokens: torch.Tensor) -> torch.Tensor:
         """Project raw ViT patch tokens into CLIP's joint semantic space.
 
-        The returned patch embeddings are L2-normalised and detached.  They
-        are used only to construct training targets; CLIP is never part of the
-        student inference path.
+        The returned patch embeddings are L2-normalised and detached.  Legacy
+        distillation paths use them only for training targets; the Phase-A
+        residual-CLIP backbone also consumes them as a frozen inference
+        feature stream.
         """
         self.visual.eval()
         patch_proj = self.visual.ln_post(t_tokens)

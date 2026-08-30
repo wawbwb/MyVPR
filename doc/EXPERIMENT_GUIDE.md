@@ -1,11 +1,15 @@
 # Experiment Guide — Phases C–F
 
-> **Status (2026-08-29): this C–F plan is archived.** Do not run the C/D
+> **Status (2026-08-30): this C–F plan is archived.** Do not run the C/D
 > commands below. Semantic reliability and the later alias/region/dynamic-prior
 > routes failed their matched controls; Query-conditioned Semantic BoQ also
-> finished negative and was stopped. The active screen is Crop-CLS Local
-> Semantic FiLM-BoQ; use `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`. Consolidated
-> prior results are in `doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md`.
+> finished negative and was stopped. Crop-CLS Local Semantic FiLM-BoQ has now
+> also completed with a negative semantic-attribution result. Phase A of the
+> next route—DINO-anchor Residual CLIP Fusion with the existing RU+BoQ—now has
+> runnable code, tests, a 500-step preflight and matched controls; it has not
+> yet produced training results. VLAQ remains deliberately unimplemented until
+> Phase A passes. See `doc/DC_VLAQ_LITE_EXPERIMENT.md`; consolidated prior
+> results are in `doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md`.
 
 Run everything from the project root with the `openvpr` conda environment:
 

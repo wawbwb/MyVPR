@@ -41,11 +41,13 @@ IMAGENET_MEAN_STD = {"mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]
 
 
 class InferenceModel(torch.nn.Module):
-    """Student-only inference wrapper used by both baseline and phase C.
+    """Inference wrapper reconstructed from each checkpoint configuration.
 
-    The CLIP teacher is intentionally absent at inference.  A phase-C model
-    keeps only its learned spatial gate and follows
-    ``backbone -> spatial gate -> aggregator``.
+    Older distillation models remove their CLIP teacher at inference.  A
+    residual-CLIP DinoV2 backbone instead reconstructs its pinned frozen CLIP
+    feature provider internally; strict backbone state loading restores only
+    the learned P_C/W_zero branch because the frozen encoder is intentionally
+    excluded from checkpoints.
     """
 
     def __init__(
