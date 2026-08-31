@@ -337,7 +337,7 @@ class _TinySpatialAggregator(nn.Module):
 def _tiny_rscd_framework() -> VPRFrameworkDistill:
     builder = RSCDMaskBuilder(
         [1.0, 0.5],
-        mode="aligned_rscd",
+        mode="aligned",
         confidence_threshold=0.5,
         max_coverage=0.25,
         grid_size=(4, 4),
