@@ -612,6 +612,38 @@ class VPRFrameworkDistill(VPRFramework):
             query_semantic_logits,
         )
 
+    def _aggregate_rscd_branches(
+        self,
+        raw_featmap,
+        restore_output,
+        mask,
+        *,
+        verification_images,
+    ):
+        """Run the grad-enabled RSCD student before its no-grad teacher.
+
+        Mixed-precision autocast caches low-precision parameter casts. If the
+        clean no-grad branch uses a parameter first, a later student call in
+        the same autocast context can reuse a cast without autograd history.
+        Keeping this order in one helper makes that invariant testable.
+        """
+
+        from src.models.rscd import apply_token_mask
+
+        masked_raw_featmap = apply_token_mask(raw_featmap, mask)
+        masked_aggregate = self._aggregate_raw_featmap(
+            masked_raw_featmap, restore_output
+        )
+        with torch.no_grad():
+            clean_model_output = self._aggregate_raw_featmap(
+                raw_featmap, restore_output
+            )[0]
+            clean_descriptors = self._descriptor_tensor(
+                clean_model_output
+            ).detach()
+        eval_clean_error = self._verify_rscd_eval_clean(verification_images)
+        return masked_aggregate, clean_descriptors, eval_clean_error
+
     def _attention_for_distillation(self, raw_featmap, student_attn):
         """Optionally stop the reliability KL from directly moving backbone."""
         if student_attn is None or self.lambda_attn <= 0:
@@ -804,27 +836,31 @@ class VPRFrameworkDistill(VPRFramework):
             "residual_clip_descriptor_drift_max_abs": delta.abs().amax(),
         }
 
+    @staticmethod
+    def _gradient_rms(parameters):
+        """Return the fp32 RMS over all currently materialised gradients."""
+
+        squared_sum = None
+        element_count = 0
+        for parameter in parameters:
+            if parameter.grad is None:
+                continue
+            gradient = parameter.grad.detach().float()
+            contribution = gradient.square().sum()
+            squared_sum = (
+                contribution
+                if squared_sum is None
+                else squared_sum + contribution
+            )
+            element_count += gradient.numel()
+        if squared_sum is None or not element_count:
+            return None
+        return (squared_sum / element_count).sqrt()
+
     def on_after_backward(self):
         super_method = getattr(super(), "on_after_backward", None)
         if callable(super_method):
             super_method()
-        def gradient_rms(parameters):
-            squared_sum = None
-            element_count = 0
-            for parameter in parameters:
-                if parameter.grad is None:
-                    continue
-                gradient = parameter.grad.detach().float()
-                contribution = gradient.square().sum()
-                squared_sum = (
-                    contribution
-                    if squared_sum is None
-                    else squared_sum + contribution
-                )
-                element_count += gradient.numel()
-            if squared_sum is None or not element_count:
-                return None
-            return (squared_sum / element_count).sqrt()
 
         if self.residual_clip_enabled:
             fusion = self.backbone.residual_clip_fusion
@@ -838,29 +874,7 @@ class VPRFrameworkDistill(VPRFramework):
                 ),
             }
             for metric_name, parameters in residual_gradient_groups.items():
-                value = gradient_rms(parameters)
-                if value is not None:
-                    self.log(
-                        metric_name,
-                        value,
-                        prog_bar=False,
-                        logger=True,
-                        on_step=True,
-                        on_epoch=False,
-                    )
-
-        if (
-            self.rscd_enabled
-            and int(self.trainer.global_step) % self.rscd_diagnostic_interval
-            == 0
-        ):
-            rscd_gradient_groups = {
-                "rscd_backbone_grad_rms": self.backbone.parameters(),
-                "rscd_aggregator_grad_rms": self.aggregator.parameters(),
-                "rscd_gate_grad_rms": self.semantic_region_gate.parameters(),
-            }
-            for metric_name, parameters in rscd_gradient_groups.items():
-                value = gradient_rms(parameters)
+                value = self._gradient_rms(parameters)
                 if value is not None:
                     self.log(
                         metric_name,
@@ -885,7 +899,7 @@ class VPRFrameworkDistill(VPRFramework):
             ),
         }
         for metric_name, parameters in gradient_groups.items():
-            value = gradient_rms(parameters)
+            value = self._gradient_rms(parameters)
             if value is not None:
                 self.log(
                     metric_name,
@@ -895,6 +909,55 @@ class VPRFrameworkDistill(VPRFramework):
                     on_step=True,
                     on_epoch=False,
                 )
+
+    def on_before_optimizer_step(self, optimizer):
+        """Audit RSCD gradients after mixed-precision unscaling."""
+
+        super_method = getattr(super(), "on_before_optimizer_step", None)
+        if callable(super_method):
+            super_method(optimizer)
+        if (
+            not self.rscd_enabled
+            or int(self.trainer.global_step) % self.rscd_diagnostic_interval
+            != 0
+        ):
+            return
+
+        gate_trainable = [
+            parameter
+            for parameter in self.semantic_region_gate.parameters()
+            if parameter.requires_grad
+        ]
+        if not gate_trainable or any(
+            parameter.grad is None for parameter in gate_trainable
+        ):
+            raise RuntimeError(
+                "RSCD gradient contract failed before optimizer step: "
+                "rscd_gate_grad_rms has at least one trainable parameter "
+                "without a materialised gradient. Do not continue to a "
+                "reportable run."
+            )
+        rscd_gradient_groups = {
+            "rscd_backbone_grad_rms": self.backbone.parameters(),
+            "rscd_aggregator_grad_rms": self.aggregator.parameters(),
+            "rscd_gate_grad_rms": iter(gate_trainable),
+        }
+        for metric_name, parameters in rscd_gradient_groups.items():
+            value = self._gradient_rms(parameters)
+            if value is None:
+                raise RuntimeError(
+                    "RSCD gradient contract failed before optimizer step: "
+                    f"{metric_name} has no materialised gradient. Do not "
+                    "continue to a reportable run."
+                )
+            self.log(
+                metric_name,
+                value,
+                prog_bar=False,
+                logger=True,
+                on_step=True,
+                on_epoch=False,
+            )
 
     def _optimizer_param_groups(self):
         optimizer_params = super()._optimizer_param_groups()
@@ -1048,7 +1111,11 @@ class VPRFrameworkDistill(VPRFramework):
         residual_zero_start_error = self._verify_residual_clip_zero_start(
             images
         )
-        rscd_eval_clean_error = self._verify_rscd_eval_clean(images)
+        # RSCD delays every no-grad gate/BoQ probe until after its masked
+        # grad-enabled forward. Under 16-mixed, autocast caches parameter casts;
+        # allowing a no-grad call to populate that cache first can make the
+        # later gate reuse a cast with no autograd history.
+        rscd_eval_clean_error = None
         rscd_stats = {}
         if self.rscd_enabled:
             if metadata is None:
@@ -1074,14 +1141,6 @@ class VPRFrameworkDistill(VPRFramework):
             raw_featmap, restore_output = self._split_backbone_output(
                 backbone_output
             )
-            with torch.no_grad():
-                clean_model_output = self._aggregate_raw_featmap(
-                    raw_featmap, restore_output
-                )[0]
-                clean_descriptors = self._descriptor_tensor(
-                    clean_model_output
-                ).detach()
-
             rscd_labels = metadata["rscd_labels"].flatten(0, 1)
             rscd_confidence = metadata["rscd_confidence"].flatten(0, 1)
             rscd_cache_indices = metadata["rscd_cache_indices"].flatten(0, 1)
@@ -1107,11 +1166,21 @@ class VPRFrameworkDistill(VPRFramework):
                 donor_confidence=rscd_donor_confidence,
             )
             from src.models.rscd import (
-                apply_token_mask,
                 pairwise_relation_loss,
             )
 
-            masked_raw_featmap = apply_token_mask(raw_featmap, rscd_mask)
+            (
+                masked_aggregate,
+                clean_descriptors,
+                rscd_eval_clean_error,
+            ) = (
+                self._aggregate_rscd_branches(
+                    raw_featmap,
+                    restore_output,
+                    rscd_mask,
+                    verification_images=images,
+                )
+            )
             (
                 model_output,
                 featmap,
@@ -1119,9 +1188,7 @@ class VPRFrameworkDistill(VPRFramework):
                 semantic_score,
                 semantic_gate,
                 query_semantic_logits,
-            ) = self._aggregate_raw_featmap(
-                masked_raw_featmap, restore_output
-            )
+            ) = masked_aggregate
             crop_semantic_tokens = None
             crop_semantic_raw_scale = None
             crop_film_stats = {}

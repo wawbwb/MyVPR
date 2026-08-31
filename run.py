@@ -1773,6 +1773,18 @@ def train(config):
             for parameter in vpr_model.parameters()
             if parameter.requires_grad
         )
+        gate_parameters = list(vpr_model.semantic_region_gate.parameters())
+        gate_trainable = [
+            parameter for parameter in gate_parameters if parameter.requires_grad
+        ]
+        if len(gate_trainable) != len(gate_parameters):
+            raise RuntimeError(
+                "RSCD requires every pretrained RU gate parameter to remain "
+                "trainable"
+            )
+        gate_trainable_count = sum(
+            parameter.numel() for parameter in gate_trainable
+        )
         print(
             "RSCD RU warm start: "
             f"{warm_start_report['checkpoint']} "
@@ -1783,7 +1795,8 @@ def train(config):
         print(
             "Jointly trainable RSCD/RU scope: "
             f"{len(trainable_names)} tensors ({trainable_count:,} parameters); "
-            f"mask_mode={rscd_mode}"
+            f"gate={len(gate_trainable)} tensors/"
+            f"{gate_trainable_count:,} parameters; mask_mode={rscd_mode}"
         )
 
     if config["compile"]:

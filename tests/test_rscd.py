@@ -9,6 +9,7 @@ import pytest
 import torch
 from torch import nn
 
+from src.core.vpr_framework import VPRFrameworkDistill
 from src.models.rscd import (
     RSCDMaskBuilder,
     apply_token_mask,
@@ -16,6 +17,7 @@ from src.models.rscd import (
     pairwise_relation_loss,
     warm_start_rscd_model,
 )
+from src.models.semantic_region_gate import SemanticRegionGate
 from src.query_semantic_cache import (
     QUERY_SEMANTIC_CACHE_SCHEMA,
     QUERY_SEMANTIC_CACHE_VERSION,
@@ -321,6 +323,89 @@ def test_pairwise_relation_loss_detaches_clean_target():
     assert masked.grad is not None and bool((masked.grad != 0).any())
     assert clean.grad is None
     assert pairwise_relation_loss(clean.detach(), clean.detach()).item() == 0.0
+
+
+class _TinySpatialAggregator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Conv2d(2, 2, kernel_size=1)
+
+    def forward(self, featmap):
+        return self.proj(featmap).mean(dim=(-2, -1))
+
+
+def _tiny_rscd_framework() -> VPRFrameworkDistill:
+    builder = RSCDMaskBuilder(
+        [1.0, 0.5],
+        mode="aligned_rscd",
+        confidence_threshold=0.5,
+        max_coverage=0.25,
+        grid_size=(4, 4),
+    )
+    return VPRFrameworkDistill(
+        backbone=nn.Conv2d(2, 2, kernel_size=1),
+        aggregator=_TinySpatialAggregator(),
+        loss_function=nn.Identity(),
+        config_dict={},
+        distill_module=None,
+        lambda_global=0.0,
+        lambda_region=0.0,
+        lambda_attn=0.0,
+        lambda_alias=0.0,
+        lambda_positive=0.0,
+        semantic_region_gate=SemanticRegionGate(2),
+        rscd_controller=builder,
+        lambda_rscd_relation=0.05,
+        rscd_diagnostic_interval=1,
+    )
+
+
+def test_rscd_masked_branch_precedes_no_grad_teacher_under_autocast(
+    monkeypatch,
+):
+    framework = _tiny_rscd_framework()
+    monkeypatch.setattr(framework, "print", lambda *args, **kwargs: None)
+    raw = torch.linspace(0.1, 9.6, 3 * 2 * 4 * 4).view(3, 2, 4, 4)
+    raw.requires_grad_()
+    mask = torch.zeros((3, 4, 4), dtype=torch.bool)
+    mask[:, :2, :2] = True
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        masked_aggregate, clean_descriptors, eval_clean_error = (
+            framework._aggregate_rscd_branches(
+                raw,
+                lambda local: local,
+                mask,
+                verification_images=raw.detach(),
+            )
+        )
+        masked_descriptors = framework._descriptor_tensor(masked_aggregate[0])
+        weights = masked_descriptors.new_tensor([1.0, -0.25])
+        loss = (masked_descriptors * weights).sum()
+    loss.backward()
+
+    gate_gradients = [
+        parameter.grad for parameter in framework.semantic_region_gate.parameters()
+    ]
+    assert eval_clean_error.item() == pytest.approx(0.0, abs=1e-6)
+    assert clean_descriptors.requires_grad is False
+    assert all(gradient is not None for gradient in gate_gradients)
+    assert sum(gradient.abs().sum() for gradient in gate_gradients) > 0
+    assert framework._gradient_rms(
+        framework.semantic_region_gate.parameters()
+    ).item() > 0
+
+
+def test_rscd_optimizer_hook_fails_closed_on_missing_gate_gradient(monkeypatch):
+    framework = _tiny_rscd_framework()
+    framework._trainer = type("Trainer", (), {"global_step": 0})()
+    monkeypatch.setattr(framework, "log", lambda *args, **kwargs: None)
+    for module in (framework.backbone, framework.aggregator):
+        for parameter in module.parameters():
+            parameter.grad = torch.ones_like(parameter)
+
+    with pytest.raises(RuntimeError, match="rscd_gate_grad_rms"):
+        framework.on_before_optimizer_step(object())
 
 
 class _TinyRU(nn.Module):
