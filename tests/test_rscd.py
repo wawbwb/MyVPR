@@ -28,7 +28,7 @@ def _sha256(path: Path) -> str:
 
 def _write_cache_and_stats(tmp_path: Path) -> tuple[Path, Path, dict]:
     cache = tmp_path / "cache"
-    cache.mkdir()
+    cache.mkdir(parents=True)
     arrays = {
         "labels.npy": np.zeros((2, 4, 4), dtype=np.uint8),
         "confidence.npy": np.full((2, 4, 4), 255, dtype=np.uint8),
@@ -369,6 +369,7 @@ def test_strict_ru_warm_start_accepts_parameterless_builder(tmp_path):
         [1.0, 1.0],
         mode="no_mask",
         confidence_threshold=0.5,
+        max_coverage=0.25,
         grid_size=(4, 4),
     )
     target = _TinyRU(builder)
