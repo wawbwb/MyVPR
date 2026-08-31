@@ -1,6 +1,6 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-08-30
+更新日期：2026-08-31
 
 ## 1. 总结结论
 
@@ -15,7 +15,9 @@ Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 
 
 参考 SemVPR 设计的 **Crop-CLS 连续局部语义蒸馏 + patch×channel FiLM** 也已完成四组 seed-42、5-epoch 正式训练。aligned 最佳 R@1 为 90.95%，比 architecture-only 高 0.54 pp（4/740 query），但仍比冻结 RU 低 0.27 pp（2 query），并比 wrong-place 低 0.13 pp（1 query）。因此训练机制正常，且局部配对比 wrong-region 有一定作用，但正确地点语义并非取得结果所必需，语义因果归因判定为 **FAIL**。按修订后的预注册停止规则，本应在 aligned 低于 RU 0.2 pp 时停止；已经完成的 wrong-region/wrong-place 只能作为超出停止点的探索性诊断，不进入正式通过判据。完整结果见第 8 节和 `doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`。
 
-下一条候选路线改为 **DINO-anchor Residual CLIP Fusion → VLAQ（DC-VLAQ-lite）**：让冻结 CLIP 成为训练和推理中的第二路连续特征，以零初始化残差注入 DINO token，而不是再次把 CLIP 当监督目标、mask、gate 或 FiLM 条件。Phase A 的 residual-RU-BoQ、500-step preflight、aligned 3-epoch 配置和三个 matched controls 已实现，尚未取得训练结果；只有 aligned 严格胜过冻结 RU 和三个对照，才实现仍未编写的 VLAQ 聚合器。见第 9 节。
+**DINO-anchor Residual CLIP Fusion → VLAQ（DC-VLAQ-lite）** 的 Phase A 现已完成并判定为 **FAIL**。aligned、bypass、zero-CLIP、global-only、wrong-region 和 wrong-image 在 MSLS-val 上均为 R@1 91.22%；把已学习 CLIP 残差的推理倍率从 0.5 扫到 4，R@1/R@5 仍完全不变，且 `gamma=4` 时 aligned 的 R@10 反而少 1 query。因此问题不是“语义权重还不够大”，不再实现 Phase B/VLAQ。完整结果见第 9 节。
+
+从所有随机/打乱对照中得到的新启示不是“随机语义优于真实语义”，而是：**现有 aligned teacher 往往施加了与地点实例判别不一致的偏置；破坏对应关系会解除这一偏置，并可能退化成普通随机正则化。** 大多数 corrupted control 只胜过 aligned，并未稳定胜过匹配视觉基线。下一候选因此改为 **Reliability-Calibrated Semantic Counterfactual Dropout（RSCD-BoQ）**：语义只决定训练时优先扰动哪些不稳定/高频区域，不向描述子注入语义特征；用等覆盖、等形状的 uniform/shuffled dropout 作主对照。只有 aligned semantic policy 同时胜过视觉基线和这些随机对照，才能归因为语义。见第 10 节。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -148,7 +150,7 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - aligned 不胜 shuffled/random 时，不能把变化归因于语义；
 - semantic-region 的插值 round trip 与逐图单位方差化是实现层面的真实混杂，但修复它们只说明 target 更干净，不保证 retrieval 会转正；
 - BoQ query/head 的偏好高度异质，固定类别、所有 query 共用的负 bias 过于粗糙；但本次 query-specific ADE20K class bias 同样没有改善检索，因此“改成 query-specific”本身也不是充分条件；
-- 当前证据否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter”以及本项目的“稀疏 crop-CLS 蒸馏 + FiLM + RU/BoQ 联合微调”两种实现；尚未检验的是 SemVPR 的完整 dense LSA teacher、原论文 CLS aggregation，以及把 CLIP 保留为推理特征流的残差式多模态融合。
+- 当前证据否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter”、本项目的“稀疏 crop-CLS 蒸馏 + FiLM + RU/BoQ 联合微调”，以及“把冻结 CLIP 保留为推理特征流、零起点残差接入现有 RU+BoQ”三种实现；尚未检验的是 SemVPR 的完整 dense LSA teacher、原论文 CLS aggregation，以及语义只作为训练期结构化扰动策略的路线。
 
 现有结果不支持：
 
@@ -293,15 +295,15 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 
 本实验否定的是这套具体组合：稀疏 2×2 crop-CLS 教师、每 step 每 place 一个 crop、cosine 蒸馏、最后两层 DINO 前的 FiLM，以及 RU/BoQ 联合微调。它没有复现 SemVPR 的 dense LSA teacher 和论文 CLS aggregation，因此不能外推为“SemVPR 无效”；但已有结果足以说明，不应再通过增加 crop 数、延长训练或微调 FiLM 强度来挽救当前实现。
 
-## 9. 新候选：DINO-anchor Residual CLIP Fusion → VLAQ
+## 9. DINO-anchor Residual CLIP Fusion → VLAQ：Phase A 完成，FAIL
 
-### 9.1 为什么选择这条路线
+### 9.1 为什么当时选择这条路线
 
 [DC-VLAQ](https://arxiv.org/html/2601.12729) 把 DINOv2 与 CLIP 都保留在训练和推理中，以 DINO token 为锚，只把 CLIP 相对 DINO 的互补部分作为残差修正，再用 query-residual aggregation 生成全局描述子。它目前只是 2026-01-19 的 arXiv v1 预印本，尚不能当作经过同行评审的确定证据，也没有发现可直接审计复用的官方实现；但它给出的消融与本项目现状高度相关：在其协议下，MSLS R@1 的 naive addition、cross-attention、FiLM、residual 分别为 93.0、93.2、93.0、94.2；DINO-only 与 DINO+CLIP 分别为 93.1 和 94.2；BoQ 与 VLAQ 分别为 93.4 和 94.2。论文配置与本项目的 batch、评测分辨率和聚合器不同，这些绝对数值不能直接横向比较，只能作为选择下一机制的依据。
 
 它与当前失败路线的本质差异是：
 
-| 维度 | Crop-CLS FiLM（已失败） | Residual CLIP + VLAQ（候选） |
+| 维度 | Crop-CLS FiLM（已失败） | Residual CLIP + VLAQ（本次实验） |
 | --- | --- | --- |
 | CLIP 身份 | 训练期 teacher，推理移除 | 真实第二特征流，训练和推理均保留 |
 | 监督 | VPR loss + crop cosine | 只用地点检索损失决定是否采用 CLIP 信息 |
@@ -312,7 +314,7 @@ first 10 frozen DINO blocks --> 1x1 bottleneck --> semantic descriptor
 
 这仍然明确属于“把语义加入 VPR”，而不是后处理：CLIP patch token 在生成每张图的全局检索描述子之前参与前向计算，最终表示无法脱离语义分支独立得到。
 
-### 9.2 Phase A：先筛 residual fusion，不立即重写聚合器
+### 9.2 Phase A 预注册：先筛 residual fusion，不立即重写聚合器
 
 为把融合收益与新聚合器收益分开，第一阶段保留 RU gate 与 BoQ：
 
@@ -333,7 +335,30 @@ same photometric image
 
 Phase A 的候选门槛固定为：aligned 相对冻结 RU 至少 `+0.5 pp`（MSLS 740 queries 上至少 4 个 query），并相对三个对照分别至少 `+0.5 pp`；或者 season-full-db 至少 `+1.0 pp`，同时 overall 不低于 RU 超过 0.2 pp。任何一项没有候选收益即停止，不扫描残差 scale、学习率或层数。
 
-### 9.3 Phase B：只有 Phase A 通过才实现 VLAQ
+### 9.3 Phase A 正式结果、成对干预与增权诊断（2026-08-31）
+
+500-step preflight 通过了 zero-start、梯度、残差和 descriptor drift 审计。随后 aligned、global-only、wrong-region、wrong-place 都从同一个 RU checkpoint 训练 3 epochs，只训练 983,808 个 residual 参数；四组每个 epoch 的 MSLS 指标都停在 R@1/R@5/R@10/R@15 = 91.22/95.14/96.08/96.49。训练损失与 batch accuracy 正常变化，因此不是训练提前结束或分支没有梯度。
+
+对 aligned 最终 checkpoint 做同一模型、同一 raw image、同一检索库的成对推理干预，得到：
+
+| 推理变体 | R@1 | R@5 | R@10 | R@15 | aligned 相对该变体的净 R@1 query |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| bypass | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| aligned CLIP | 91.22 | 95.14 | 96.08 | 96.49 | — |
+| zero-CLIP | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| global-only | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| wrong-region | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| wrong-image cross-city | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+
+这六组并非逐元素完全相同：aligned 相对 bypass、zero-CLIP、global-only、wrong-region、wrong-image 分别改变了 4、4、2、2、5 个 query 的 top-1 reference；但没有任何 R@1 正误翻转。也就是说 residual branch 已接通并会轻微改变排序，却没有形成可用的地点判别增益。
+
+困难条件审计同样没有达到门槛：night-full-db 的 R@1/R@5/R@10 完全相同；season-full-db 的 aligned R@1 为 88.87%，RU 为 88.66%，仅多 2/988 query（+0.20 pp），R@5/R@10 相同。该探索性变化远低于预注册的 +1.0 pp，不能当作候选收益。
+
+最后将 aligned checkpoint 中**已学习的 CLIP-only 残差**按 `gamma in {0.5, 1, 2, 4}` 放大，并在每个 gamma 下同时测 aligned、global-only、wrong-region、wrong-image：所有 18 个变体的 R@1 都是 675/740（91.22%），R@5 都是 704/740（95.14%）。`gamma<=2` 时 R@10 也全部为 711/740；`gamma=4` 时 aligned 与 wrong-region 降为 710/740，其余仍为 711/740。`best_observed_gamma=0.5` 只是全体并列后的排序产物，不是候选。
+
+因此 Phase A 的机制判定为 **FAIL / NO_CANDIDATE**：现有 learned residual 在 gamma 0.5–4 范围内不是“影响太弱但方向正确”，放大它既没有产生 R@1 收益，也先在 R@10 暴露退化。该结论否定的是当前 `ViT-B-16/openai + DINO-anchor residual + 已冻结 RU/BoQ` 组合，不等价于 CLIP 或多模态 VPR 普遍无效。
+
+### 9.4 Phase B：因 Phase A 失败而终止
 
 VLAQ 先用 learned query 对 token 分配权重，再聚合 token 相对 query 的残差：
 
@@ -342,16 +367,98 @@ alpha_jk = softmax_j(q_k^T z_j / sqrt(d))
 v_k      = sum_j alpha_jk * (z_j - q_k)
 ```
 
-必须做 `DINO-only VLAQ` 与 `DINO+CLIP residual VLAQ` 的 matched 5-epoch 对照，并保持 descriptor 维度、query 数、训练范围和数据完全一致。这样才能把“VLAQ 本身优于 BoQ”和“CLIP 语义带来额外收益”分开。只有 residual VLAQ 胜过 DINO-only VLAQ 及 Phase A 的错误语义对照，才进入 3 seeds 和完整 40 epochs。
+原预注册要求做 `DINO-only VLAQ` 与 `DINO+CLIP residual VLAQ` 的 matched 5-epoch 对照，以分开“VLAQ 本身优于 BoQ”和“CLIP 语义带来额外收益”。由于 Phase A 没有任何候选增益，按规则 **不实现 VLAQ、不做 40 epochs 或多 seed**；以下公式只保留为历史设计记录。
 
-### 9.4 已发表论文提供的边界与备选
+### 9.5 已发表论文提供的边界
 
 - [SemVPR（ICCV 2025）](https://openaccess.thecvf.com/content/ICCV2025/html/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.html)证明了连续局部 CLIP 对齐与 feature-level aggregation 是可行方向，但本项目的稀疏 BoQ 适配已经失败，下一步不应继续近似同一 FiLM 路线。
 - [StructVPR（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Shen_StructVPR_Distill_Structural_Knowledge_With_Weighting_Samples_for_Visual_Place_CVPR_2023_paper.html)强调语义结构知识和按样本可靠性加权；[DistilVPR（AAAI 2024）](https://ojs.aaai.org/index.php/AAAI/article/view/28905)则蒸馏样本间关系而非强迫不同模态逐点重合。若部署约束不允许推理时保留 CLIP，可把“可靠样本上的 semantic-layout relational distillation”作为无额外推理成本的备选，但它的优先级低于直接 residual screen，因为本项目已有多种 teacher-only 蒸馏/筛选负结果。
 
-当前状态：**Phase A 代码、配置、preflight 审计与 checkpoint/条件评测恢复测试已经实现，尚无训练机结果；Phase B/VLAQ 未实现。** CLIP 使用 `ViT-B-16/openai` 的 14×14 joint-space patch token，插值到 DINO 20×20 网格；冻结 CLIP provider 不进入 checkpoint，`P_C/W_zero` 严格进入并恢复。三个 control 的破坏只发生在训练期，验证/推理都使用本图 aligned CLIP，避免描述子依赖验证 batch。独立预注册与实现索引见 `doc/DC_VLAQ_LITE_EXPERIMENT.md`。
+当前状态：**Phase A 已完成且 FAIL；Phase B/VLAQ 未实现并终止。** CLIP 使用 `ViT-B-16/openai` 的 14×14 joint-space patch token，插值到 DINO 20×20 网格；冻结 CLIP provider 不进入 checkpoint，`P_C/W_zero` 严格进入并恢复。独立预注册、实现索引和归档判定见 `doc/DC_VLAQ_LITE_EXPERIMENT.md`。
 
-## 10. 证据索引与归档说明
+## 10. 随机/打乱对照的共同启示与下一方案
+
+### 10.1 先纠正“随机组每次都有提升”
+
+不同系列的训练长度和协议不同，下表只能在每一行内部比较，不能横向比较绝对 R@1：
+
+| 路线 | aligned R@1 | 最强 random/shuffled/wrong 对照 | 匹配视觉基线 | 实际结论 |
+| --- | ---: | ---: | ---: | --- |
+| Semantic-alias negative | 87.43 | random 88.11 | A2 87.84 | random 胜 aligned 0.68 pp，也胜 A2 0.27 pp；这是最明确的一次随机正则候选，但仍是单 seed 小幅变化 |
+| Semantic-positive | 87.03 | random 87.57 | A2 87.84 | random 只比 aligned 少退化，仍低于视觉基线 |
+| Semantic-region | 89.86 | shuffled 91.22 | RU 91.22 | shuffled 完全解除 aligned 的 1.36 pp 退化，但没有超过 RU |
+| Dynamic-category prior（overall） | 91.08 | random 91.08 | zero-bias 91.22 | aligned/random 同样少 1 query；条件子集上的 control 优势只有 1–2 query |
+| Crop-CLS FiLM | 90.95 | wrong-place 91.08 | RU 91.22 | wrong-place 比 aligned 多 1 query，但仍比 RU 少 1 query |
+| Residual-CLIP | 91.22 | 所有错误对照 91.22 | RU 91.22 | 全部持平；不存在随机收益 |
+
+所以严格表述应是：**被破坏的语义对应经常胜过 aligned，却没有稳定胜过无语义基线。** 这不证明“随机语义含有地点信息”，而支持三个更保守的解释：
+
+1. CLIP/分割类别描述的是场景或物体共性，VPR 需要区分具体地点；aligned teacher 可能把同类道路、车辆、植被、普通立面拉得更近，形成错误归纳偏置。
+2. random/shuffled 会切断这条有害对应，或者通过随机采样、扰动与噪声降低共适应；收益若存在，更像 regularization，而不是 semantic knowledge。
+3. 当前差值多为 1–4 个 query、单 seed 或验证集 checkpoint 最大值。它足以否定语义因果归因，却不足以证明一种稳定的随机正则化规律。
+
+因此今后的 corrupted control 不是附属消融，而是“语义是否必要”的 placebo：aligned 不胜它，就不能声称收益来自语义。
+
+### 10.2 论文给出的可用边界
+
+- [StructVPR（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Shen_StructVPR_Distill_Structural_Knowledge_With_Weighting_Samples_for_Visual_Place_CVPR_2023_paper.html)明确指出，并非所有样本都含有高质量、有帮助的语义结构知识，有些样本会伤害蒸馏，因此需要按可靠性筛选和加权。这与本项目“aligned 经常比破坏对照更差”的现象一致。
+- [DistilVPR（AAAI 2024）](https://ojs.aaai.org/index.php/AAAI/article/view/28905)蒸馏的是 self/cross agents 的特征关系，并在欧氏、球面和双曲空间建模，而不是要求跨模态局部特征逐点相等；这支持只约束检索关系、不再拟合 CLIP token。
+- [DropBlock（NeurIPS 2018）](https://proceedings.neurips.cc/paper/2018/hash/7edcfb2d8f6a659ef4cd1e6c9b6d7079-Abstract.html)说明空间相关特征适合整块丢弃，而非独立像素 dropout；[Random Erasing（AAAI 2020）](https://ojs.aaai.org/index.php/AAAI/article/view/7000)则把随机区域擦除作为遮挡增强。这两者为“随机组可能在提供结构化正则”提供通用机制，但不是 VPR 正收益的直接证据。
+- [SALAD（CVPR 2024）](https://openaccess.thecvf.com/content/CVPR2024/html/Izquierdo_Optimal_Transport_Aggregation_for_Visual_Place_Recognition_CVPR_2024_paper.html)用 dustbin cluster 学习丢弃非信息局部特征；[SemVPR（ICCV 2025）](https://openaccess.thecvf.com/content/ICCV2025/html/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.html)表明训练期局部视觉—语义学习与 semantic-aware aggregation 可以有效。这说明可行方向是“选择性利用/丢弃”，不是给所有 aligned semantic patch 统一加权。
+
+### 10.3 新候选：Reliability-Calibrated Semantic Counterfactual Dropout（RSCD-BoQ）
+
+核心变化是：**语义不再作为地点标签、特征、蒸馏 target 或 attention bias，而只作为训练期反事实遮挡策略。** 模型被迫在语义上不稳定且跨地点高频的区域缺失时，仍利用其余局部结构完成地点判别。推理时关闭 dropout，网络仍是 DINOv2 + RU + BoQ，不运行分割器，因此不是检索后处理，也没有额外部署成本。
+
+离线直接复用现有 GSV SegFormer-ADE20K 20×20 cache，不先验指定“车辆一定有害”。对每个类别 `c` 从训练集统计：
+
+```text
+repeatability(c) = 同一 place 的其他视图也出现 c 的条件概率
+frequency(c)     = 包含 c 的 place 占全部 place 的比例
+nuisance(c)      = 1 - repeatability(c) * (1 - frequency(c))
+```
+
+这里按 place/class presence 统计，不要求不同视角 patch 几何对齐。低 repeatability 或高 frequency 都会提高 nuisance；只有同时稳定且相对稀有的类别得到低分，因此建筑构件和标志不会仅凭类别名称被一刀切删除。
+
+训练时在同一份 raw DINO 20×20 token 上构造 mask `M`，按 nuisance 对同标签连通区域采样；遮挡上限先固定为每图 15%，若合格区域不足则使用实际较小覆盖率，所有 control 必须逐图复制这个实际 token 数与连通块尺寸分布：
+
+```text
+Z_mask = (1 - M) * Z + M * stopgrad(mean_token(Z))
+g_clean = BoQ(RU(Z))
+g_mask  = BoQ(RU(Z_mask))
+
+L = L_MS(g_mask)
+  + 0.05 * SmoothL1(pairwise_cos(g_mask),
+                    stopgrad(pairwise_cos(g_clean)))
+```
+
+关系一致性项只保持 batch 内地点关系，不要求 masked descriptor 或局部 token 逐点复制 clean 分支；其思想接近 DistilVPR 的 relation distillation。两条分支共享一次 DINO raw-token 前向，只额外执行轻量 RU+BoQ，从而控制首筛成本。
+
+### 10.4 必须完全匹配的四组实验
+
+| 组别 | mask 策略 | 回答的问题 |
+| --- | --- | --- |
+| `no_mask` | 同训练范围和双分支，`M=0` | 再训练/一致性本身是否带来变化 |
+| `uniform_block` | 与 aligned **逐图相同覆盖率和连通块尺寸分布**，位置均匀随机 | 收益是否只是 DropBlock/Random Erasing |
+| `shuffled_semantic` | 从异地点 donor 取同覆盖、同形状 mask | 语义形状有用但图像对应无关，还是对应本身必要 |
+| `aligned_rscd` | 当前图像的 reliability-calibrated semantic mask | 正确语义是否优于所有非语义解释 |
+
+四组必须使用同一 RU checkpoint、seed、batch 顺序、trainable scope、总步数、token replacement 和 relation loss。尤其不能让 aligned 的平均遮挡面积大于 random；否则只是更强扰动而不是语义差异。
+
+最低成本顺序为：512 图离线 mask 审计 → 500-step contract preflight → `no_mask/uniform_block/aligned_rscd` 各 3 epochs；只有 aligned 同时至少比这两组多 4/740 个 R@1 query，才补跑 `shuffled_semantic`。最终语义候选要求 aligned 相对 RU、no-mask、uniform 和 shuffled **分别**至少多 4 query，或 season-full-db 至少 +1.0 pp 且 overall 不下降超过 1 query；通过后才做 3 seeds。
+
+结果的解释在运行前固定：
+
+| 结果模式 | 允许的结论 |
+| --- | --- |
+| aligned > uniform、shuffled、no-mask、RU | 语义选择策略有候选因果收益 |
+| uniform > no-mask/RU，但 aligned 不胜 uniform | 找到的是非语义结构化正则，可保留工程改进，但不能写成语义贡献 |
+| aligned ≈ shuffled > uniform | 区域形状/分布有用，正确语义对应未被证明 |
+| 四组均无收益 | 停止当前数据与 BoQ 下的语义路线，不再换权重继续扫 |
+
+这条路线仍有风险：动态先验实验已经说明“固定抑制某类”不成立。因此 RSCD 的关键不是换一组负类别，而是**数据驱动可靠性、随机训练扰动、推理无 mask，以及等覆盖随机 placebo**。若这四点不能严格实现，就不值得启动正式训练。
+
+## 11. 证据索引与归档说明
 
 保留的主要证据：
 
@@ -364,6 +471,7 @@ v_k      = sum_j alpha_jk * (z_j - q_k)
 - Query-conditioned Semantic BoQ：`doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md`、`doc/boq_dinov2_query_semantic_architecture_only.txt`、`doc/boq_dinov2_query_semantic_aligned.txt` 与 `doc/boq_dinov2_query_semantic_condition_eval.txt`。
 - Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现、预注册、正式结果与 FAIL 结论）。
 - Crop-CLS 原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt`、`preflight_audit.json`、`architecture_only_5ep.txt` 与 `aligned_5ep.txt`；wrong-region/wrong-place 当前仅有用户提供的训练机 checkpoint 清单，待原始日志下载后补归档。
-- 下一候选预注册与 Phase-A 实现索引：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（代码已实现、无训练结果；VLAQ 未实现）。
+- Residual-CLIP：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（Phase A 预注册、实现索引、正式 FAIL 与停止决定）；训练机输出目录为 `doc/residual_clip_runs/paired_full_20260831_105942` 和 `doc/residual_clip_runs/semantic_gamma_sweep_20260831_123138`，其精确结果已固化在第 9 节，原始目录仍待同步回本机仓库。
+- 下一候选 RSCD-BoQ：第 10 节仅完成方案与因果门槛设计，尚未实现代码或运行实验。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

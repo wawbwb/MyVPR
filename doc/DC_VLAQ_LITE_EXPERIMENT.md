@@ -1,7 +1,8 @@
 # DINO-anchor Residual CLIP Fusion → VLAQ（DC-VLAQ-lite）
 
-更新日期：2026-08-30  
-状态：**Phase A 已实现并完成本地契约检查；尚未在训练机运行，尚无实验结果。Phase B/VLAQ 未实现。**
+更新日期：2026-08-31
+
+状态：**Phase A 已完成，机制判定 FAIL；Phase B/VLAQ 未实现并按预注册规则终止。本文档作为归档保留。**
 
 ## 1. 研究问题
 
@@ -113,9 +114,30 @@ Z = D_raw + W_zero(R)
 
 固定执行顺序为：测试 → 500-step preflight → aligned 3 epochs → 门槛判断 → 仅在通过时运行三个 controls。不得跳过 aligned 停止点直接批量训练 controls。
 
-## 4. Phase B：Matched VLAQ
+### 3.5 训练机结果与最终判定（2026-08-31）
 
-只有 Phase A 通过后才实现 VLAQ，避免一次同时改变融合和聚合而无法归因。按照论文思想，learned query 先产生 token assignment，再聚合 token 相对 query center 的残差：
+preflight 的 zero-start、梯度、residual RMS、descriptor drift 和 CLIP 冻结检查均通过。正式训练中，aligned、global-only、wrong-region、wrong-place 四组从同一个 RU checkpoint 启动，只训练 983,808 个 residual 参数并各跑满 3 epochs；每组每个 epoch 的 MSLS-val 都为 R@1/R@5/R@10/R@15 = 91.22/95.14/96.08/96.49，与冻结 RU 持平。
+
+aligned checkpoint 的 full-database paired intervention 进一步得到：
+
+| 变体 | R@1 | R@5 | R@10 | R@15 | aligned 净胜 R@1 query |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| bypass | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| aligned | 91.22 | 95.14 | 96.08 | 96.49 | — |
+| zero-CLIP | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| global-only | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| wrong-region | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+| wrong-image cross-city | 91.22 | 95.14 | 96.08 | 96.49 | 0 |
+
+aligned 相对上述五个对照分别改变了 4、4、2、2、5 个 query 的 top-1 reference，但没有改变任何 R@1 正误，说明分支已连接、排序会变化，却没有可用的检索增益。night-full-db 与 RU 完全相同；season-full-db 仅多 2/988 个 R@1 query（88.87% 对 88.66%），低于 +1.0 pp 门槛。
+
+为排除“方向正确但残差太小”，又将 checkpoint 中已经学习的 CLIP-only residual 以 `gamma={0.5,1,2,4}` 推理。所有 gamma 和 aligned/global-only/wrong-region/wrong-image control 的 R@1 均为 675/740，R@5 均为 704/740；`gamma=4` 时 aligned 与 wrong-region 的 R@10 反而各少 1 query。筛选器输出 `NO_CANDIDATE`，`best_observed_gamma=0.5` 只是并列后的排序值。
+
+最终判定：**Phase A FAIL。** 当前 learned residual 不是单纯权重不足；不再扫 residual scale、CLIP layer、学习率或 epoch，也不实现 Phase B/VLAQ。该结论仅适用于本项目的 `ViT-B-16/openai + DINO-anchor residual + frozen RU/BoQ` 适配，不外推为所有 CLIP/VPR 融合都无效。
+
+## 4. Phase B：Matched VLAQ（已终止）
+
+原计划只有 Phase A 通过后才实现 VLAQ，避免一次同时改变融合和聚合而无法归因。Phase A 已失败，因此本节不再执行；下面只保留原始设计。按照论文思想，learned query 先产生 token assignment，再聚合 token 相对 query center 的残差：
 
 ```text
 s_jk     = q_k^T z_j / sqrt(d)
@@ -136,28 +158,27 @@ g        = L2Norm(concat_k(v_k))
 
 论文使用 2 个 VLAQ block、每个 64 queries、P=110/K=4、训练 40 epochs、280 训练和 322 评测。本项目第一轮不得直接照搬其 P=110 或 322 评测，因为这会破坏与 RU 的 matched comparison；这些设置只能在因果筛选通过后作为独立扩展。
 
-## 5. 预期成本与失败解释
+## 5. 成本与实际失败解释
 
-- 优点：这是目前最直接的语义融合检验；没有教师目标与 VPR 目标冲突；zero-start 能严格保护 RU；Phase A 只新增小 adapter，实验较短。
-- 代价：每张 database/query 图都必须执行冻结 CLIP，推理速度、显存和离线建库成本明显增加；因此即使精度通过，也要报告吞吐、峰值显存与 descriptor 提取时间。
-- 若 aligned residual 不胜 RU：说明当前 CLIP token 在该数据/分辨率/BoQ 几何下没有足够互补信息，不应继续 VLAQ。
-- 若 aligned 胜 RU 但不胜错误对照：只能归因为额外特征流或优化正则化，不能归因为语义。
-- 若 Phase A 通过而 VLAQ 不再提升：保留 residual BoQ 作为候选，不必强行采用新聚合器。
+- 该设计没有 teacher target 冲突，zero-start 也严格复现了 RU，因此本次 FAIL 不是由初始破坏基线造成的。
+- 每张 database/query 图都要额外执行冻结 CLIP，推理、显存和建库成本明显增加；在没有精度收益时不存在部署价值。
+- aligned 不胜 RU，说明当前 CLIP token 在该数据、分辨率和 RU+BoQ 几何下没有表现出足够互补信息。
+- paired intervention 证明 adapter 会改变少量排序，但 aligned 不胜任何错误对照；gamma sweep 又排除了 `0.5–4` 范围内“仅仅权重不足”的解释。
 
-## 6. 不增加推理成本的备选
+## 6. 归档时的备选方向
 
 如果部署明确不允许保留 CLIP，备选为 **reliability-gated semantic-layout relational distillation**：参考 [StructVPR（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Shen_StructVPR_Distill_Structural_Knowledge_With_Weighting_Samples_for_Visual_Place_CVPR_2023_paper.html) 的结构知识/样本加权，以及 [DistilVPR（AAAI 2024）](https://ojs.aaai.org/index.php/AAAI/article/view/28905) 的跨模态关系蒸馏，只在可靠样本上匹配 batch 内相对关系，不做逐 patch feature 拟合。推理仍只保留 DINO+BoQ。
 
-该备选目前优先级较低：本项目的多种 teacher-only 蒸馏、语义样本选择和局部 target 已经失败，继续蒸馏的先验弱于直接测试 CLIP 是否能作为推理特征流提供增益。
+在 Residual-CLIP 运行前，该备选的优先级低于直接融合。Phase A 失败后也不直接启动新的蒸馏，而是先测试总结文档第 10 节的 RSCD-BoQ：把可靠性用于训练期结构化反事实扰动，并用严格等覆盖的随机 placebo 隔离普通正则化。关系蒸馏只作为其中所有组共享的小权重一致性项，不再单独充当语义主监督。
 
 ## 7. 当前执行决定
 
-1. 先归档 Crop-CLS FiLM 为 FAIL；
-2. Phase A residual core、preflight、aligned 和三个 matched-control 配置已经实现；当前等待训练机测试与 preflight；
-3. aligned 不过候选门槛时不运行三个错误对照的完整训练；
-4. Phase A 未完成语义因果验证前，不实现 VLAQ、不做 40 epochs、不做多 seed。
+1. Phase A residual core、preflight、四组正式训练、paired intervention、condition audit 和 gamma sweep 均已完成；
+2. aligned 没有净胜 RU 或任何错误语义对照，Phase A 归档为 FAIL；
+3. 不再运行 40 epochs、多 seed 或更多 residual 超参数，不实现 VLAQ；
+4. 下一候选改为训练期 Reliability-Calibrated Semantic Counterfactual Dropout，方案和 matched controls 见 `doc/SEMANTIC_VPR_EXPERIMENT_SUMMARY.md` 第 10 节。
 
-## 8. 训练机 runbook
+## 8. 历史训练机 runbook（已完成，不要重复运行）
 
 以下命令从仓库根目录运行；`RU_CKPT` 必须是已审计的 RU checkpoint：
 
