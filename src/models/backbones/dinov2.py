@@ -154,7 +154,13 @@ class DinoV2(nn.Module):
         *,
         return_crop_semantics=False,
         semantic_batch_indices=None,
+        return_residual_clip_components=False,
     ):
+        if return_crop_semantics and return_residual_clip_components:
+            raise ValueError(
+                "crop-semantic outputs and residual-CLIP components cannot "
+                "be requested together"
+            )
         B, _, H, W = x.shape
         input_images = x
         # No need to compute gradients for frozen layers
@@ -196,6 +202,12 @@ class DinoV2(nn.Module):
             clip_global, clip_patches = self._residual_clip_provider.encode(
                 input_images
             )
+            if return_residual_clip_components:
+                # Return the single shared extraction needed by an offline
+                # intervention screen.  Callers can reuse these four tensors
+                # for aligned/global/wrong-region fusion without rerunning
+                # either DINO or frozen CLIP.
+                return x, x_cls, clip_global, clip_patches
             x, _ = self.residual_clip_fusion(
                 x,
                 clip_patches,
@@ -203,6 +215,11 @@ class DinoV2(nn.Module):
                 # The VPR framework keeps frozen DINO in eval mode while
                 # explicitly leaving this small branch in train mode.
                 apply_training_control=self.residual_clip_fusion.training,
+            )
+        elif return_residual_clip_components:
+            raise RuntimeError(
+                "residual CLIP components requested without an enabled "
+                "residual_clip_fusion"
             )
         
         backbone_output = (x, x_cls) if self.return_cls_token else x
@@ -223,6 +240,30 @@ class DinoV2(nn.Module):
         """Inference path: apply FiLM but skip the teacher-only 512D head."""
 
         return self._forward_impl(x, return_crop_semantics=False)
+
+    @torch.no_grad()
+    def extract_residual_clip_components(self, images):
+        """Extract raw DINO and same-image CLIP components exactly once.
+
+        Returns ``(raw_feature_map, x_cls, clip_global, clip_patches)``.  The
+        raw feature map is the final DINO patch map immediately before
+        residual fusion and the pretrained RU gate.  The CLIP tensors are the
+        aligned same-image provider outputs accepted by
+        :class:`ResidualCLIPFusion`.  Supplying a wrong-image donor is an
+        offline script responsibility: encode that donor separately and pass
+        its CLIP tensors through ``intervention_mode='aligned'``.
+        """
+
+        if self.residual_clip_fusion is None:
+            raise RuntimeError(
+                "extract_residual_clip_components requires an enabled "
+                "residual_clip_fusion"
+            )
+        return self._forward_impl(
+            images,
+            return_crop_semantics=False,
+            return_residual_clip_components=True,
+        )
 
     def forward_with_crop_semantics(
         self, x, *, semantic_batch_indices=None

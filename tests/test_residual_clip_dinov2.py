@@ -22,6 +22,7 @@ class _FakeDino(nn.Module):
     def __init__(self, width: int = 4) -> None:
         super().__init__()
         self.embed_dim = width
+        self.prepare_calls = 0
         self.patch_embed = nn.Conv2d(
             3, width, kernel_size=14, stride=14, bias=False
         )
@@ -33,6 +34,7 @@ class _FakeDino(nn.Module):
         )
 
     def prepare_tokens_with_masks(self, images: torch.Tensor) -> torch.Tensor:
+        self.prepare_calls += 1
         patches = self.patch_embed(images).flatten(2).transpose(1, 2)
         cls_token = self.cls_token.expand(images.shape[0], -1, -1)
         return torch.cat((cls_token + self.pos_embed, patches), dim=1)
@@ -46,10 +48,12 @@ class _FakeCLIPEncoder(nn.Module):
         self.provider_sentinel = nn.Parameter(torch.tensor(17.0))
         self.clip_dim = int(clip_dim)
         self.patch_count = int(patch_count)
+        self.forward_calls = 0
 
     def forward(
         self, images: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        self.forward_calls += 1
         image_value = images.float().mean(dim=(1, 2, 3), keepdim=False)
         channels = torch.arange(
             self.clip_dim, device=images.device, dtype=torch.float32
@@ -143,3 +147,68 @@ def test_residual_clip_receives_the_final_dino_patch_map(
     assert not any("provider_sentinel" in key for key in state_keys)
     assert encoder.provider_sentinel.requires_grad is False
     assert encoder.training is False
+
+
+def test_component_extraction_is_reusable_and_matches_aligned_forward(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backbone, encoder = _build_backbone(monkeypatch)
+    backbone.eval()
+    images = torch.stack(
+        (
+            torch.full((3, 28, 28), -0.25),
+            torch.full((3, 28, 28), 0.75),
+        )
+    )
+    fusion = backbone.residual_clip_fusion
+    with torch.no_grad():
+        fusion.clip_projection.weight.copy_(
+            torch.tensor(
+                [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [0.5, -0.25, 0.75],
+                ]
+            )
+        )
+        fusion.residual_adapter.weight.copy_(torch.eye(4))
+        fusion.residual_adapter.bias.zero_()
+
+    raw_feature_map, x_cls, clip_global, clip_patches = (
+        backbone.extract_residual_clip_components(images)
+    )
+
+    assert backbone.dino.prepare_calls == 1
+    # Provider chunk_size=1, so two images require exactly two CLIP calls.
+    assert encoder.forward_calls == 2
+    assert raw_feature_map.shape == (2, 4, 2, 2)
+    assert x_cls.shape == (2, 4)
+    assert clip_global.shape == (2, 3)
+    assert clip_patches.shape == (2, 4, 3)
+    assert not raw_feature_map.requires_grad
+    assert not clip_global.requires_grad
+    assert not clip_patches.requires_grad
+
+    fused = {}
+    for mode in ("aligned", "global_only", "wrong_region"):
+        fused[mode], _ = fusion(
+            raw_feature_map,
+            clip_patches,
+            clip_global,
+            intervention_mode=mode,
+        )
+
+    # Reusing extracted components for three interventions reruns neither
+    # encoder.  The deliberately non-zero adapter makes each intervention
+    # observably different.
+    assert backbone.dino.prepare_calls == 1
+    assert encoder.forward_calls == 2
+    assert not torch.equal(fused["aligned"], fused["global_only"])
+    assert not torch.equal(fused["aligned"], fused["wrong_region"])
+
+    ordinary_local, ordinary_cls = backbone(images)
+    torch.testing.assert_close(fused["aligned"], ordinary_local)
+    torch.testing.assert_close(x_cls, ordinary_cls)
+    assert backbone.dino.prepare_calls == 2
+    assert encoder.forward_calls == 4

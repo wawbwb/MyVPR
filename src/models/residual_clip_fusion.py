@@ -27,6 +27,13 @@ from src.models.query_semantic import (
 RESIDUAL_CLIP_MODES = frozenset(
     {"aligned", "global_only", "wrong_region", "wrong_place"}
 )
+# Runtime interventions deliberately exclude ``wrong_place``.  Evaluation
+# batches are ordinary image sequences rather than the P x K place batches
+# used for training, so a diagnostic script must supply donor CLIP features
+# explicitly and fuse them through the aligned path.
+RESIDUAL_CLIP_INTERVENTION_MODES = frozenset(
+    {"aligned", "global_only", "wrong_region"}
+)
 RESIDUAL_CLIP_NEW_KEY_PREFIX = "backbone.residual_clip_fusion."
 
 
@@ -165,6 +172,7 @@ class ResidualCLIPFusion(nn.Module):
         clip_global_features: torch.Tensor,
         *,
         apply_training_control: bool,
+        intervention_mode: str | None = None,
     ) -> tuple[torch.Tensor, bool]:
         batch_size, patch_count, _ = aligned_local.shape
         if clip_global_features.ndim != 2 or tuple(
@@ -177,18 +185,36 @@ class ResidualCLIPFusion(nn.Module):
         if not clip_global_features.is_floating_point():
             raise TypeError("clip_global_features must be floating point")
 
-        # Every formal checkpoint is evaluated with its own aligned CLIP grid.
-        # The three corruptions are training-only controls, so descriptor
-        # extraction remains a deterministic function of one image and every
-        # variant has the same inference path.
-        if self.mode == "aligned" or not apply_training_control:
+        if intervention_mode is None:
+            effective_mode = self.mode
+            apply_control = bool(apply_training_control)
+        else:
+            effective_mode = str(intervention_mode).lower()
+            if effective_mode not in RESIDUAL_CLIP_INTERVENTION_MODES:
+                if effective_mode == "wrong_place":
+                    raise ValueError(
+                        "wrong_place is not a batch-local eval intervention; "
+                        "supply deterministic donor CLIP features and use "
+                        "intervention_mode='aligned'"
+                    )
+                raise ValueError(
+                    "intervention_mode must be one of "
+                    f"{sorted(RESIDUAL_CLIP_INTERVENTION_MODES)}"
+                )
+            # An explicit intervention is independent of module.train/eval.
+            apply_control = True
+
+        # With no explicit intervention, preserve the registered protocol:
+        # every formal checkpoint evaluates with its own aligned CLIP grid,
+        # while corruptions apply only during its matched training run.
+        if effective_mode == "aligned" or not apply_control:
             return aligned_local, False
-        if self.mode == "global_only":
+        if effective_mode == "global_only":
             global_features = F.normalize(
                 clip_global_features.float(), dim=-1
             )
             return global_features[:, None].expand(-1, patch_count, -1), True
-        if self.mode == "wrong_region":
+        if effective_mode == "wrong_region":
             permutation = self._wrong_region_permutation(
                 patch_count, aligned_local.device
             )
@@ -220,6 +246,7 @@ class ResidualCLIPFusion(nn.Module):
         clip_global_features: torch.Tensor,
         *,
         apply_training_control: bool = False,
+        intervention_mode: str | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if dino_features.ndim != 4:
             raise ValueError("dino_features must have shape (B,C,H,W)")
@@ -241,6 +268,7 @@ class ResidualCLIPFusion(nn.Module):
             aligned_local,
             clip_global_features,
             apply_training_control=bool(apply_training_control),
+            intervention_mode=intervention_mode,
         )
 
         dino_tokens = dino_features.permute(0, 2, 3, 1).reshape(

@@ -143,6 +143,80 @@ def test_every_checkpoint_uses_aligned_tokens_in_eval(mode: str) -> None:
     assert candidate.diagnostics()["residual_clip_control_applied"].item() == 0.0
 
 
+@pytest.mark.parametrize(
+    "intervention_mode", ["aligned", "global_only", "wrong_region"]
+)
+def test_explicit_intervention_overrides_eval_mode(
+    intervention_mode: str,
+) -> None:
+    # Use a checkpoint configured for the training-only wrong-place control to
+    # prove that the explicit diagnostic does not depend on its saved mode.
+    module = _fusion("wrong_place").eval()
+    _set_identity_residual(module)
+    dino, patches, global_features = _inputs()
+    aligned = module._aligned_local_tokens(patches, (2, 2))
+
+    fused, _ = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode=intervention_mode,
+    )
+
+    if intervention_mode == "aligned":
+        selected = aligned
+    elif intervention_mode == "global_only":
+        selected = F.normalize(global_features.float(), dim=-1)
+        selected = selected[:, None].expand(-1, 4, -1)
+    else:
+        selected = aligned.index_select(1, torch.tensor([2, 3, 0, 1]))
+    dino_tokens = _flatten_features(dino)
+    expected = dino_tokens + selected - F.normalize(dino_tokens, dim=-1)
+    torch.testing.assert_close(_flatten_features(fused), expected)
+    expected_applied = 0.0 if intervention_mode == "aligned" else 1.0
+    assert (
+        module.diagnostics()["residual_clip_control_applied"].item()
+        == expected_applied
+    )
+
+
+def test_eval_wrong_image_uses_donor_clip_through_aligned_path() -> None:
+    # Three images cannot be interpreted as P x K for views_per_place=2.  The
+    # explicit aligned path must nevertheless accept their externally paired
+    # donor features without invoking the training-only batch roll.
+    module = _fusion("wrong_place").eval()
+    _set_identity_residual(module)
+    dino, patches, global_features = _inputs(batch_size=3)
+    donor_patches = patches.roll(1, dims=0)
+    donor_global = global_features.roll(1, dims=0)
+
+    fused, _ = module(
+        dino,
+        donor_patches,
+        donor_global,
+        intervention_mode="aligned",
+    )
+
+    selected = module._aligned_local_tokens(donor_patches, (2, 2))
+    dino_tokens = _flatten_features(dino)
+    expected = dino_tokens + selected - F.normalize(dino_tokens, dim=-1)
+    torch.testing.assert_close(_flatten_features(fused), expected)
+    assert module.diagnostics()["residual_clip_control_applied"].item() == 0.0
+
+
+def test_explicit_wrong_place_intervention_fails_closed() -> None:
+    module = _fusion("aligned").eval()
+    dino, patches, global_features = _inputs()
+
+    with pytest.raises(ValueError, match="supply deterministic donor CLIP"):
+        module(
+            dino,
+            patches,
+            global_features,
+            intervention_mode="wrong_place",
+        )
+
+
 def test_wrong_place_rolls_whole_places_without_crossing_view_index() -> None:
     module = _fusion("wrong_place")
     place_count, views_per_place, patch_count, channels = 3, 2, 4, 2
