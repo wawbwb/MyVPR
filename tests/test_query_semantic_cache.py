@@ -209,6 +209,7 @@ def test_gsv_loader_reads_fixed_cross_place_donor(tmp_path: Path) -> None:
         transform=None,
         query_semantic_cache_dir=cache_dir,
         query_semantic_selection="shuffled",
+        rscd_cache_dir=cache_dir,
     )
     target = dataset._read_query_semantic_cache(
         np.asarray([0], dtype=np.int64)
@@ -217,3 +218,11 @@ def test_gsv_loader_reads_fixed_cross_place_donor(tmp_path: Path) -> None:
     assert place_ids[0] != place_ids[donor]
     assert int(target["query_semantic_labels"][0, 0, 0]) == donor
     assert int(target["query_semantic_cache_indices"][0]) == 0
+    # RSCD always returns both the receiver-aligned map and the same immutable
+    # cross-place donor, independent of the legacy query-target selection.
+    assert int(target["rscd_labels"][0, 0, 0]) == 0
+    assert int(target["rscd_donor_labels"][0, 0, 0]) == donor
+    assert target["rscd_confidence"].dtype == torch.float32
+    assert target["rscd_donor_confidence"].dtype == torch.float32
+    assert int(target["rscd_cache_indices"][0]) == 0
+    assert int(target["rscd_donor_cache_indices"][0]) == donor

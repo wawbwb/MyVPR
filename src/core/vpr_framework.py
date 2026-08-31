@@ -335,6 +335,9 @@ class VPRFrameworkDistill(VPRFramework):
         lambda_crop_semantic=0.0,
         crop_semantic_diagnostic_interval=100,
         residual_clip_diagnostic_interval=100,
+        rscd_controller=None,
+        lambda_rscd_relation=0.0,
+        rscd_diagnostic_interval=100,
     ):
         super().__init__(
             backbone=backbone,
@@ -358,6 +361,7 @@ class VPRFrameworkDistill(VPRFramework):
             ("lambda_semantic_region", lambda_semantic_region),
             ("lambda_query_semantic", lambda_query_semantic),
             ("lambda_crop_semantic", lambda_crop_semantic),
+            ("lambda_rscd_relation", lambda_rscd_relation),
         ):
             if not math.isfinite(value) or value < 0:
                 raise ValueError(
@@ -464,6 +468,25 @@ class VPRFrameworkDistill(VPRFramework):
         )
         self._residual_clip_zero_start_verified = False
         self._residual_clip_zero_start_error = None
+        self.rscd_controller = rscd_controller
+        self.lambda_rscd_relation = float(lambda_rscd_relation)
+        self.rscd_enabled = self.rscd_controller is not None
+        if self.lambda_rscd_relation > 0 and not self.rscd_enabled:
+            raise ValueError(
+                "rscd_controller is required when lambda_rscd_relation is non-zero"
+            )
+        if self.rscd_enabled and self.semantic_region_gate is None:
+            raise ValueError("RSCD requires the pretrained semantic region gate")
+        if (
+            isinstance(rscd_diagnostic_interval, bool)
+            or int(rscd_diagnostic_interval) < 1
+        ):
+            raise ValueError(
+                "rscd_diagnostic_interval must be a positive integer"
+            )
+        self.rscd_diagnostic_interval = int(rscd_diagnostic_interval)
+        self._rscd_eval_clean_verified = False
+        self._rscd_eval_clean_error = None
 
     def train(self, mode=True):
         super().train(mode)
@@ -525,6 +548,40 @@ class VPRFrameworkDistill(VPRFramework):
         else:
             backbone_output = self.backbone(images)
         raw_featmap, restore_output = self._split_backbone_output(backbone_output)
+        (
+            model_output,
+            featmap,
+            student_attn,
+            semantic_score,
+            semantic_gate,
+            query_semantic_logits,
+        ) = self._aggregate_raw_featmap(raw_featmap, restore_output)
+        result = (
+            model_output,
+            featmap,
+            student_attn,
+            raw_featmap,
+            semantic_score,
+            semantic_gate,
+        )
+        if return_query_semantic:
+            result = (*result, query_semantic_logits)
+        if return_crop_semantic:
+            result = (
+                *result,
+                crop_semantic_tokens,
+                crop_semantic_raw_scale,
+            )
+        return result
+
+    def _aggregate_raw_featmap(self, raw_featmap, restore_output):
+        """Apply the registered RU gate and BoQ to one raw DINO map.
+
+        RSCD calls this helper twice after a *single* DINO forward: once on the
+        clean map under ``no_grad`` and once on its counterfactually masked
+        copy. Validation and :meth:`forward` continue to call
+        :meth:`_student_forward`, hence always use the untouched clean map.
+        """
         featmap = raw_featmap
         student_attn = None
         semantic_score = None
@@ -546,23 +603,14 @@ class VPRFrameworkDistill(VPRFramework):
             )
         else:
             model_output = self.aggregator(restore_output(featmap))
-        result = (
+        return (
             model_output,
             featmap,
             student_attn,
-            raw_featmap,
             semantic_score,
             semantic_gate,
+            query_semantic_logits,
         )
-        if return_query_semantic:
-            result = (*result, query_semantic_logits)
-        if return_crop_semantic:
-            result = (
-                *result,
-                crop_semantic_tokens,
-                crop_semantic_raw_scale,
-            )
-        return result
 
     def _attention_for_distillation(self, raw_featmap, student_attn):
         """Optionally stop the reliability KL from directly moving backbone."""
@@ -582,6 +630,46 @@ class VPRFrameworkDistill(VPRFramework):
         if isinstance(model_output, (tuple, list)):
             return model_output[0]
         return model_output
+
+    @torch.no_grad()
+    def _verify_rscd_eval_clean(self, images):
+        """Prove that the public inference path never applies an RSCD mask."""
+
+        if not self.rscd_enabled:
+            return None
+        if self._rscd_eval_clean_verified:
+            return images.new_tensor(self._rscd_eval_clean_error)
+
+        sample = images[: min(2, images.shape[0])]
+        was_training = self.training
+        try:
+            self.eval()
+            public_descriptor = self._descriptor_tensor(self.forward(sample))
+            backbone_output = self.backbone(sample)
+            raw_featmap, restore_output = self._split_backbone_output(
+                backbone_output
+            )
+            clean_descriptor = self._descriptor_tensor(
+                self._aggregate_raw_featmap(raw_featmap, restore_output)[0]
+            )
+            max_abs_error = (
+                public_descriptor.float() - clean_descriptor.float()
+            ).abs().amax()
+        finally:
+            self.train(was_training)
+
+        if not bool(torch.isfinite(max_abs_error)) or max_abs_error.item() > 1e-6:
+            raise RuntimeError(
+                "RSCD clean inference-path check failed: max absolute error="
+                f"{max_abs_error.item():.3e}, required <=1e-6"
+            )
+        self._rscd_eval_clean_verified = True
+        self._rscd_eval_clean_error = float(max_abs_error.item())
+        self.print(
+            "RSCD clean inference-path max_abs_error="
+            f"{max_abs_error.item():.3e}"
+        )
+        return max_abs_error.detach()
 
     @torch.no_grad()
     def _verify_crop_semantic_zero_start(self, images):
@@ -750,6 +838,28 @@ class VPRFrameworkDistill(VPRFramework):
                 ),
             }
             for metric_name, parameters in residual_gradient_groups.items():
+                value = gradient_rms(parameters)
+                if value is not None:
+                    self.log(
+                        metric_name,
+                        value,
+                        prog_bar=False,
+                        logger=True,
+                        on_step=True,
+                        on_epoch=False,
+                    )
+
+        if (
+            self.rscd_enabled
+            and int(self.trainer.global_step) % self.rscd_diagnostic_interval
+            == 0
+        ):
+            rscd_gradient_groups = {
+                "rscd_backbone_grad_rms": self.backbone.parameters(),
+                "rscd_aggregator_grad_rms": self.aggregator.parameters(),
+                "rscd_gate_grad_rms": self.semantic_region_gate.parameters(),
+            }
+            for metric_name, parameters in rscd_gradient_groups.items():
                 value = gradient_rms(parameters)
                 if value is not None:
                     self.log(
@@ -932,14 +1042,90 @@ class VPRFrameworkDistill(VPRFramework):
                         "place labels"
                     )
 
-        # Student forward: backbone -> optional spatial gate -> aggregator.
-        # ``forward`` uses this same helper, so validation/checkpoint inference
-        # cannot silently bypass the phase-C module.
+        # Student forward. RSCD shares one DINO pass between the clean teacher
+        # and masked student; all other experiments retain their old path.
         crop_zero_start_error = self._verify_crop_semantic_zero_start(images)
         residual_zero_start_error = self._verify_residual_clip_zero_start(
             images
         )
-        if self.lambda_crop_semantic > 0:
+        rscd_eval_clean_error = self._verify_rscd_eval_clean(images)
+        rscd_stats = {}
+        if self.rscd_enabled:
+            if metadata is None:
+                raise RuntimeError("RSCD requires cached metadata in every batch")
+            required_rscd_metadata = {
+                "rscd_labels",
+                "rscd_confidence",
+                "rscd_cache_indices",
+                "rscd_donor_labels",
+                "rscd_donor_confidence",
+                "rscd_donor_cache_indices",
+            }
+            missing_rscd_metadata = sorted(
+                required_rscd_metadata.difference(metadata)
+            )
+            if missing_rscd_metadata:
+                raise RuntimeError(
+                    "RSCD metadata is incomplete; missing "
+                    + ", ".join(missing_rscd_metadata)
+                )
+
+            backbone_output = self.backbone(images)
+            raw_featmap, restore_output = self._split_backbone_output(
+                backbone_output
+            )
+            with torch.no_grad():
+                clean_model_output = self._aggregate_raw_featmap(
+                    raw_featmap, restore_output
+                )[0]
+                clean_descriptors = self._descriptor_tensor(
+                    clean_model_output
+                ).detach()
+
+            rscd_labels = metadata["rscd_labels"].flatten(0, 1)
+            rscd_confidence = metadata["rscd_confidence"].flatten(0, 1)
+            rscd_cache_indices = metadata["rscd_cache_indices"].flatten(0, 1)
+            rscd_donor_labels = metadata["rscd_donor_labels"].flatten(0, 1)
+            rscd_donor_confidence = metadata[
+                "rscd_donor_confidence"
+            ].flatten(0, 1)
+            rscd_donor_cache_indices = metadata[
+                "rscd_donor_cache_indices"
+            ].flatten(0, 1)
+            if bool(
+                (rscd_cache_indices == rscd_donor_cache_indices).any()
+            ):
+                raise RuntimeError(
+                    "RSCD received a self-mapped donor in a training batch"
+                )
+            rscd_mask, rscd_stats = self.rscd_controller.build(
+                rscd_labels,
+                rscd_confidence,
+                rscd_cache_indices,
+                int(self.trainer.global_step),
+                donor_labels=rscd_donor_labels,
+                donor_confidence=rscd_donor_confidence,
+            )
+            from src.models.rscd import (
+                apply_token_mask,
+                pairwise_relation_loss,
+            )
+
+            masked_raw_featmap = apply_token_mask(raw_featmap, rscd_mask)
+            (
+                model_output,
+                featmap,
+                student_attn,
+                semantic_score,
+                semantic_gate,
+                query_semantic_logits,
+            ) = self._aggregate_raw_featmap(
+                masked_raw_featmap, restore_output
+            )
+            crop_semantic_tokens = None
+            crop_semantic_raw_scale = None
+            crop_film_stats = {}
+        elif self.lambda_crop_semantic > 0:
             (
                 model_output,
                 featmap,
@@ -1006,6 +1192,52 @@ class VPRFrameworkDistill(VPRFramework):
 
         # VPR loss
         loss_vpr, batch_accuracy = self.compute_loss(descriptors, labels)
+        if self.rscd_enabled:
+            loss_rscd_relation = pairwise_relation_loss(
+                descriptors, clean_descriptors
+            )
+            normalized_masked = F.normalize(descriptors.float(), dim=1)
+            normalized_clean = F.normalize(
+                clean_descriptors.float(), dim=1
+            )
+            masked_pairwise = normalized_masked @ normalized_masked.T
+            clean_pairwise = normalized_clean @ normalized_clean.T
+            rscd_stats = dict(rscd_stats)
+            rscd_stats.update(
+                {
+                    "rscd_relation_loss": loss_rscd_relation.detach(),
+                    "rscd_pairwise_cos_mae": (
+                        masked_pairwise - clean_pairwise
+                    ).abs().mean().detach(),
+                    "rscd_descriptor_drift_rms": (
+                        descriptors.float() - clean_descriptors.float()
+                    ).square().mean().sqrt().detach(),
+                }
+            )
+            if "rscd_mask_coverage" in rscd_stats:
+                rscd_stats["rscd_mask_fraction"] = rscd_stats[
+                    "rscd_mask_coverage"
+                ]
+            if "rscd_mask_tokens" in rscd_stats:
+                block_area = float(self.rscd_controller.block_size ** 2)
+                rscd_stats["rscd_selected_blocks"] = (
+                    rscd_stats["rscd_mask_tokens"] / block_area
+                )
+            rscd_aliases = {
+                "rscd_aligned_candidate_blocks": (
+                    "rscd_source_candidate_blocks"
+                ),
+                "rscd_shuffled_candidate_blocks": (
+                    "rscd_donor_candidate_blocks"
+                ),
+                "rscd_selected_nuisance": "rscd_masked_nuisance_mean",
+                "rscd_zero_quota_frac": "rscd_quota_zero_fraction",
+            }
+            for source_name, alias_name in rscd_aliases.items():
+                if source_name in rscd_stats:
+                    rscd_stats[alias_name] = rscd_stats[source_name]
+        else:
+            loss_rscd_relation = loss_vpr.new_zeros(())
 
         semantic_region_stats = {}
         semantic_batch_valid = P >= 2 and K >= 2
@@ -1205,6 +1437,7 @@ class VPRFrameworkDistill(VPRFramework):
             + warmup_scale * self.lambda_semantic_region * loss_semantic_region
             + warmup_scale * self.lambda_query_semantic * loss_query_semantic
             + warmup_scale * self.lambda_crop_semantic * loss_crop_semantic
+            + self.lambda_rscd_relation * loss_rscd_relation
         )
 
         self.log("loss", loss, prog_bar=True, logger=True)
@@ -1234,6 +1467,21 @@ class VPRFrameworkDistill(VPRFramework):
             prog_bar=False,
             logger=True,
         )
+        self.log(
+            "loss_rscd_relation",
+            loss_rscd_relation,
+            prog_bar=False,
+            logger=True,
+        )
+        for metric_name, metric_value in rscd_stats.items():
+            self.log(
+                metric_name,
+                metric_value,
+                prog_bar=False,
+                logger=True,
+                on_step=True,
+                on_epoch=False,
+            )
         for diagnostics in (
             crop_semantic_stats,
             crop_film_stats,
@@ -1261,6 +1509,15 @@ class VPRFrameworkDistill(VPRFramework):
                 residual_zero_start_error,
                 prog_bar=False,
                 logger=True,
+            )
+        if rscd_eval_clean_error is not None:
+            self.log(
+                "rscd_eval_clean_max_abs_error",
+                rscd_eval_clean_error,
+                prog_bar=False,
+                logger=True,
+                on_step=True,
+                on_epoch=False,
             )
         if query_semantic_logits is not None:
             self.log(
@@ -1329,6 +1586,12 @@ class VPRFrameworkDistill(VPRFramework):
             loss_vpr.new_tensor(
                 warmup_scale * self.lambda_crop_semantic
             ),
+            prog_bar=False,
+            logger=True,
+        )
+        self.log(
+            "effective_lambda_rscd_relation",
+            loss_vpr.new_tensor(self.lambda_rscd_relation),
             prog_bar=False,
             logger=True,
         )

@@ -472,6 +472,6 @@ L = L_MS(g_mask)
 - Crop-CLS Local Semantic FiLM-BoQ：`doc/CROP_CLS_SEMANTIC_FILM_BOQ.md`（实现、预注册、正式结果与 FAIL 结论）。
 - Crop-CLS 原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt`、`preflight_audit.json`、`architecture_only_5ep.txt` 与 `aligned_5ep.txt`；wrong-region/wrong-place 当前仅有用户提供的训练机 checkpoint 清单，待原始日志下载后补归档。
 - Residual-CLIP：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（Phase A 预注册、实现索引、正式 FAIL 与停止决定）；训练机输出目录为 `doc/residual_clip_runs/paired_full_20260831_105942` 和 `doc/residual_clip_runs/semantic_gamma_sweep_20260831_123138`，其精确结果已固化在第 9 节，原始目录仍待同步回本机仓库。
-- 下一候选 RSCD-BoQ：第 10 节仅完成方案与因果门槛设计，尚未实现代码或运行实验。
+- 下一候选 RSCD-BoQ：代码、四组严格匹配配置、类别可靠性统计、512 图离线 mask 审计和 500-step TensorBoard 合同审计均已实现；实验尚未运行，当前状态为 **IMPLEMENTED / PENDING PREFLIGHT**。完整操作协议见 `doc/RSCD_BOQ_EXPERIMENT.md`。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

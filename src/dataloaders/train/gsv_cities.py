@@ -80,6 +80,7 @@ class GSVCitiesDataset(Dataset):
                  semantic_cache_dir=None,
                  query_semantic_cache_dir=None,
                  query_semantic_selection="aligned",
+                 rscd_cache_dir=None,
                  ):
         """
         Args:
@@ -113,6 +114,10 @@ class GSVCitiesDataset(Dataset):
                 labels, ``shuffled`` reads the manifest's within-city donor,
                 and ``random`` transports aligned rows for deterministic
                 random-target construction in the training framework.
+            rscd_cache_dir (path-like): The same immutable ADE20K cache, read
+                as both receiver-aligned and cross-place donor grids for the
+                RSCD matched-mask experiment. It reuses the query-semantic
+                stable index and does not create a second cache format.
         """
         super().__init__()
         
@@ -150,10 +155,27 @@ class GSVCitiesDataset(Dataset):
             if semantic_cache_dir is not None
             else None
         )
-        self.query_semantic_cache_dir = (
+        query_semantic_cache_path = (
             Path(query_semantic_cache_dir).expanduser().resolve()
             if query_semantic_cache_dir is not None
             else None
+        )
+        self.rscd_cache_dir = (
+            Path(rscd_cache_dir).expanduser().resolve()
+            if rscd_cache_dir is not None
+            else None
+        )
+        if (
+            query_semantic_cache_path is not None
+            and self.rscd_cache_dir is not None
+            and query_semantic_cache_path != self.rscd_cache_dir
+        ):
+            raise ValueError(
+                "query_semantic_cache_dir and rscd_cache_dir must reference "
+                "the same immutable ADE20K cache when both are enabled"
+            )
+        self.query_semantic_cache_dir = (
+            query_semantic_cache_path or self.rscd_cache_dir
         )
         self.query_semantic_selection = str(query_semantic_selection).lower()
         if self.query_semantic_selection not in {
@@ -195,7 +217,7 @@ class GSVCitiesDataset(Dataset):
             self._load_query_semantic_cache_manifest()
             if self.img_per_place != self.query_semantic_eligible_min_views:
                 raise ValueError(
-                    "query semantic shuffled control was built for "
+                    "ADE20K semantic cache was built for "
                     f"img_per_place={self.query_semantic_eligible_min_views}, "
                     f"but the dataset uses {self.img_per_place}"
                 )
@@ -578,13 +600,57 @@ class GSVCitiesDataset(Dataset):
             arrays['confidence'][source_rows], dtype=np.float32
         ).copy()
         confidence /= 255.0
-        return {
+        result = {
             'query_semantic_labels': torch.from_numpy(labels),
             'query_semantic_confidence': torch.from_numpy(confidence),
             # Preserve the sampled image's stable identity even when its target
             # comes from a shuffled donor. Random controls key off this index.
             'query_semantic_cache_indices': torch.from_numpy(rows.copy()),
         }
+        if self.rscd_cache_dir is not None:
+            donor_rows = np.asarray(
+                arrays['shuffled_indices'][rows], dtype=np.int64
+            )
+            donor_labels = np.asarray(
+                arrays['labels'][donor_rows]
+            ).copy()
+            if (
+                donor_labels.size
+                and int(donor_labels.max()) >= self.query_semantic_num_classes
+            ):
+                raise ValueError(
+                    "RSCD donor cache label is outside the configured class range"
+                )
+            donor_confidence = np.asarray(
+                arrays['confidence'][donor_rows], dtype=np.float32
+            ).copy()
+            donor_confidence /= 255.0
+            # RSCD always receives both grids.  The controller chooses the
+            # experimental mode while keeping receiver/donor I/O identical.
+            result.update(
+                {
+                    'rscd_labels': torch.from_numpy(
+                        np.asarray(arrays['labels'][rows]).copy()
+                    ),
+                    'rscd_confidence': torch.from_numpy(
+                        (
+                            np.asarray(
+                                arrays['confidence'][rows], dtype=np.float32
+                            ).copy()
+                            / 255.0
+                        )
+                    ),
+                    'rscd_donor_labels': torch.from_numpy(donor_labels),
+                    'rscd_donor_confidence': torch.from_numpy(
+                        donor_confidence
+                    ),
+                    'rscd_cache_indices': torch.from_numpy(rows.copy()),
+                    'rscd_donor_cache_indices': torch.from_numpy(
+                        donor_rows.copy()
+                    ),
+                }
+            )
+        return result
 
     def __getstate__(self):
         state = self.__dict__.copy()

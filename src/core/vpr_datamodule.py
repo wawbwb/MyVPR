@@ -63,6 +63,7 @@ class VPRDataModule(L.LightningDataModule):
         semantic_cache_dir=None,
         query_semantic_cache_dir=None,
         query_semantic_selection="aligned",
+        rscd_cache_dir=None,
     ):
         super().__init__()
         self.train_set_name = train_set_name
@@ -80,6 +81,7 @@ class VPRDataModule(L.LightningDataModule):
         self.return_augmented = return_augmented
         self.semantic_cache_dir = semantic_cache_dir
         self.query_semantic_cache_dir = query_semantic_cache_dir
+        self.rscd_cache_dir = rscd_cache_dir
         self.query_semantic_selection = str(query_semantic_selection).lower()
         if self.query_semantic_selection not in {
             "aligned", "shuffled", "random"
@@ -98,6 +100,7 @@ class VPRDataModule(L.LightningDataModule):
             return_metadata
             or semantic_cache_dir is not None
             or query_semantic_cache_dir is not None
+            or rscd_cache_dir is not None
             or return_crop_semantic_view
         )
         self.return_teacher_view = return_teacher_view
@@ -111,6 +114,7 @@ class VPRDataModule(L.LightningDataModule):
         if (
             semantic_cache_dir is not None
             or query_semantic_cache_dir is not None
+            or rscd_cache_dir is not None
         ) and self.augmentation_mode != "photometric":
             raise ValueError(
                 "offline semantic caches require augmentation_mode='photometric'; "
@@ -276,6 +280,7 @@ class VPRDataModule(L.LightningDataModule):
             semantic_cache_dir=self.semantic_cache_dir,
             query_semantic_cache_dir=self.query_semantic_cache_dir,
             query_semantic_selection=self.query_semantic_selection,
+            rscd_cache_dir=self.rscd_cache_dir,
         )
     
     def _get_val_dataset(self, ds_name):  

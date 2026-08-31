@@ -227,6 +227,26 @@ def train(config):
         raise TypeError(
             "residual_clip.diagnostic_interval must be an integer"
         ) from exc
+    rscd_cfg = distill_cfg.get('rscd', {}) or {}
+    rscd_enabled = bool(rscd_cfg.get('enabled', False))
+    rscd_mode = str(rscd_cfg.get('mode', 'no_mask')).lower()
+    rscd_runtime_modes = {
+        'no_mask': 'no_mask',
+        'uniform_block': 'uniform',
+        'shuffled_semantic': 'shuffled',
+        'aligned_rscd': 'aligned',
+    }
+    lambda_rscd_relation = float(rscd_cfg.get('lambda_relation', 0.0))
+    rscd_min_confidence = float(rscd_cfg.get('min_confidence', 0.5))
+    rscd_block_size = int(rscd_cfg.get('block_size', 2))
+    rscd_max_mask_fraction = float(
+        rscd_cfg.get('max_mask_fraction', 0.15)
+    )
+    rscd_random_seed = int(rscd_cfg.get('random_seed', config['seed']))
+    rscd_diagnostic_interval = int(
+        rscd_cfg.get('diagnostic_interval', 100)
+    )
+    rscd_run_tag = str(rscd_cfg.get('run_tag') or '').strip()
     initial_checkpoint = config['trainer'].get('init_checkpoint')
     initial_checkpoint_sha256 = config['trainer'].get(
         'init_checkpoint_sha256'
@@ -308,6 +328,7 @@ def train(config):
         ('semantic_region.lambda_target', lambda_semantic_region),
         ('query_semantic.lambda_target', lambda_query_semantic),
         ('crop_semantic_film.lambda_target', lambda_crop_semantic),
+        ('rscd.lambda_relation', lambda_rscd_relation),
     ):
         if not math.isfinite(value) or value < 0:
             raise ValueError(
@@ -433,6 +454,7 @@ def train(config):
         verify_query_semantic_cache_hashes,
     )
     from src.models.residual_clip_fusion import RESIDUAL_CLIP_MODES
+    from src.models.rscd import load_rscd_stats
 
     if query_semantic_mode not in QUERY_SEMANTIC_MODES:
         raise ValueError(
@@ -445,11 +467,12 @@ def train(config):
             query_semantic_enabled,
             crop_semantic_enabled,
             residual_clip_enabled,
+            rscd_enabled,
         )
     )
     if enabled_semantic_screens > 1:
         raise ValueError(
-            "query_semantic, crop_semantic_film, and residual_clip are "
+            "query_semantic, crop_semantic_film, residual_clip, and RSCD are "
             "mutually exclusive experiments"
         )
     configured_backbone_crop_enabled = bool(
@@ -1053,15 +1076,165 @@ def train(config):
             raise ValueError(
                 "formal residual-CLIP runs require trainer.max_steps=-1"
             )
+
+    rscd_stats = None
+    if rscd_enabled:
+        if not distill_enabled:
+            raise ValueError("RSCD requires distillation.enabled=true")
+        if rscd_mode not in rscd_runtime_modes:
+            raise ValueError(
+                "distillation.rscd.mode must be no_mask, uniform_block, "
+                "shuffled_semantic, or aligned_rscd"
+            )
+        if config.get('compile', False):
+            raise ValueError("RSCD dynamic counterfactual masking does not support --compile")
+        if config['backbone']['class'] != 'DinoV2' or (
+            config['aggregator']['class'] != 'BoQ'
+        ):
+            raise ValueError("RSCD currently requires DinoV2 with the BoQ aggregator")
+        if not semantic_region_gate_active or semantic_region_mode != (
+            'repeatability_uniqueness_only'
+        ):
+            raise ValueError("RSCD requires the pretrained RU semantic gate")
+        if semantic_region_target_active:
+            raise ValueError("RSCD must set semantic_region.lambda_target=0")
+        if any(
+            (
+                query_semantic_enabled,
+                crop_semantic_enabled,
+                residual_clip_enabled,
+                spatial_attn_enabled,
+            )
+        ) or any(
+            value > 0
+            for value in (
+                lambda_global,
+                lambda_region,
+                lambda_attn,
+                lambda_alias,
+                lambda_positive,
+                lambda_query_semantic,
+                lambda_crop_semantic,
+            )
+        ):
+            raise ValueError(
+                "RSCD must disable all CLIP/query/crop/legacy semantic-loss paths"
+            )
+        if not math.isclose(lambda_rscd_relation, 0.05, abs_tol=1e-12):
+            raise ValueError("the registered RSCD screen fixes lambda_relation=0.05")
+        if not math.isclose(rscd_min_confidence, 0.5, abs_tol=1e-12):
+            raise ValueError("the registered RSCD screen fixes min_confidence=0.5")
+        if rscd_block_size != 2:
+            raise ValueError("the registered RSCD screen requires 2x2 token blocks")
+        if not math.isclose(rscd_max_mask_fraction, 0.15, abs_tol=1e-12):
+            raise ValueError("the registered RSCD screen fixes max_mask_fraction=0.15")
+        if rscd_cfg.get('replacement') != 'detached_image_mean':
+            raise ValueError("RSCD replacement must be detached_image_mean")
+        if rscd_random_seed != 42 or int(config['seed']) != 42:
+            raise ValueError("the registered RSCD screen requires seed=42")
+        if rscd_diagnostic_interval < 1:
+            raise ValueError("rscd.diagnostic_interval must be positive")
+        try:
+            train_size = tuple(
+                int(value) for value in config['datamodule']['train_image_size']
+            )
+            val_size = tuple(
+                int(value) for value in config['datamodule']['val_image_size']
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("RSCD requires train/val image sizes [280,280]") from exc
+        if train_size != (280, 280) or val_size != (280, 280):
+            raise ValueError("the registered RSCD screen requires 280x280 images")
+        if str(
+            config['datamodule'].get('augmentation_mode', 'randaugment')
+        ).lower() != 'photometric':
+            raise ValueError("RSCD requires spatially preserving photometric augmentation")
+        if int(config['datamodule']['batch_size']) != 40 or int(
+            config['datamodule']['img_per_place']
+        ) != 4:
+            raise ValueError("the registered RSCD screen requires P=40 and K=4")
+        if config['datamodule']['train_set_name'] != 'gsv-cities' or (
+            config['datamodule'].get('cities', 'all') != 'all'
+        ):
+            raise ValueError("the registered RSCD screen requires full GSV-Cities")
+        if list(config['datamodule']['val_set_names']) != ['msls-val']:
+            raise ValueError("the registered RSCD screen validates only on msls-val")
+        if config['backbone']['params'].get('num_unfrozen_blocks') != 2:
+            raise ValueError("RSCD requires the RU model's last two DINO blocks")
+        if int(distill_cfg.get('distill_warmup_steps', -1)) != 0:
+            raise ValueError("RSCD requires distill_warmup_steps=0")
+        if not initial_checkpoint or not initial_checkpoint_sha256:
+            raise ValueError(
+                "RSCD requires --init-checkpoint and the pinned RU checkpoint SHA256"
+            )
+        if freeze_base:
+            raise ValueError("RSCD jointly continues the RU model; freeze_base must be false")
+        if str(config['trainer']['optimizer']).lower() != 'adamw':
+            raise ValueError("the registered RSCD screen requires AdamW")
+        if not math.isclose(float(config['trainer']['lr']), 2e-6, abs_tol=1e-15):
+            raise ValueError("RSCD must continue from RU at lr=2e-6")
+        if not math.isclose(float(config['trainer']['wd']), 1e-3, abs_tol=1e-15):
+            raise ValueError("the registered RSCD screen fixes weight decay=1e-3")
+        if int(config['trainer']['warmup']) != 0 or list(
+            config['trainer']['milestones']
+        ) != []:
+            raise ValueError("RSCD requires warmup=0 and milestones=[]")
+        if int(config['trainer']['max_epochs']) != 3:
+            raise ValueError("the registered RSCD screen requires max_epochs=3")
+        device_list = (
+            list(configured_devices)
+            if isinstance(configured_devices, (list, tuple))
+            else [configured_devices]
+        )
+        if len(device_list) != 1:
+            raise ValueError("RSCD is registered for one GPU")
+        rscd_max_steps = int(config['trainer'].get('max_steps', -1))
+        if rscd_run_tag:
+            if (
+                rscd_run_tag != 'preflight'
+                or rscd_mode != 'aligned_rscd'
+                or rscd_max_steps != 500
+                or rscd_diagnostic_interval != 10
+            ):
+                raise ValueError(
+                    "the RSCD preflight requires aligned_rscd, 500 steps, and "
+                    "diagnostic_interval=10"
+                )
+        elif rscd_max_steps != -1 or rscd_diagnostic_interval != 100:
+            raise ValueError(
+                "formal RSCD runs require max_steps=-1 and diagnostic_interval=100"
+            )
+        cache_dir = rscd_cfg.get('cache_dir')
+        stats_path = rscd_cfg.get('stats_path')
+        if not cache_dir or not stats_path:
+            raise ValueError("RSCD requires cache_dir and stats_path")
+        rscd_stats = load_rscd_stats(
+            stats_path,
+            cache_manifest=Path(cache_dir) / 'manifest.json',
+            verify_array_files=True,
+            expected_min_confidence=rscd_min_confidence,
+        )
+        if rscd_stats.grid_size != (20, 20):
+            raise ValueError("RSCD cache/stats must match the 20x20 DINO token grid")
+        # Persist the exact generated statistics in Lightning hparams so every
+        # checkpoint remains auditable even though the source JSON is local.
+        rscd_cfg['resolved_stats_sha256'] = rscd_stats.sha256
+        print(
+            "Verified RSCD stats/cache: "
+            f"{rscd_stats.path} sha256={rscd_stats.sha256[:12]}...; "
+            "valid_classes="
+            f"{sum(rscd_stats.valid_classes)}/{rscd_stats.num_classes}"
+        )
     if (
         not query_semantic_enabled
         and not crop_semantic_enabled
         and not residual_clip_enabled
+        and not rscd_enabled
         and (initial_checkpoint or initial_checkpoint_sha256 or freeze_base)
     ):
         raise ValueError(
             "trainer.init_checkpoint/freeze_base are reserved for the "
-            "query-semantic, crop-semantic, or residual-CLIP screen"
+            "query-semantic, crop-semantic, residual-CLIP, or RSCD screen"
         )
 
     semantic_alias_active = semantic_alias_enabled and lambda_alias > 0
@@ -1190,6 +1363,7 @@ def train(config):
             or semantic_positive_active
             or query_semantic_supervision_active
             or crop_semantic_enabled
+            or rscd_enabled
             or (
                 semantic_region_target_active
                 and semantic_region_mode in {'semantic_only', 'full', 'shuffled'}
@@ -1220,6 +1394,9 @@ def train(config):
             'aligned'
             if query_semantic_mode == 'architecture_only'
             else query_semantic_mode
+        ),
+        rscd_cache_dir=(
+            rscd_cfg.get('cache_dir') if rscd_enabled else None
         ),
     )
 
@@ -1388,6 +1565,18 @@ def train(config):
             ),
         )
 
+    rscd_controller = None
+    if rscd_enabled:
+        from src.models.rscd import RSCDMaskBuilder
+
+        rscd_controller = RSCDMaskBuilder(
+            rscd_stats,
+            mode=rscd_runtime_modes[rscd_mode],
+            confidence_threshold=rscd_min_confidence,
+            max_coverage=rscd_max_mask_fraction,
+            seed=rscd_random_seed,
+        )
+
     if (
         teacher_required
         or spatial_attn_enabled
@@ -1395,6 +1584,7 @@ def train(config):
         or query_semantic_enabled
         or crop_semantic_enabled
         or residual_clip_enabled
+        or rscd_enabled
     ):
         vpr_model = VPRFrameworkDistill(
             backbone=backbone,
@@ -1430,6 +1620,9 @@ def train(config):
             residual_clip_diagnostic_interval=(
                 residual_clip_diagnostic_interval
             ),
+            rscd_controller=rscd_controller,
+            lambda_rscd_relation=lambda_rscd_relation,
+            rscd_diagnostic_interval=rscd_diagnostic_interval,
         )
     else:
         vpr_model = VPRFramework(
@@ -1562,6 +1755,36 @@ def train(config):
             f"chunk_size={provider_audit['chunk_size']}; excluded from "
             "student checkpoints"
         )
+    if rscd_enabled and initial_checkpoint:
+        from src.models.rscd import warm_start_rscd_model
+
+        warm_start_report = warm_start_rscd_model(
+            vpr_model,
+            initial_checkpoint,
+            expected_sha256=initial_checkpoint_sha256,
+        )
+        trainable_names = [
+            name
+            for name, parameter in vpr_model.named_parameters()
+            if parameter.requires_grad
+        ]
+        trainable_count = sum(
+            parameter.numel()
+            for parameter in vpr_model.parameters()
+            if parameter.requires_grad
+        )
+        print(
+            "RSCD RU warm start: "
+            f"{warm_start_report['checkpoint']} "
+            f"sha256={warm_start_report['checkpoint_sha256'][:12]}...; "
+            f"{warm_start_report['loaded_keys']} tensors loaded, no new "
+            "checkpoint tensors"
+        )
+        print(
+            "Jointly trainable RSCD/RU scope: "
+            f"{len(trainable_names)} tensors ({trainable_count:,} parameters); "
+            f"mask_mode={rscd_mode}"
+        )
 
     if config["compile"]:
         vpr_model = torch.compile(vpr_model)
@@ -1573,7 +1796,11 @@ def train(config):
     # e.g. a BoQ model with ResNet50 backbone will be saved under logs/ResNet50/BoQ
     # this makes it easy to compared different aggregators with the same backbone
     experiment_name = aggregator.__class__.__name__
-    if query_semantic_enabled:
+    if rscd_enabled:
+        experiment_name += f"_rscd_{rscd_mode}"
+        if rscd_run_tag:
+            experiment_name += f"_{rscd_run_tag}"
+    elif query_semantic_enabled:
         experiment_name += f"_query_semantic_{query_semantic_mode}"
     elif crop_semantic_enabled:
         experiment_name += f"_crop_semantic_film_{crop_semantic_mode}"
@@ -1635,6 +1862,11 @@ def train(config):
         or (
             residual_clip_enabled
             and residual_clip_run_tag == 'preflight'
+            and int(config['trainer'].get('max_steps', -1)) > 0
+        )
+        or (
+            rscd_enabled
+            and rscd_run_tag == 'preflight'
             and int(config['trainer'].get('max_steps', -1)) > 0
         )
     )
