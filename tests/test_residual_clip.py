@@ -44,6 +44,17 @@ def _set_identity_residual(module: ResidualCLIPFusion) -> None:
         module.residual_adapter.bias.zero_()
 
 
+def _set_nonzero_affine_residual(module: ResidualCLIPFusion) -> None:
+    with torch.no_grad():
+        module.clip_projection.weight.copy_(
+            torch.tensor([[0.75, -0.25], [0.5, 1.25]])
+        )
+        module.residual_adapter.weight.copy_(
+            torch.tensor([[0.4, -0.6], [0.8, 0.3]])
+        )
+        module.residual_adapter.bias.copy_(torch.tensor([0.35, -0.2]))
+
+
 def _flatten_features(features: torch.Tensor) -> torch.Tensor:
     return features.permute(0, 2, 3, 1).reshape(features.shape[0], -1, 2)
 
@@ -215,6 +226,217 @@ def test_explicit_wrong_place_intervention_fails_closed() -> None:
             global_features,
             intervention_mode="wrong_place",
         )
+
+
+def test_semantic_gamma_none_preserves_default_path_and_diagnostics() -> None:
+    module = _fusion("global_only").eval()
+    _set_nonzero_affine_residual(module)
+    dino, patches, global_features = _inputs()
+
+    default_fused, default_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="global_only",
+    )
+    explicit_none_fused, explicit_none_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="global_only",
+        semantic_gamma=None,
+    )
+
+    assert torch.equal(explicit_none_fused, default_fused)
+    assert torch.equal(explicit_none_residual, default_residual)
+    assert not any("semantic_gamma" in key for key in module.diagnostics())
+    assert not any("base_residual" in key for key in module.diagnostics())
+
+
+@pytest.mark.parametrize(
+    "intervention_mode", ["aligned", "global_only", "wrong_region"]
+)
+def test_semantic_gamma_endpoints_exactly_match_zero_and_variant(
+    intervention_mode: str,
+) -> None:
+    module = _fusion("wrong_place").eval()
+    _set_nonzero_affine_residual(module)
+    dino, patches, global_features = _inputs()
+    zeros_patches = torch.zeros_like(patches)
+    zeros_global = torch.zeros_like(global_features)
+
+    zero_fused, zero_residual = module(
+        dino,
+        zeros_patches,
+        zeros_global,
+        intervention_mode=intervention_mode,
+    )
+    variant_fused, variant_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode=intervention_mode,
+    )
+    gamma_zero_fused, gamma_zero_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode=intervention_mode,
+        semantic_gamma=0.0,
+    )
+    gamma_one_fused, gamma_one_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode=intervention_mode,
+        semantic_gamma=1.0,
+    )
+
+    assert torch.equal(gamma_zero_residual, zero_residual)
+    assert torch.equal(gamma_zero_fused, zero_fused)
+    assert torch.equal(gamma_one_residual, variant_residual)
+    assert torch.equal(gamma_one_fused, variant_fused)
+
+
+@pytest.mark.parametrize("gamma", [0.5, 2.0, 4.0])
+def test_semantic_gamma_interpolates_and_extrapolates_in_fp32(
+    gamma: float,
+) -> None:
+    module = _fusion().eval()
+    _set_nonzero_affine_residual(module)
+    dino, patches, global_features = _inputs()
+
+    _, base_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="aligned",
+        semantic_gamma=0.0,
+    )
+    _, variant_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="aligned",
+        semantic_gamma=1.0,
+    )
+    fused, actual_residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="aligned",
+        semantic_gamma=gamma,
+    )
+
+    semantic = variant_residual.float() - base_residual.float()
+    expected_residual = (
+        base_residual.float() + semantic.new_tensor(gamma) * semantic
+    ).to(dtype=variant_residual.dtype)
+    assert actual_residual.dtype == variant_residual.dtype
+    assert torch.equal(actual_residual, expected_residual)
+    expected_tokens = _flatten_features(dino) + expected_residual
+    assert torch.equal(_flatten_features(fused), expected_tokens)
+
+    diagnostics = module.diagnostics()
+    assert diagnostics["residual_clip_semantic_gamma"].item() == gamma
+    torch.testing.assert_close(
+        diagnostics["residual_clip_base_residual_rms"],
+        base_residual.float().square().mean().sqrt(),
+    )
+    torch.testing.assert_close(
+        diagnostics["residual_clip_semantic_residual_rms"],
+        semantic.square().mean().sqrt(),
+    )
+    assert torch.isfinite(
+        diagnostics["residual_clip_decomposition_closure_max_abs"]
+    )
+    assert (
+        diagnostics["residual_clip_decomposition_closure_max_abs"].item()
+        <= torch.finfo(torch.float32).eps
+    )
+
+
+@pytest.mark.parametrize("gamma", [0.0, 0.5, 1.0, 2.0, 4.0, 8.0])
+def test_semantic_gamma_never_scales_adapter_bias(gamma: float) -> None:
+    module = _fusion().eval()
+    with torch.no_grad():
+        module.clip_projection.weight.copy_(torch.eye(2))
+        module.residual_adapter.weight.zero_()
+        module.residual_adapter.bias.copy_(torch.tensor([0.25, -0.75]))
+    assert module.clip_projection.bias is None
+    dino, patches, global_features = _inputs()
+
+    fused, residual = module(
+        dino,
+        patches,
+        global_features,
+        intervention_mode="aligned",
+        semantic_gamma=gamma,
+    )
+
+    expected_residual = module.residual_adapter.bias.view(1, 1, 2).expand_as(
+        residual
+    )
+    assert torch.equal(residual, expected_residual)
+    assert torch.equal(
+        _flatten_features(fused), _flatten_features(dino) + expected_residual
+    )
+    diagnostics = module.diagnostics()
+    assert diagnostics["residual_clip_semantic_residual_rms"].item() == 0.0
+
+
+@pytest.mark.parametrize(
+    "invalid_gamma",
+    [True, False, -0.01, 8.01, float("nan"), float("inf"), "1.0"],
+)
+def test_semantic_gamma_rejects_invalid_values(invalid_gamma) -> None:
+    module = _fusion().eval()
+    dino, patches, global_features = _inputs()
+
+    with pytest.raises((TypeError, ValueError)):
+        module(
+            dino,
+            patches,
+            global_features,
+            intervention_mode="aligned",
+            semantic_gamma=invalid_gamma,
+        )
+
+
+def test_semantic_gamma_requires_explicit_intervention() -> None:
+    module = _fusion().eval()
+    dino, patches, global_features = _inputs()
+
+    with pytest.raises(ValueError, match="explicit intervention_mode"):
+        module(
+            dino,
+            patches,
+            global_features,
+            semantic_gamma=0.5,
+        )
+
+
+def test_semantic_gamma_bypass_remains_exact_dino() -> None:
+    module = _fusion().eval()
+    _set_nonzero_affine_residual(module)
+    dino, patches, global_features = _inputs()
+
+    with module.bypass():
+        fused, raw_residual = module(
+            dino,
+            patches,
+            global_features,
+            intervention_mode="aligned",
+            semantic_gamma=4.0,
+        )
+
+    assert torch.equal(fused, dino)
+    assert torch.count_nonzero(raw_residual) > 0
+    diagnostics = module.diagnostics()
+    assert diagnostics["residual_clip_bypassed"].item() == 1.0
+    assert diagnostics["residual_clip_residual_rms"].item() == 0.0
+    assert diagnostics["residual_clip_semantic_gamma"].item() == 4.0
+    assert diagnostics["residual_clip_semantic_residual_rms"].item() > 0.0
 
 
 def test_wrong_place_rolls_whole_places_without_crossing_view_index() -> None:

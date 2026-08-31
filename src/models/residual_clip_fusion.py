@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
+import math
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +55,12 @@ class ResidualCLIPFusion(nn.Module):
     would add another easy DINO-only path.  ``W_zero`` can still exploit the
     fixed ``-norm(D_raw)`` term, so semantic attribution must come from the
     matched global/wrong-region/wrong-place controls, not RU improvement alone.
+
+    Offline intervention audits may set ``semantic_gamma`` together with an
+    explicit ``intervention_mode``.  This applies
+    ``R0 + gamma * (R_variant - R0)``, where ``R0`` is the realised zero-CLIP
+    residual including the adapter bias.  Omitting the argument preserves the
+    historical training and inference path exactly.
     """
 
     def __init__(
@@ -247,7 +255,21 @@ class ResidualCLIPFusion(nn.Module):
         *,
         apply_training_control: bool = False,
         intervention_mode: str | None = None,
+        semantic_gamma: float | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        gamma_value: float | None = None
+        if semantic_gamma is not None:
+            if intervention_mode is None:
+                raise ValueError(
+                    "semantic_gamma requires an explicit intervention_mode"
+                )
+            if isinstance(semantic_gamma, bool) or not isinstance(
+                semantic_gamma, Real
+            ):
+                raise TypeError("semantic_gamma must be a finite real scalar")
+            gamma_value = float(semantic_gamma)
+            if not math.isfinite(gamma_value) or not 0.0 <= gamma_value <= 8.0:
+                raise ValueError("semantic_gamma must be finite and in [0, 8]")
         if dino_features.ndim != 4:
             raise ValueError("dino_features must have shape (B,C,H,W)")
         if dino_features.shape[1] != self.in_channels:
@@ -280,7 +302,39 @@ class ResidualCLIPFusion(nn.Module):
             dtype=dino_tokens.dtype
         )
         difference = projected_clip - dino_anchor
-        raw_residual = self.residual_adapter(difference)
+        variant_residual = self.residual_adapter(difference)
+
+        base_residual = None
+        semantic_residual_fp32 = None
+        if gamma_value is None:
+            # Keep the historical train/inference path tensor-for-tensor
+            # unchanged when no diagnostic decomposition was requested.
+            raw_residual = variant_residual
+        else:
+            # R0 is the *actual* zero-CLIP path, including projection and
+            # residual-adapter biases.  Computing P(0) explicitly keeps this
+            # decomposition exact if the projection architecture changes.
+            zero_projected = self.clip_projection(
+                torch.zeros_like(selected_clip)
+            )
+            base_difference = zero_projected - dino_anchor
+            base_residual = self.residual_adapter(base_difference)
+            semantic_residual_fp32 = (
+                variant_residual.float() - base_residual.float()
+            )
+
+            # Preserve exact realised AMP endpoints.  A uniform lerp would
+            # introduce an avoidable subtract/add rounding at gamma 0 or 1.
+            if gamma_value == 0.0:
+                raw_residual = base_residual
+            elif gamma_value == 1.0:
+                raw_residual = variant_residual
+            else:
+                gamma_tensor = semantic_residual_fp32.new_tensor(gamma_value)
+                raw_residual = (
+                    base_residual.float()
+                    + gamma_tensor * semantic_residual_fp32
+                ).to(dtype=variant_residual.dtype)
 
         if self.bypassed:
             fused_tokens = dino_tokens
@@ -297,7 +351,7 @@ class ResidualCLIPFusion(nn.Module):
             difference_fp32 = difference.detach().float()
             clip_fp32 = selected_clip.detach().float()
             projected_fp32 = projected_clip.detach().float()
-            self._last_diagnostics = {
+            diagnostics = {
                 "residual_clip_residual_rms": residual_fp32.square()
                 .mean()
                 .sqrt(),
@@ -316,6 +370,41 @@ class ResidualCLIPFusion(nn.Module):
                     float(self.bypassed)
                 ),
             }
+            if gamma_value is not None:
+                if base_residual is None or semantic_residual_fp32 is None:
+                    raise AssertionError(
+                        "semantic decomposition tensors were not constructed"
+                    )
+                base_fp32 = base_residual.detach().float()
+                semantic_fp32 = semantic_residual_fp32.detach().float()
+                variant_fp32 = variant_residual.detach().float()
+                closure = base_fp32 + semantic_fp32 - variant_fp32
+                diagnostics.update(
+                    {
+                        "residual_clip_semantic_gamma": (
+                            residual_fp32.new_tensor(gamma_value)
+                        ),
+                        "residual_clip_base_residual_rms": (
+                            base_fp32.square().mean().sqrt()
+                        ),
+                        "residual_clip_base_residual_max_abs": (
+                            base_fp32.abs().amax()
+                        ),
+                        "residual_clip_semantic_residual_rms": (
+                            semantic_fp32.square().mean().sqrt()
+                        ),
+                        "residual_clip_semantic_residual_max_abs": (
+                            semantic_fp32.abs().amax()
+                        ),
+                        "residual_clip_variant_residual_rms": (
+                            variant_fp32.square().mean().sqrt()
+                        ),
+                        "residual_clip_decomposition_closure_max_abs": (
+                            closure.abs().amax()
+                        ),
+                    }
+                )
+            self._last_diagnostics = diagnostics
         return fused, raw_residual
 
     def diagnostics(self) -> dict[str, torch.Tensor]:
