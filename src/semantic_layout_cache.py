@@ -28,11 +28,13 @@ SEMANTIC_LAYOUT_MAPPING_NAME = "ade20k_150_to_vpr_layout_12"
 SEMANTIC_LAYOUT_MAPPING_VERSION = 1
 ADE20K_PATCH_CACHE_SCHEMA = "openvpr_ade20k_patch_labels"
 ADE20K_PATCH_CACHE_VERSION = 2
+ADE20K_CLASS_NAME_NORMALIZATION = "strip_ascii_outer_whitespace_v1"
 
-# This is the exact class order exposed by
-# nvidia/segformer-b0-finetuned-ade-512-512.  Requiring the exact order makes a
-# teacher/config change fail closed rather than applying a plausible-looking
-# but wrong integer mapping.
+# This is the canonicalized class order exposed by
+# nvidia/segformer-b0-finetuned-ade-512-512.  The pinned upstream config has
+# harmless outer whitespace on at least one name.  Requiring the exact order
+# after stripping only that whitespace makes a teacher/config change fail
+# closed rather than applying a plausible-looking but wrong integer mapping.
 ADE20K_CLASSES = (
     "wall", "building", "sky", "floor", "tree", "ceiling", "road",
     "bed", "windowpane", "grass", "cabinet", "sidewalk", "person",
@@ -146,6 +148,73 @@ def _build_source_to_superclass() -> tuple[int, ...]:
 
 
 ADE20K_TO_SEMANTIC_LAYOUT = _build_source_to_superclass()
+
+
+def normalize_ade20k_class_names(
+    class_names: Sequence[str],
+) -> tuple[str, ...]:
+    """Normalize the harmless whitespace present in the pinned HF config.
+
+    The immutable SegFormer config spells at least one label with trailing
+    whitespace (for example, class 7 is ``"bed "``).  Only outer ASCII
+    whitespace is removed here.  Case, punctuation, internal whitespace,
+    class IDs and ordering remain untouched and are checked separately.
+    """
+
+    if isinstance(class_names, (str, bytes)) or not isinstance(
+        class_names, Sequence
+    ):
+        raise ValueError("ADE20K class names must be a sequence of strings")
+    if len(class_names) != len(ADE20K_CLASSES):
+        raise ValueError(
+            "ADE20K class-name sequence must contain exactly "
+            f"{len(ADE20K_CLASSES)} entries, found {len(class_names)}"
+        )
+    normalized: list[str] = []
+    for class_id, name in enumerate(class_names):
+        if not isinstance(name, str):
+            raise ValueError(
+                f"ADE20K class {class_id} must be a string, found "
+                f"{type(name).__name__}"
+            )
+        canonical = name.strip(" \t\r\n\f\v")
+        if not canonical:
+            raise ValueError(
+                f"ADE20K class {class_id} is empty after normalization"
+            )
+        normalized.append(canonical)
+    return tuple(normalized)
+
+
+def validate_ade20k_class_names(
+    class_names: Sequence[str],
+) -> tuple[str, ...]:
+    """Require the canonical ADE20K ID/name order after safe normalization."""
+
+    normalized = normalize_ade20k_class_names(class_names)
+    raw = tuple(class_names)
+    if normalized != ADE20K_CLASSES:
+        differences = [
+            (
+                class_id,
+                raw[class_id],
+                normalized[class_id],
+                ADE20K_CLASSES[class_id],
+            )
+            for class_id in range(len(ADE20K_CLASSES))
+            if normalized[class_id] != ADE20K_CLASSES[class_id]
+        ]
+        preview = "; ".join(
+            f"id {class_id}: raw={source!r}, normalized={actual!r}, "
+            f"expected={expected!r}"
+            for class_id, source, actual, expected in differences[:5]
+        )
+        suffix = "" if len(differences) <= 5 else f"; +{len(differences) - 5} more"
+        raise ValueError(
+            "ADE20K class names/order differ from the frozen mapping after "
+            f"{ADE20K_CLASS_NAME_NORMALIZATION}: {preview}{suffix}"
+        )
+    return normalized
 
 
 def file_sha256(path: str | Path) -> str:
@@ -267,10 +336,7 @@ def validate_ade20k_patch_cache(
         )
     if manifest.get("num_classes") != len(ADE20K_CLASSES):
         raise ValueError("ADE20K patch-cache num_classes must be 150")
-    if tuple(manifest.get("classes", ())) != ADE20K_CLASSES:
-        raise ValueError(
-            "ADE20K patch-cache class names/order differ from the frozen mapping"
-        )
+    validate_ade20k_class_names(manifest.get("classes", ()))
     cities = manifest.get("cities")
     if not isinstance(cities, list) or not cities:
         raise ValueError("ADE20K patch-cache manifest has no city entries")

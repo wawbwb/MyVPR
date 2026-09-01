@@ -33,6 +33,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.semantic_layout_cache import (  # noqa: E402
+    ADE20K_CLASS_NAME_NORMALIZATION,
     SEMANTIC_LAYOUT_CACHE_SCHEMA,
     SEMANTIC_LAYOUT_CACHE_VERSION,
     SEMANTIC_LAYOUT_CLASSES,
@@ -162,6 +163,8 @@ def build_manifest(
             "version": source_manifest["version"],
             "manifest_sha256": source_manifest_hash,
             "array_sha256": source_hashes,
+            "classes": source_manifest["classes"],
+            "class_name_normalization": ADE20K_CLASS_NAME_NORMALIZATION,
             "model_name": source_manifest.get("model_name"),
             "requested_revision": source_manifest.get("requested_revision"),
             "resolved_commit": source_manifest.get("resolved_commit"),

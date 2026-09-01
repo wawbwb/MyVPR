@@ -24,6 +24,9 @@ from src.models.ag_slrd import (
     load_semantic_layout_teacher,
 )
 from src.semantic_layout_cache import (
+    ADE20K_CLASS_NAME_NORMALIZATION,
+    ADE20K_PATCH_CACHE_SCHEMA,
+    ADE20K_PATCH_CACHE_VERSION,
     ADE20K_CLASSES,
     ADE20K_TO_SEMANTIC_LAYOUT,
     DYNAMIC_SUPERCLASS_ID,
@@ -32,6 +35,8 @@ from src.semantic_layout_cache import (
     SEMANTIC_LAYOUT_CLASSES,
     remap_ade20k_labels,
     semantic_layout_mapping_record,
+    validate_ade20k_class_names,
+    validate_ade20k_patch_cache,
     validate_semantic_layout_cache,
 )
 
@@ -55,6 +60,65 @@ def test_fixed_mapping_is_exhaustive_and_preserves_dynamic() -> None:
     assert mapped.dtype == np.uint8
     assert mapped.shape == source.shape
     assert int(mapped.max()) < len(SEMANTIC_LAYOUT_CLASSES)
+
+
+def test_official_class_whitespace_is_accepted_but_reordering_is_not() -> None:
+    official = list(ADE20K_CLASSES)
+    official[7] = "bed "
+    assert validate_ade20k_class_names(official) == ADE20K_CLASSES
+    assert ADE20K_CLASS_NAME_NORMALIZATION == "strip_ascii_outer_whitespace_v1"
+
+    reordered = official.copy()
+    reordered[7], reordered[8] = reordered[8], reordered[7]
+    with pytest.raises(ValueError, match="names/order differ"):
+        validate_ade20k_class_names(reordered)
+
+
+def test_patch_cache_accepts_pinned_hf_trailing_whitespace(tmp_path: Path) -> None:
+    cache = tmp_path / "ade20k"
+    cache.mkdir()
+    labels = np.zeros((2, 70, 70), dtype=np.uint8)
+    confidence = np.full((2, 70, 70), 255, dtype=np.uint8)
+    shuffled = np.asarray([1, 0], dtype=np.int32)
+    np.save(cache / "labels.npy", labels)
+    np.save(cache / "confidence.npy", confidence)
+    np.save(cache / "shuffled_indices.npy", shuffled)
+    source_classes = list(ADE20K_CLASSES)
+    source_classes[7] = "bed "
+    manifest = {
+        "schema": ADE20K_PATCH_CACHE_SCHEMA,
+        "version": ADE20K_PATCH_CACHE_VERSION,
+        "complete": True,
+        "num_images": 2,
+        "grid_size": [70, 70],
+        "num_classes": 150,
+        "classes": source_classes,
+        "cities": [
+            {
+                "name": "TestCity",
+                "offset": 0,
+                "count": 2,
+                "eligible_count": 2,
+                "sha256": "a" * 64,
+            }
+        ],
+        "array_sha256": {
+            name: _sha256(cache / name)
+            for name in (
+                "labels.npy",
+                "confidence.npy",
+                "shuffled_indices.npy",
+            )
+        },
+    }
+    (cache / "manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+    loaded_manifest, arrays, _ = validate_ade20k_patch_cache(cache)
+
+    assert loaded_manifest["classes"][7] == "bed "
+    assert arrays["labels"].shape == (2, 70, 70)
 
 
 def test_layout_encoder_normalizes_and_learns_class_weights() -> None:

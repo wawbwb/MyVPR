@@ -42,6 +42,7 @@ from scripts.cache_gsv_patch_semantics import (  # noqa: E402
     processor_record,
 )
 from src.semantic_layout_cache import (  # noqa: E402
+    ADE20K_CLASS_NAME_NORMALIZATION,
     ADE20K_CLASSES,
     ADE20K_TO_SEMANTIC_LAYOUT,
     SEMANTIC_LAYOUT_CACHE_SCHEMA,
@@ -52,6 +53,7 @@ from src.semantic_layout_cache import (  # noqa: E402
     file_sha256,
     seeded_derangement,
     semantic_layout_mapping_record,
+    validate_ade20k_class_names,
 )
 
 
@@ -392,10 +394,7 @@ def main() -> None:
         args.model_name, args.revision, device
     )
     source_classes = tuple(model_classes(teacher))
-    if source_classes != ADE20K_CLASSES:
-        raise ValueError(
-            "SegFormer class names/order do not match the fixed ADE20K mapping"
-        )
+    validate_ade20k_class_names(source_classes)
 
     desired_manifest: dict[str, Any] = {
         "schema": SEMANTIC_LAYOUT_CACHE_SCHEMA,
@@ -423,6 +422,8 @@ def main() -> None:
             "model_name": args.model_name,
             "requested_revision": args.revision,
             "resolved_commit": commit,
+            "source_classes": list(source_classes),
+            "class_name_normalization": ADE20K_CLASS_NAME_NORMALIZATION,
             "transformers_version": transformers_version,
             "torch_version": str(torch.__version__),
             "processor": processor_record(processor),
