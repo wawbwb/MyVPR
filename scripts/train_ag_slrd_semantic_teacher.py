@@ -80,9 +80,21 @@ TRAINER_KEYS = {
     "lr",
     "weight_decay",
     "precision",
+    "loss_precision",
+    "max_grad_norm",
+    "amp",
     "device",
     "output_dir",
 }
+AMP_KEYS = {
+    "init_scale",
+    "growth_factor",
+    "backoff_factor",
+    "growth_interval",
+    "max_retries_per_batch",
+    "max_total_retries",
+}
+AMP_OVERFLOW_POLICY = "same_batch_retry_after_gradscaler_backoff_v1"
 
 
 def utc_now() -> str:
@@ -147,6 +159,8 @@ def load_and_validate_config(path: str | Path) -> dict[str, Any]:
     _require_exact_keys(data, DATA_KEYS, name="data")
     _require_exact_keys(model, MODEL_KEYS, name="model")
     _require_exact_keys(trainer, TRAINER_KEYS, name="trainer")
+    amp = _expect_mapping(trainer["amp"], name="trainer.amp")
+    _require_exact_keys(amp, AMP_KEYS, name="trainer.amp")
 
     if cache["expected_schema"] != SEMANTIC_LAYOUT_CACHE_SCHEMA:
         raise ValueError("cache.expected_schema differs from source contract")
@@ -192,6 +206,23 @@ def load_and_validate_config(path: str | Path) -> dict[str, Any]:
         raise ValueError("canonical teacher weight_decay must be 0.0001")
     if trainer["precision"] != "16-mixed":
         raise ValueError("canonical teacher precision must be 16-mixed")
+    if trainer["loss_precision"] != "32-true":
+        raise ValueError("canonical metric-learning loss must use 32-true")
+    if not math.isclose(float(trainer["max_grad_norm"]), 10.0, abs_tol=1e-15):
+        raise ValueError("canonical teacher max_grad_norm must be 10.0")
+    expected_amp = {
+        "init_scale": 65536.0,
+        "growth_factor": 2.0,
+        "backoff_factor": 0.5,
+        "growth_interval": 2000,
+        "max_retries_per_batch": 8,
+        "max_total_retries": 32,
+    }
+    if amp != expected_amp:
+        raise ValueError(
+            "trainer.amp differs from the frozen numerical-stability contract"
+        )
+    trainer["amp"] = amp
     expected_suffix = f"ag_slrd_semantic_teacher/{mode}"
     output = str(trainer["output_dir"]).replace("\\", "/").rstrip("/")
     if not output.endswith(expected_suffix):
@@ -259,6 +290,76 @@ def _flatten_batch(
     )
 
 
+def _metric_loss_fp32(
+    loss_function: torch.nn.Module,
+    descriptors: torch.Tensor,
+    labels: torch.Tensor,
+) -> tuple[torch.Tensor, float]:
+    """Run mining and the metric loss in FP32 outside the AMP island."""
+
+    with torch.autocast(device_type=descriptors.device.type, enabled=False):
+        loss, batch_accuracy = loss_function(descriptors.float(), labels)
+    if not torch.is_tensor(loss) or loss.ndim != 0:
+        raise TypeError("metric-learning loss must return a scalar tensor")
+    return loss, float(batch_accuracy)
+
+
+def _unscaled_gradient_norm(
+    parameters: tuple[torch.nn.Parameter, ...],
+) -> torch.Tensor:
+    """Measure the unscaled norm without mutating a non-finite gradient."""
+
+    norms = [
+        torch.linalg.vector_norm(parameter.grad.detach().float(), ord=2)
+        for parameter in parameters
+        if parameter.grad is not None
+    ]
+    if not norms:
+        raise RuntimeError("semantic teacher backward produced no gradients")
+    return torch.linalg.vector_norm(torch.stack(norms), ord=2)
+
+
+def _amp_optimizer_step(
+    *,
+    parameters: tuple[torch.nn.Parameter, ...],
+    optimizer: torch.optim.Optimizer,
+    scaler: torch.amp.GradScaler,
+    max_grad_norm: float,
+) -> dict[str, float | bool]:
+    """Apply one scaled step or report a recoverable GradScaler overflow.
+
+    ``GradScaler.unscale_`` records non-finite gradients.  Calling ``step``
+    then skips the optimizer update, and ``update`` backs the scale off.  The
+    caller can therefore retry the exact same batch without changing model or
+    optimizer state.
+    """
+
+    scaler.unscale_(optimizer)
+    gradient_norm = _unscaled_gradient_norm(parameters)
+    gradients_finite = bool(torch.isfinite(gradient_norm))
+    scale_before = float(scaler.get_scale())
+    if gradients_finite:
+        clipped_norm = torch.nn.utils.clip_grad_norm_(
+            parameters, max_norm=max_grad_norm
+        )
+        if not bool(torch.isfinite(clipped_norm)):
+            raise RuntimeError("finite gradients became non-finite during clipping")
+    scaler.step(optimizer)
+    scaler.update()
+    scale_after = float(scaler.get_scale())
+    if not gradients_finite and not scale_after < scale_before:
+        raise RuntimeError(
+            "non-finite gradients were not followed by GradScaler backoff: "
+            f"scale {scale_before:g} -> {scale_after:g}"
+        )
+    return {
+        "applied": gradients_finite,
+        "gradient_norm": float(gradient_norm.detach()),
+        "scale_before": scale_before,
+        "scale_after": scale_after,
+    }
+
+
 @torch.no_grad()
 def evaluate_holdout(
     model: SemanticLayoutEncoder,
@@ -277,7 +378,7 @@ def evaluate_holdout(
             device_type="cuda", dtype=torch.float16, enabled=amp_enabled
         ):
             descriptors = model(layouts)
-            loss, _ = loss_function(descriptors, labels)
+        loss, _ = _metric_loss_fp32(loss_function, descriptors, labels)
         if not bool(torch.isfinite(loss)):
             raise RuntimeError("non-finite semantic teacher holdout loss")
         loss_sum += float(loss.detach())
@@ -387,7 +488,22 @@ def main() -> None:
         lr=float(trainer_cfg["lr"]),
         weight_decay=float(trainer_cfg["weight_decay"]),
     )
-    scaler = torch.amp.GradScaler("cuda", enabled=True)
+    amp_cfg = trainer_cfg["amp"]
+    scaler = torch.amp.GradScaler(
+        "cuda",
+        enabled=True,
+        init_scale=float(amp_cfg["init_scale"]),
+        growth_factor=float(amp_cfg["growth_factor"]),
+        backoff_factor=float(amp_cfg["backoff_factor"]),
+        growth_interval=int(amp_cfg["growth_interval"]),
+    )
+    parameters = tuple(model.parameters())
+    initial_loss_scale = float(scaler.get_scale())
+    minimum_loss_scale = initial_loss_scale
+    maximum_loss_scale = initial_loss_scale
+    total_amp_retries = 0
+    amp_overflow_events: list[dict[str, float | int]] = []
+    optimizer_steps = 0
 
     output_dir = Path(trainer_cfg["output_dir"]).expanduser().resolve()
     if not args.smoke_test:
@@ -407,6 +523,10 @@ def main() -> None:
     )
     trainable = sum(parameter.numel() for parameter in model.parameters())
     print(f"Semantic-layout teacher parameters: {trainable:,}")
+    print(
+        "Numerics: encoder=16-mixed; metric_loss=32-true; "
+        f"AMP policy={AMP_OVERFLOW_POLICY}; initial_scale={initial_loss_scale:g}"
+    )
 
     history: list[dict[str, float | int]] = []
     global_step = 0
@@ -416,6 +536,7 @@ def main() -> None:
         loss_sum = 0.0
         recall_sum = 0.0
         batch_count = 0
+        epoch_amp_retries = 0
         progress = tqdm(
             train_loader,
             desc=f"Epoch {epoch + 1}/{epochs}",
@@ -423,23 +544,65 @@ def main() -> None:
         )
         for batch in progress:
             layouts, labels = _flatten_batch(batch, device)
-            optimizer.zero_grad(set_to_none=True)
-            with torch.amp.autocast(
-                device_type="cuda", dtype=torch.float16, enabled=True
-            ):
-                descriptors = model(layouts)
-                loss, batch_accuracy = loss_function(descriptors, labels)
-            if not bool(torch.isfinite(loss)):
-                raise RuntimeError("non-finite semantic teacher training loss")
-            scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
-            gradient_norm = torch.nn.utils.clip_grad_norm_(
-                model.parameters(), max_norm=10.0
-            )
-            if not bool(torch.isfinite(gradient_norm)):
-                raise RuntimeError("non-finite semantic teacher gradient norm")
-            scaler.step(optimizer)
-            scaler.update()
+            retries_this_batch = 0
+            while True:
+                optimizer.zero_grad(set_to_none=True)
+                with torch.amp.autocast(
+                    device_type="cuda", dtype=torch.float16, enabled=True
+                ):
+                    descriptors = model(layouts)
+                loss, batch_accuracy = _metric_loss_fp32(
+                    loss_function, descriptors, labels
+                )
+                if not bool(torch.isfinite(loss)):
+                    raise RuntimeError(
+                        "non-finite semantic teacher training loss"
+                    )
+                scaler.scale(loss).backward()
+                step_result = _amp_optimizer_step(
+                    parameters=parameters,
+                    optimizer=optimizer,
+                    scaler=scaler,
+                    max_grad_norm=float(trainer_cfg["max_grad_norm"]),
+                )
+                minimum_loss_scale = min(
+                    minimum_loss_scale,
+                    float(step_result["scale_before"]),
+                    float(step_result["scale_after"]),
+                )
+                maximum_loss_scale = max(
+                    maximum_loss_scale,
+                    float(step_result["scale_before"]),
+                    float(step_result["scale_after"]),
+                )
+                if bool(step_result["applied"]):
+                    optimizer_steps += 1
+                    break
+                retries_this_batch += 1
+                epoch_amp_retries += 1
+                total_amp_retries += 1
+                amp_overflow_events.append(
+                    {
+                        "epoch": epoch,
+                        "scheduled_step": global_step + 1,
+                        "retry": retries_this_batch,
+                        "scale_before": float(step_result["scale_before"]),
+                        "scale_after": float(step_result["scale_after"]),
+                    }
+                )
+                tqdm.write(
+                    "Recoverable AMP overflow: retry same batch; "
+                    f"epoch={epoch + 1}, scheduled_step={global_step + 1}, "
+                    f"retry={retries_this_batch}, scale="
+                    f"{float(step_result['scale_before']):g}->"
+                    f"{float(step_result['scale_after']):g}"
+                )
+                if retries_this_batch > int(amp_cfg["max_retries_per_batch"]):
+                    raise RuntimeError(
+                        "AMP overflow retry limit exceeded for one batch"
+                    )
+                if total_amp_retries > int(amp_cfg["max_total_retries"]):
+                    raise RuntimeError("total AMP overflow retry limit exceeded")
             batch_r1 = _batch_recall_one(descriptors.detach(), labels)
             loss_sum += float(loss.detach())
             recall_sum += float(batch_r1)
@@ -471,6 +634,9 @@ def main() -> None:
             "global_step": global_step,
             "train_loss": loss_sum / batch_count,
             "train_batch_r1": recall_sum / batch_count,
+            "optimizer_steps": optimizer_steps,
+            "amp_overflow_retries": epoch_amp_retries,
+            "amp_scale_end": float(scaler.get_scale()),
             **holdout_metrics,
         }
         history.append(row)
@@ -478,12 +644,22 @@ def main() -> None:
             f"Epoch {epoch + 1}: train_loss={row['train_loss']:.4f}, "
             f"train_batch_R1={row['train_batch_r1']:.4f}, "
             f"holdout_loss={row['holdout_loss']:.4f}, "
-            f"holdout_batch_R1={row['holdout_batch_r1']:.4f}"
+            f"holdout_batch_R1={row['holdout_batch_r1']:.4f}, "
+            f"AMP_retries={epoch_amp_retries}, "
+            f"loss_scale={float(scaler.get_scale()):g}"
         )
 
     if args.smoke_test:
         print("SMOKE TEST PASS (no checkpoint written)")
         return
+
+    expected_optimizer_steps = len(train_loader) * epochs
+    if not global_step == optimizer_steps == expected_optimizer_steps:
+        raise RuntimeError(
+            "successful-step invariant failed: "
+            f"scheduled={global_step}, optimizer={optimizer_steps}, "
+            f"expected={expected_optimizer_steps}"
+        )
 
     manifest_path = cache_dir / "manifest.json"
     cache_provenance = {
@@ -509,6 +685,17 @@ def main() -> None:
     )
     trainer_record = dict(trainer_cfg)
     trainer_record["output_dir"] = str(output_dir)
+    trainer_record["runtime"] = {
+        "amp_overflow_policy": AMP_OVERFLOW_POLICY,
+        "scheduled_steps": global_step,
+        "optimizer_steps": optimizer_steps,
+        "amp_overflow_retries": total_amp_retries,
+        "initial_loss_scale": initial_loss_scale,
+        "minimum_loss_scale": minimum_loss_scale,
+        "maximum_loss_scale": maximum_loss_scale,
+        "final_loss_scale": float(scaler.get_scale()),
+        "overflow_events": amp_overflow_events,
+    }
     checkpoint = build_teacher_checkpoint(
         model,
         mode=mode,

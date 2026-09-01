@@ -14,6 +14,10 @@ from scripts.audit_semantic_layout_complementarity import (
     build_audit,
     search_descriptors,
 )
+from scripts.train_ag_slrd_semantic_teacher import (
+    _amp_optimizer_step,
+    _metric_loss_fp32,
+)
 from src.dataloaders.train.semantic_layout import (
     SemanticLayoutPlaceDataset,
     place_split_remainder,
@@ -153,6 +157,91 @@ def test_layout_encoder_rejects_float_or_invalid_labels() -> None:
     invalid[0, 0, 0] = 12
     with pytest.raises(ValueError, match="neither a valid class"):
         model(invalid)
+
+
+class _DtypeRecordingLoss(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen_dtype: torch.dtype | None = None
+
+    def forward(
+        self, descriptors: torch.Tensor, labels: torch.Tensor
+    ) -> tuple[torch.Tensor, float]:
+        del labels
+        self.seen_dtype = descriptors.dtype
+        return descriptors.square().mean(), 0.0
+
+
+def test_metric_loss_is_forced_to_float32() -> None:
+    loss_function = _DtypeRecordingLoss()
+    descriptors = torch.randn(8, 16, dtype=torch.float16, requires_grad=True)
+    labels = torch.arange(8)
+
+    loss, _ = _metric_loss_fp32(loss_function, descriptors, labels)
+
+    assert loss_function.seen_dtype == torch.float32
+    assert loss.dtype == torch.float32
+    loss.backward()
+    assert descriptors.grad is not None
+    assert bool(torch.isfinite(descriptors.grad).all())
+
+
+def test_amp_step_backs_off_and_recovers_from_nonfinite_gradient() -> None:
+    parameter = torch.nn.Parameter(torch.tensor([1.0]))
+    parameters = (parameter,)
+    optimizer = torch.optim.AdamW(parameters, lr=0.1)
+    scaler = torch.amp.GradScaler(
+        "cpu", init_scale=128.0, growth_interval=100
+    )
+
+    # Initialise AdamW's moments, then prove a skipped update mutates neither
+    # the parameter nor optimizer state.
+    scaler.scale(parameter.square().sum()).backward()
+    initial = _amp_optimizer_step(
+        parameters=parameters,
+        optimizer=optimizer,
+        scaler=scaler,
+        max_grad_norm=10.0,
+    )
+    assert initial["applied"] is True
+    optimizer.zero_grad(set_to_none=True)
+    scaler.scale(parameter.square().sum()).backward()
+    assert parameter.grad is not None
+    parameter.grad.fill_(torch.inf)
+    before = parameter.detach().clone()
+    state_before = {
+        name: value.detach().clone() if torch.is_tensor(value) else value
+        for name, value in optimizer.state[parameter].items()
+    }
+    overflow = _amp_optimizer_step(
+        parameters=parameters,
+        optimizer=optimizer,
+        scaler=scaler,
+        max_grad_norm=10.0,
+    )
+
+    assert overflow["applied"] is False
+    assert overflow["scale_before"] == 128.0
+    assert overflow["scale_after"] == 64.0
+    assert torch.equal(parameter.detach(), before)
+    for name, value in state_before.items():
+        current = optimizer.state[parameter][name]
+        if torch.is_tensor(value):
+            assert torch.equal(current, value)
+        else:
+            assert current == value
+
+    optimizer.zero_grad(set_to_none=True)
+    scaler.scale(parameter.square().sum()).backward()
+    recovered = _amp_optimizer_step(
+        parameters=parameters,
+        optimizer=optimizer,
+        scaler=scaler,
+        max_grad_norm=10.0,
+    )
+
+    assert recovered["applied"] is True
+    assert not torch.equal(parameter.detach(), before)
 
 
 def test_teacher_checkpoint_round_trip(tmp_path: Path) -> None:

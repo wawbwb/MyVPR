@@ -102,6 +102,16 @@ def test_teacher_configs_pin_model_and_training_contract() -> None:
         "lr": 0.001,
         "weight_decay": 0.0001,
         "precision": "16-mixed",
+        "loss_precision": "32-true",
+        "max_grad_norm": 10.0,
+        "amp": {
+            "init_scale": 65536.0,
+            "growth_factor": 2.0,
+            "backoff_factor": 0.5,
+            "growth_interval": 2000,
+            "max_retries_per_batch": 8,
+            "max_total_retries": 32,
+        },
         "device": "cuda:1",
     }
     for mode, config in _configs().items():

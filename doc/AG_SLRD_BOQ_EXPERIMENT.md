@@ -277,3 +277,28 @@ python scripts/audit_semantic_layout_complementarity.py \
 ```
 
 只需下载并归档 `doc/ag_slrd_runs/`、两个 teacher 的 `run.json/history.csv`，以及 `doc/ag_slrd_phase0_audit/`。raw cache 和 descriptor `.npy` 是可再生副产物，不提交 Git。
+
+### 7.4 AMP 数值稳定性合同与首次运行中止记录
+
+2026-09-01 的首次 aligned 正式运行在 epoch 5、batch 755 中止：前向
+loss 仍为有限值，但 unscale 后的梯度范数非有限。失败位置约为全局第
+6371 个 batch；默认 GradScaler 在第 2000、4000、6000 个成功 step 后逐次
+增大 loss scale，因此该时序与一次可恢复的 scaled-gradient overflow
+一致。旧脚本却在 `scaler.step()`/`scaler.update()` 前抛错，阻断了标准的
+skip/backoff。这是训练器 AMP 状态机缺陷，不是 teacher 效果结论；该次
+运行没有写出 `final.pt`、`history.csv` 或 `run.json`。
+
+在读取任何 MSLS teacher 结果前冻结以下成对数值合同：
+
+- encoder 前向保持 `16-mixed`，miner 与 MultiSimilarityLoss 固定在 FP32；
+- unscale 后只对有限梯度裁剪；GradScaler 捕获 overflow 时先跳过参数更新并
+  降低 scale，再对同一 batch 重试，保证每组仍有相同的成功 optimizer step；
+- 每 batch 最多重试 8 次，全程最多 32 次，超过即失败关闭；
+- `history.csv` 记录逐 epoch retry 和 loss scale，checkpoint/`run.json` 记录
+  总 retry、每次 overflow 的 step 与 scale、初始/最低/最高/最终 scale，以及
+  成功 optimizer step；
+- aligned 与 shuffled 均从 seed 42、epoch 1 重新运行，不恢复首次失败状态。
+
+该修复不改变模型、标签、数据顺序、学习率、batch、epoch 或选择规则，且
+同时应用于 aligned/shuffled；因此属于结果产生前的数值正确性修复，而非
+观察验证集后调参。
