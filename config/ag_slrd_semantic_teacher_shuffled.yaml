@@ -1,0 +1,39 @@
+# AG-SLRD Phase 0 negative control: the same teacher and training protocol,
+# but every eligible receiver uses a deterministic same-city, wrong-place
+# semantic-layout donor.  Only `mode` and `trainer.output_dir` may differ from
+# the aligned configuration.
+seed: 42
+mode: "shuffled"
+
+cache:
+  dir: ".cache/ade20k_semantic_layout/gsv_grid70"
+  expected_schema: "openvpr_ade20k_semantic_layout"
+  expected_version: 1
+  expected_grid: [70, 70]
+  expected_num_classes: 12
+
+data:
+  dataset_root: "datasets/gsv_cities"
+  cities: "all"
+  views_per_place: 4
+  places_per_batch: 40
+  num_workers: 8
+  split_algorithm: "sha256_place_v1"
+  holdout_modulus: 10
+  holdout_remainder: 0
+
+model:
+  num_classes: 12
+  embed_dim: 32
+  channels: [64, 128, 256]
+  descriptor_dim: 512
+  ignore_index: 255
+
+trainer:
+  epochs: 10
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  precision: "16-mixed"
+  device: "cuda:1"
+  output_dir: "logs/ag_slrd_semantic_teacher/shuffled"

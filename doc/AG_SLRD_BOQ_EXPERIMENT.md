@@ -1,6 +1,6 @@
 # Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）
 
-状态：**DESIGNED / NOT IMPLEMENTED**  
+状态：**PHASE 0 IMPLEMENTED / NOT RUN**
 设计冻结日期：2026-09-01
 
 ## 1. 研究问题
@@ -51,14 +51,14 @@ teacher 使用与 RGB 模型相同的地点标签和 VPR loss 训练。类别权
 | semantic-only | teacher 可向 RU 提供的 oracle 互补样本 |
 | both-wrong | 两者都没有可用信号 |
 | oracle union | 任一模态正确时的 R@1 上界 |
-| teacher-better pair rate | teacher 的真实 positive rank 优于 RU 的训练 pair 比例 |
+| teacher-better query-rank rate | 在未见过的 MSLS query 上，teacher 的真实 positive rank 优于 RU 的比例 |
 
 同时用跨地点循环置换的 label map 做负对照，确认 aligned semantic-layout relation 不是仅凭类别频率或城市先验得到同样结果。
 
 以下任一条件满足就停止，不实现 student：
 
 - MSLS `semantic-only < 8/740`；
-- 训练集 `teacher-better pair < 5%`；
+- MSLS `teacher-better query-rank < 5%`；
 - aligned teacher 对 RU 错误的富集不优于 shuffled label control；
 - teacher 在 held-out place/city 上没有高于 shuffled 的真实 positive ranking 能力。
 
@@ -125,3 +125,155 @@ teacher descriptor 已由 global structural feature 与 label-specific weighted 
 若 Phase 0 没有发现 semantic-only 互补样本，说明当前标签源没有提供可转移的额外地点信息；若 Phase 0 通过而 Phase 1 失败，说明该信息无法通过当前 relation distillation 改善强 RU+BoQ。两种情况下都应停止继续设计 BoQ semantic adapter。
 
 仍可独立开展的工作是按论文原架构完整复现 SemVPR 的 dense LSA + CLS aggregation，或使用作者代码复现 StructVPR++；这些属于论文复现，不应与 AG-SLRD 的 BoQ 适配结果混为一谈。
+
+## 7. Phase 0 实现与运行协议
+
+### 7.1 已实现组件
+
+| 文件 | 作用 |
+| --- | --- |
+| `src/semantic_layout_cache.py` | 固定 ADE20K-150 → 12 个 VPR superclass 映射；`dynamic` 独立保留；校验 schema、70×70、shape、dtype 与 SHA256 |
+| `scripts/build_gsv_semantic_layout_cache.py` | 验证并转换 GSV 70×70 SegFormer cache，不允许把旧 20×20 cache 上采样冒充结构标签 |
+| `scripts/cache_msls_ag_slrd_layouts.py` | 按 `18871 database + 740 query` 标准顺序生成 MSLS coarse layout cache |
+| `src/models/ag_slrd.py` | 纯 semantic-layout encoder：坐标感知卷积、4×4 空间池化、label-specific pooling 与逐图可学习类别权重 |
+| `src/dataloaders/train/semantic_layout.py` | 不读取 RGB 的 GSV place-balanced memmap loader；固定 SHA256 90/10 place split |
+| `scripts/train_ag_slrd_semantic_teacher.py` | aligned/shuffled 两组 P=40、K=4、10 epoch 教师训练；实时进度条；只保存预注册 final epoch |
+| `scripts/extract_ag_slrd_msls_descriptors.py` | 严格同序提取冻结 RU 与 semantic teacher 描述子并写入 provenance sidecar |
+| `scripts/audit_semantic_layout_complementarity.py` | 精确 cosine 检索、四格/oracle/rank/margin 统计和 Phase-0 自动 PASS/FAIL |
+
+两份正式配置为 `config/ag_slrd_semantic_teacher_aligned.yaml` 和
+`config/ag_slrd_semantic_teacher_shuffled.yaml`。除输入选择与输出目录外，二者的 seed、split、模型、batch、epoch、优化器完全相同。
+
+### 7.2 四个审计输入
+
+MSLS 审计不把含义不同的 shuffled 对照混为一组，而是固定为：
+
+1. `ru`：冻结 RU+BoQ；
+2. `aligned_semantic`：aligned-trained teacher + aligned MSLS layout；
+3. `wrong_layout`：同一个 aligned-trained teacher + shuffled MSLS layout；
+4. `shuffled_teacher`：shuffled-trained teacher + aligned MSLS layout。
+
+每个 `.npy` 必须带提取器生成的 `.npy.json`，审计会校验 descriptor SHA256、teacher training mode 和 layout selection，防止命令复制或文件重命名后静默比较错组。
+
+默认 PASS 条件为全部同时满足：
+
+- 冻结 RU 精确复现 `675/740`；
+- aligned semantic-only 至少 `8/740`；
+- aligned positive rank 优于 RU 的 query 比例至少 `5%`；
+- aligned 对 RU 错误的补回数量分别高于 wrong-layout 与 shuffled-teacher；
+- aligned 的 positive rank 胜负数分别优于两个对照。
+- aligned 在固定 SHA256 GSV holdout 的 matched batch-R@1 高于 shuffled-trained teacher。
+
+任一项失败即保持 `PHASE 0 FAIL`，不实现 Phase 1 student，也不扫描 superclass、网络宽度、epoch 或损失权重。
+
+### 7.3 训练机命令
+
+先生成不能由旧 20×20 cache 替代的 GSV 70×70 raw cache：
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+python scripts/cache_gsv_patch_semantics.py \
+  --dataset-root datasets/gsv_cities \
+  --output .cache/ade20k_patch_labels/segformer_b0_ade20k_grid70 \
+  --device cuda:1 \
+  --batch-size 16 \
+  --num-workers 8 \
+  --model-name nvidia/segformer-b0-finetuned-ade-512-512 \
+  --revision 489d5cd81a0b59fab9b7ea758d3548ebe99677da \
+  --grid-size 70 70 \
+  --target-image-size 280 280 \
+  --eligible-min-views 4 \
+  --flush-every 10 \
+  --amp
+
+python scripts/build_gsv_semantic_layout_cache.py \
+  --dataset-root datasets/gsv_cities \
+  --source-cache .cache/ade20k_patch_labels/segformer_b0_ade20k_grid70 \
+  --output .cache/ade20k_semantic_layout/gsv_grid70
+```
+
+先跑测试与单 batch smoke，再依次正式训练两组：
+
+```bash
+python -m pytest -q \
+  tests/test_ag_slrd.py \
+  tests/test_ag_slrd_configs.py \
+  tests/test_ag_slrd_msls_cache.py
+
+python -u scripts/train_ag_slrd_semantic_teacher.py \
+  --config config/ag_slrd_semantic_teacher_aligned.yaml \
+  --smoke-test
+
+mkdir -p doc/ag_slrd_runs
+set -o pipefail
+
+python -u scripts/train_ag_slrd_semantic_teacher.py \
+  --config config/ag_slrd_semantic_teacher_aligned.yaml \
+  2>&1 | tee doc/ag_slrd_runs/teacher_aligned_10ep.txt
+
+python -u scripts/train_ag_slrd_semantic_teacher.py \
+  --config config/ag_slrd_semantic_teacher_shuffled.yaml \
+  2>&1 | tee doc/ag_slrd_runs/teacher_shuffled_10ep.txt
+```
+
+最后生成 MSLS layout、提取四份描述子并审计：
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+python scripts/cache_msls_ag_slrd_layouts.py \
+  --msls-path datasets/msls-val \
+  --output .cache/ade20k_semantic_layout/msls_val_grid70 \
+  --device cuda:1 \
+  --batch-size 16 \
+  --num-workers 8 \
+  --model-name nvidia/segformer-b0-finetuned-ade-512-512 \
+  --revision 489d5cd81a0b59fab9b7ea758d3548ebe99677da \
+  --target-image-size 280 280 \
+  --seed 42 \
+  --flush-every 10 \
+  --amp
+
+export RU_CKPT='logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt'
+export ALIGNED_TEACHER='logs/ag_slrd_semantic_teacher/aligned/final.pt'
+export SHUFFLED_TEACHER='logs/ag_slrd_semantic_teacher/shuffled/final.pt'
+export LAYOUT_CACHE='.cache/ade20k_semantic_layout/msls_val_grid70'
+mkdir -p .cache/ag_slrd_descriptors
+
+python -u scripts/extract_ag_slrd_msls_descriptors.py ru \
+  --checkpoint "$RU_CKPT" \
+  --msls-path datasets/msls-val \
+  --image-size 280 280 \
+  --output .cache/ag_slrd_descriptors/ru.npy \
+  --device cuda:1 --batch-size 32 --num-workers 8
+
+python -u scripts/extract_ag_slrd_msls_descriptors.py semantic \
+  --checkpoint "$ALIGNED_TEACHER" --layout-cache "$LAYOUT_CACHE" \
+  --selection aligned \
+  --output .cache/ag_slrd_descriptors/aligned.npy \
+  --device cuda:1 --batch-size 256 --num-workers 8
+
+python -u scripts/extract_ag_slrd_msls_descriptors.py semantic \
+  --checkpoint "$ALIGNED_TEACHER" --layout-cache "$LAYOUT_CACHE" \
+  --selection shuffled \
+  --output .cache/ag_slrd_descriptors/wrong_layout.npy \
+  --device cuda:1 --batch-size 256 --num-workers 8
+
+python -u scripts/extract_ag_slrd_msls_descriptors.py semantic \
+  --checkpoint "$SHUFFLED_TEACHER" --layout-cache "$LAYOUT_CACHE" \
+  --selection aligned \
+  --output .cache/ag_slrd_descriptors/shuffled_teacher.npy \
+  --device cuda:1 --batch-size 256 --num-workers 8
+
+python scripts/audit_semantic_layout_complementarity.py \
+  --ru-descriptors .cache/ag_slrd_descriptors/ru.npy \
+  --aligned-descriptors .cache/ag_slrd_descriptors/aligned.npy \
+  --wrong-layout-descriptors .cache/ag_slrd_descriptors/wrong_layout.npy \
+  --shuffled-teacher-descriptors .cache/ag_slrd_descriptors/shuffled_teacher.npy \
+  --aligned-run logs/ag_slrd_semantic_teacher/aligned/run.json \
+  --shuffled-run logs/ag_slrd_semantic_teacher/shuffled/run.json \
+  --positives datasets/msls-val/msls_val_gt_25m.npy \
+  --num-references 18871 \
+  --output doc/ag_slrd_phase0_audit
+```
+
+只需下载并归档 `doc/ag_slrd_runs/`、两个 teacher 的 `run.json/history.csv`，以及 `doc/ag_slrd_phase0_audit/`。raw cache 和 descriptor `.npy` 是可再生副产物，不提交 Git。

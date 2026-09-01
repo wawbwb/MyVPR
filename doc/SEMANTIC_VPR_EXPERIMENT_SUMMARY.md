@@ -511,10 +511,10 @@ AG-SLRD 因此同时改变 teacher、选择单位和学习目标：
 
 - `both-correct`、`RU-only`、`semantic-only`、`both-wrong` 四格；
 - oracle union R@1；
-- query-positive pair 中 teacher positive rank 优于 RU 的比例；
+- 未见 MSLS query 中 teacher positive rank 优于 RU 的比例；
 - aligned label map 与跨地点 shuffled label map 的 teacher relation 差异。
 
-在任何 student 训练前固定停止条件：`semantic-only < 8/740 query`，或训练集 `teacher-better pair < 5%`，或 aligned 不比 shuffled 富集 RU 错误，则整条路线停止。该门槛只回答 teacher 是否拥有可转移的互补 VPR 知识；未过线时再调 distillation 权重没有意义。
+在任何 student 训练前固定停止条件：`semantic-only < 8/740 query`，或 MSLS `teacher-better query-rank < 5%`，或 aligned 不比 wrong-layout 与 shuffled-trained teacher 富集 RU 错误，或 aligned 在固定 GSV holdout 上不胜 shuffled-trained teacher，则整条路线停止。该门槛只回答 teacher 是否拥有可转移的互补 VPR 知识；未过线时再调 distillation 权重没有意义。
 
 ### 11.3 Phase 1：只蒸馏 teacher 优势样本的检索关系
 
@@ -565,6 +565,6 @@ L = L_VPR
 - Crop-CLS 原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt`、`preflight_audit.json`、`architecture_only_5ep.txt` 与 `aligned_5ep.txt`；wrong-region/wrong-place 当前仅有用户提供的训练机 checkpoint 清单，待原始日志下载后补归档。
 - Residual-CLIP：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（Phase A 预注册、实现索引、正式 FAIL 与停止决定）；训练机输出目录为 `doc/residual_clip_runs/paired_full_20260831_105942` 和 `doc/residual_clip_runs/semantic_gamma_sweep_20260831_123138`，其精确结果已固化在第 9 节，原始目录仍待同步回本机仓库。
 - RSCD-BoQ：代码、四组严格匹配配置、类别可靠性统计、512 图离线 mask 审计和 500-step TensorBoard 合同审计均已实现且通过；正式 `no-mask/uniform/aligned` 三组 3-epoch 首筛已完成，状态为 **COMPLETED / FAIL**。完整结果见 `doc/RSCD_BOQ_EXPERIMENT.md`；训练机 checkpoint 清单已归档到 `doc/rscd_runs/formal_checkpoint_inventory.txt`，原始三组训练日志仍待同步。
-- 下一候选 AG-SLRD-BoQ：当前仅完成基于失败证据与论文的设计/预注册草案，状态为 **DESIGNED / NOT IMPLEMENTED**；必须先通过 semantic teacher complementarity audit，才允许实现和训练 student。见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
+- 下一候选 AG-SLRD-BoQ：Phase 0 的固定 150→12 类映射、GSV/MSLS 70×70 cache、place-supervised layout teacher、aligned/shuffled matched 配置、同序描述子提取和双 placebo 互补性审计均已实现，状态为 **PHASE 0 IMPLEMENTED / NOT RUN**。尚未实现 Phase 1 student；必须先通过 semantic teacher complementarity audit 才允许继续。完整代码索引、门槛与命令见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

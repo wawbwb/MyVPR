@@ -1,0 +1,41 @@
+# AG-SLRD Phase 0: place-supervised semantic-layout teacher.
+#
+# This teacher sees only the immutable 12-class semantic-layout cache.  The
+# aligned and shuffled controls must remain matched except for `mode` and the
+# output directory.  The final epoch is audited; MSLS is not used to choose a
+# checkpoint.
+seed: 42
+mode: "aligned"
+
+cache:
+  dir: ".cache/ade20k_semantic_layout/gsv_grid70"
+  expected_schema: "openvpr_ade20k_semantic_layout"
+  expected_version: 1
+  expected_grid: [70, 70]
+  expected_num_classes: 12
+
+data:
+  dataset_root: "datasets/gsv_cities"
+  cities: "all"
+  views_per_place: 4
+  places_per_batch: 40
+  num_workers: 8
+  split_algorithm: "sha256_place_v1"
+  holdout_modulus: 10
+  holdout_remainder: 0
+
+model:
+  num_classes: 12
+  embed_dim: 32
+  channels: [64, 128, 256]
+  descriptor_dim: 512
+  ignore_index: 255
+
+trainer:
+  epochs: 10
+  optimizer: "adamw"
+  lr: 0.001
+  weight_decay: 0.0001
+  precision: "16-mixed"
+  device: "cuda:1"
+  output_dir: "logs/ag_slrd_semantic_teacher/aligned"
