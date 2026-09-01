@@ -164,3 +164,53 @@ python -u run.py \
 - 另一条候选通道是 season-full-db 至少 `+1.0 pp`，同时 overall 相对 RU 不下降超过 1/740 query。
 
 所有结论先基于相同 seed 的 causal screen；达到候选门槛后才进行 3 seeds 和其他聚合器复现。
+
+## 6. 正式结果与停止决定（2026-09-01）
+
+### 6.1 运行完整性
+
+离线 matched-mask 审计与 500-step 梯度/推理合同审计均为 `PASS`。这说明正式负结果不能用“语义 mask 没有真正执行”“梯度断开”或“验证路径错误地保留了 mask”解释。
+
+以下结果来自训练机的 checkpoint 清单；原始三组训练日志尚未同步回本机仓库，清单已原样归档到 `doc/rscd_runs/formal_checkpoint_inventory.txt`。表中的命中数按 MSLS-val 的 740 个 query 换算。
+
+| 组别 | Epoch | R@1 | R@1 命中 | R@5 | R@5 命中 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 冻结 RU source | 26 | **91.22** | **675/740** | 95.14 | 704/740 |
+| no-mask | 0 | 90.81 | 672/740 | 95.14 | 704/740 |
+| no-mask | 1 | **90.95** | **673/740** | **95.27** | **705/740** |
+| no-mask | 2 | 90.68 | 671/740 | 95.00 | 703/740 |
+| uniform-block | 0 | **90.41** | **669/740** | **94.86** | **702/740** |
+| uniform-block | 1 | 90.41 | 669/740 | 94.73 | 701/740 |
+| uniform-block | 2 | 90.41 | 669/740 | 94.73 | 701/740 |
+| aligned-RSCD | 0 | **90.95** | **673/740** | **94.86** | **702/740** |
+| aligned-RSCD | 1 | 90.68 | 671/740 | 94.86 | 702/740 |
+| aligned-RSCD | 2 | 90.27 | 668/740 | 95.00 | 703/740 |
+
+每组以 R@1 为主指标选择 checkpoint；R@1 持平时才用 R@5 破同分。因此 no-mask 选 epoch 1、uniform-block 选 epoch 0、aligned-RSCD 选 epoch 0。
+
+### 6.2 预注册判定
+
+| 比较 | R@1 差值 | 命中数差值 | 解释 |
+| --- | ---: | ---: | --- |
+| aligned vs 冻结 RU | -0.27 pp | -2 | 没有超过起点模型 |
+| aligned vs no-mask | +0.00 pp | 0 | 没有超过匹配的继续训练对照 |
+| aligned vs uniform-block | +0.54 pp | +4 | 语义遮挡比均匀 DropBlock 少破坏 4 个 query |
+
+结论为：
+
+```text
+RSCD-BoQ
+Implementation / contract: PASS
+Semantic causal screen: FAIL
+Overall status: COMPLETED / FAIL
+```
+
+aligned 只胜过 uniform-block，却与 no-mask 持平并低于冻结 RU；这最多说明数据驱动语义遮挡比同配额均匀遮挡破坏更小，不能证明语义带来检索收益。aligned 的 R@1 还从 epoch 0 的 90.95% 连续降到 90.68% 和 90.27%，没有延长训练的证据。
+
+按第 4.4 节与第 5 节的预注册规则：
+
+- 不运行 `shuffled_semantic`；aligned 没有同时比 RU、no-mask、uniform 多至少 4 个 query；
+- 不运行 condition evaluation；overall 相对 RU 已下降 2 query，超过候选通道允许的 1 query；
+- 不增加 seed、不延长 epoch、不复制到 SALAD，也不扫描 mask coverage、relation-loss 权重或学习率。
+
+该结论否定的是当前 GSV-Cities → MSLS、RU+BoQ 设置下的 RSCD 实现，不是“训练期语义扰动在理论上永远无效”。

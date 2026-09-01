@@ -1,0 +1,22 @@
+RSCD-BoQ formal 3-epoch checkpoint inventory
+Archived: 2026-09-01
+Source: checkpoint listing copied from the training machine by the user.
+Note: raw training logs are not present in the local repository yet.
+
+Frozen RU source checkpoint:
+logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt
+
+no-mask:
+logs/dinov2_vitb14/BoQ_rscd_no_mask/version_0/checkpoints/epoch(00)_step(1563)_R1[0.9081]_R5[0.9514].ckpt
+logs/dinov2_vitb14/BoQ_rscd_no_mask/version_0/checkpoints/epoch(01)_step(3126)_R1[0.9095]_R5[0.9527].ckpt
+logs/dinov2_vitb14/BoQ_rscd_no_mask/version_0/checkpoints/epoch(02)_step(4689)_R1[0.9068]_R5[0.9500].ckpt
+
+uniform-block:
+logs/dinov2_vitb14/BoQ_rscd_uniform_block/version_0/checkpoints/epoch(00)_step(1563)_R1[0.9041]_R5[0.9486].ckpt
+logs/dinov2_vitb14/BoQ_rscd_uniform_block/version_0/checkpoints/epoch(01)_step(3126)_R1[0.9041]_R5[0.9473].ckpt
+logs/dinov2_vitb14/BoQ_rscd_uniform_block/version_0/checkpoints/epoch(02)_step(4689)_R1[0.9041]_R5[0.9473].ckpt
+
+aligned-RSCD:
+logs/dinov2_vitb14/BoQ_rscd_aligned_rscd/version_0/checkpoints/epoch(00)_step(1563)_R1[0.9095]_R5[0.9486].ckpt
+logs/dinov2_vitb14/BoQ_rscd_aligned_rscd/version_0/checkpoints/epoch(01)_step(3126)_R1[0.9068]_R5[0.9486].ckpt
+logs/dinov2_vitb14/BoQ_rscd_aligned_rscd/version_0/checkpoints/epoch(02)_step(4689)_R1[0.9027]_R5[0.9500].ckpt
