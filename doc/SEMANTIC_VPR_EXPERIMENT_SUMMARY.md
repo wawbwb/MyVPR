@@ -1,6 +1,6 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-09-01
+更新日期：2026-09-02
 
 ## 1. 总结结论
 
@@ -21,7 +21,9 @@ Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 
 
 沿这一启示设计的 **Reliability-Calibrated Semantic Counterfactual Dropout（RSCD-BoQ）** 也已完成。离线 mask 与 500-step 梯度/推理合同审计均通过，但正式三组首筛中 aligned 最佳 R@1 为 90.95%（673/740），比冻结 RU 少 2 个 query，与 no-mask 持平，只比 uniform-block 多 4 个 query。因此只能说语义遮挡比均匀 DropBlock 少破坏，不能说语义提高了检索；状态为 **IMPLEMENTATION PASS / SEMANTIC SCREEN FAIL**。按预注册规则不运行 shuffled、condition、多 seed、延长训练或参数扫描。完整结果见第 10 节和 `doc/RSCD_BOQ_EXPERIMENT.md`。
 
-下一条且仅保留的一条 BoQ 语义候选改为 **Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）**：先用地点监督训练独立的 segmentation-layout VPR teacher，只在该 teacher 对真实 query-positive pair 确实优于 RU 时，蒸馏相对检索关系；不再把 generic CLIP/类别信号无条件注入每张图。学生训练前先做 teacher complementarity 审计，不满足门槛便直接停止。见第 11 节。
+**Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）** 的 Phase 0 也已完成并判定为 **FAIL**。aligned layout teacher 在固定 GSV holdout 上明显胜过 shuffled teacher（83.46% 对 67.77%），证明正确布局关系能够被学习；但在 MSLS 上 aligned semantic-only 只补回 RU 的 2 个错误，positive rank 优于 RU 的查询仅 9/740，并且 shuffled-trained teacher 反而补回 4 个。当前 aligned 与 RU 的 oracle union 仅为 677/740，相对 RU 只增加 2 query。因此不实现 Phase 1，也不扫描 superclass、teacher 宽度或蒸馏权重。见第 11 节。
+
+至此，当前 `GSV-Cities + DINOv2-RU-BoQ` 下所有已实现的**单图语义 adapter**均未通过 matched baseline 与 corrupted-control 的因果门槛。后续不再给现有 BoQ 继续叠加语义小模块。新的独立候选改为 **Candidate-Conditioned LSA Semantic Pair-VPR（CC-LSA Pair-VPR）**：冻结 RU 作为第一阶段，只在 top-K 候选图像对上检验 dense LSA 连续语义是否能提供局部对应证据；先做零 student 训练的充分性审计，过线后才允许训练 RGB-only pair classifier。该路线属于 Pair-VPR/R²Former 式两阶段 VPR，不是当前 BoQ adapter 的延续。见第 12 节和 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -154,7 +156,7 @@ screen verdict 为 FAIL。固定、类别共享的动态负先验没有改善检
 - aligned 不胜 shuffled/random 时，不能把变化归因于语义；
 - semantic-region 的插值 round trip 与逐图单位方差化是实现层面的真实混杂，但修复它们只说明 target 更干净，不保证 retrieval 会转正；
 - BoQ query/head 的偏好高度异质，固定类别、所有 query 共用的负 bias 过于粗糙；但本次 query-specific ADE20K class bias 同样没有改善检索，因此“改成 query-specific”本身也不是充分条件；
-- 当前证据否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter”、本项目的“稀疏 crop-CLS 蒸馏 + FiLM + RU/BoQ 联合微调”、“把冻结 CLIP 保留为推理特征流、零起点残差接入现有 RU+BoQ”，以及“语义只决定训练期结构化遮挡”的 RSCD 实现；尚未直接检验的是 SemVPR 的完整 dense LSA teacher + 原论文 CLS aggregation，以及由地点损失训练的 semantic-layout teacher 只在其具有样本级优势时进行关系蒸馏。
+- 当前证据否定了“冻结 RU/BoQ，仅靠 hard-class attention-logit adapter”、本项目的“稀疏 crop-CLS 蒸馏 + FiLM + RU/BoQ 联合微调”、“把冻结 CLIP 保留为推理特征流、零起点残差接入现有 RU+BoQ”、“语义只决定训练期结构化遮挡”，以及“由地点损失训练的 12 类 semantic-layout teacher 能为强 RU 提供足够关系蒸馏样本”等具体实现；尚未直接检验的是 SemVPR 的完整 dense LSA teacher + 原论文 CLS/SAA aggregation，以及语义只在 query-candidate 一对一局部对应中使用的 pair-VPR 路线。
 
 现有结果不支持：
 
@@ -484,73 +486,72 @@ Overall status: COMPLETED / FAIL
 
 逐 epoch 表、checkpoint 清单和完整停止依据见 `doc/RSCD_BOQ_EXPERIMENT.md` 与 `doc/rscd_runs/formal_checkpoint_inventory.txt`。原始三组训练日志仍待从训练机同步，本归档没有把 checkpoint 文件名误写成已在本机保存的日志。
 
-## 11. 下一候选：Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）
+## 11. AG-SLRD-BoQ：Phase 0 完成，FAIL
 
-### 11.1 为什么只保留这一条
+### 11.1 训练与 provenance
 
-前面已经覆盖 generic CLIP/ADE20K 信号的全局与局部拟合、attention bias、FiLM、残差融合、正负样本选择和训练期遮挡。继续更换 `alpha`、mask 类别或注入位置，仍是在假定“每个 aligned semantic target 都值得学”，而现有对照反复否定了这个假定。
+70×70 semantic-layout cache 覆盖 GSV-Cities 的 529,506 张图，固定 150→12 类映射，忽略 patch 数为 0。aligned 与 shuffled teacher 均使用 seed 42、同一 56,194/6,320 place split、P=40、K=4 和 10 epoch；两组均完成 `14040` 个 scheduled/optimizer step。两组各出现 3 次可恢复 AMP overflow，均通过 same-batch retry 完成，结果不存在漏更新或不对称数值协议。
 
-[StructVPR（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Shen_StructVPR_Distill_Structural_Knowledge_With_Weighting_Samples_for_Visual_Place_CVPR_2023_paper.html)先用 VPR loss 分别训练 RGB 与 segmentation branch，再根据 teacher/student 对 query-positive pair 的检索排名选择和加权样本；论文明确报告并非所有 semantic sample 都有帮助。[StructVPR++（TPAMI 2025）](https://arxiv.org/abs/2503.06601)进一步解耦 label-specific features，在图像对之间显式做 semantic alignment，并保留 sample-wise weighting。[DistilVPR（AAAI 2024）](https://ojs.aaai.org/index.php/AAAI/article/view/28905)则说明跨模态 VPR 更适合蒸馏样本间关系，而不是强迫异构 embedding 逐元素相等。
+修复前 aligned 在约第 6371 batch 中止的日志只记录 AMP 状态机缺陷，不是实验结果。正式 aligned/shuffled 均从 epoch 1 重新训练并写出 `final.pt/history.csv/run.json`。
 
-AG-SLRD 因此同时改变 teacher、选择单位和学习目标：
+### 11.2 Teacher 与 MSLS 结果
 
-| 维度 | 已失败路线 | AG-SLRD |
-| --- | --- | --- |
-| Teacher | generic CLIP 或通用分割标签 | 先用同一地点损失训练的 semantic-layout VPR teacher |
-| 是否作用于所有图 | 通常是 | 只作用于 teacher 对该真实地点 pair 确实优于 RU 的样本 |
-| 蒸馏对象 | token、descriptor、gate、bias 或 mask | query-positive-negative 的相对 cosine/margin 关系 |
-| 推理 | 有的保留额外语义流，有的移除 | 始终只有原 RGB `DINOv2 -> RU -> BoQ` |
+GSV 固定 holdout 上 aligned teacher 的 batch R@1 为 83.46%，shuffled 为 67.77%，aligned 高 15.70 pp。正确 semantic layout 因此确实可学习，但这不等于它能补足 RU。
 
-这不是完整 StructVPR++ 复现，而是针对当前 BoQ 代码库的最小、可证伪适配。完整 SemVPR 的 dense LSA + 原生 CLS aggregation 仍未被本项目检验；如果目标是复现论文而不是提出 BoQ 新机制，应把它作为独立复现任务，不能用 Crop-CLS-lite 的失败替代结论。
+| 变体 | R@1 | R@5 | R@10 | 首个正样本平均排名 |
+| --- | ---: | ---: | ---: | ---: |
+| RU | **675/740 = 91.22%** | 95.14% | 96.08% | 63.89 |
+| aligned semantic | 344/740 = 46.49% | 62.97% | 68.51% | 230.54 |
+| shuffled teacher | 301/740 = 40.68% | 57.30% | 63.51% | 280.57 |
+| wrong layout | 0/740 | 0.27% | 1.22% | 2593.13 |
 
-### 11.2 Phase 0：先证明 semantic teacher 有互补信息
+aligned 与 RU 的四格为：both-correct 342、RU-only 333、semantic-only 2、both-wrong 63；当前描述符的 oracle union 仅为 677/740。aligned positive rank 优于 RU 的查询只有 9/740（1.216%），而 RU 优于 aligned 的查询有 388 个。
 
-不立即训练 RGB student。先从 SegFormer ADE20K 输出生成保留空间轮廓的 label cache；推荐 70×70 `uint8` labels，而不是再次把现有 20×20 hard grid 当作完整结构教师。150 类合并为少量 VPR superclasses以降低过分割噪声，但保留 dynamic superclass，不预设它必须被抑制；每图类别权重由 teacher 学习。
+### 11.3 预注册判定与终止
 
-轻量 `semantic-layout encoder -> label-specific weighted features -> global descriptor` 使用与 RGB 相同的 place/VPR loss 训练。随后冻结 teacher 和 RU，在未参与 teacher 拟合的样本以及 MSLS-val 上报告：
+| 检查 | 结果 |
+| --- | --- |
+| RU 精确复现 675/740 | PASS |
+| semantic-only 至少 8/740 | **FAIL：2/740** |
+| teacher-better rank 至少 5% | **FAIL：1.216%** |
+| aligned 补回数严格胜过两个控制 | **FAIL：aligned 2，wrong-layout 0，shuffled-teacher 4** |
+| aligned positive rank 胜过两个控制 | PASS：698:42 与 283:180 |
+| aligned GSV holdout 胜 shuffled | PASS：83.46% 对 67.77% |
 
-- `both-correct`、`RU-only`、`semantic-only`、`both-wrong` 四格；
-- oracle union R@1；
-- 未见 MSLS query 中 teacher positive rank 优于 RU 的比例；
-- aligned label map 与跨地点 shuffled label map 的 teacher relation 差异。
-
-在任何 student 训练前固定停止条件：`semantic-only < 8/740 query`，或 MSLS `teacher-better query-rank < 5%`，或 aligned 不比 wrong-layout 与 shuffled-trained teacher 富集 RU 错误，或 aligned 在固定 GSV holdout 上不胜 shuffled-trained teacher，则整条路线停止。该门槛只回答 teacher 是否拥有可转移的互补 VPR 知识；未过线时再调 distillation 权重没有意义。
-
-### 11.3 Phase 1：只蒸馏 teacher 优势样本的检索关系
-
-对每个 query，在相同正/负候选上分别计算 teacher 与 student margin：
+逐 query 检查还显示，aligned 补回的 query 249 与 336 同时也被 shuffled teacher 补回；没有出现能够归因于正确 layout training 的 RU 专属补救。四路 descriptor 的行数、DB→query 顺序、checkpoint/cache/descriptor SHA、teacher mode 与 layout selection 均已通过自动 provenance 检查。
 
 ```text
-m_T = min_positive_cos_T - max_negative_cos_T
-m_S = min_positive_cos_S - max_negative_cos_S
-
-w = 0                                      if m_T <= 0 or m_T <= m_S
-w = advantage_weight(m_T, m_T - m_S)       otherwise
-
-L = L_VPR
-  + lambda * mean_i w_i * SmoothL1(delta_S_i, stopgrad(delta_T_i))
+AG-SLRD-BoQ
+Teacher training / provenance: PASS
+Aligned-layout learnability: PASS
+RU complementarity screen: FAIL
+Phase 1 student: NOT IMPLEMENTED / TERMINATED BY PREREGISTERED RULE
+Overall status: COMPLETED / FAIL
 ```
 
-`delta` 是 batch 内 query-positive-negative 的 cosine/margin 关系；teacher 与权重全程 stop-gradient。权重函数只能随 teacher 的可靠程度和 teacher-student advantage 单调增加，并在训练前固定上界。具体 `lambda` 与温度只允许通过 500-step 数值/梯度合同预检确定，不能查看 validation recall 后扫描。
+该结果否定的是当前 12 类 semantic-layout teacher 对强 RU 的互补性，不是否定所有语义 VPR。它同时触发原协议的停止边界：不实现 AG-SLRD Phase 1，不扫描 superclass、网络宽度、epoch 或蒸馏权重，并停止继续给当前 BoQ 设计单图 semantic adapter。完整协议与结果见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`，紧凑证据见 `doc/ag_slrd_phase0_audit/`。
 
-学生从 RU warm start，只接收 RGB 图像。semantic cache、teacher 和 relation projector 仅在训练期存在，checkpoint 的推理前向保持原始 RU+BoQ，因此该方法属于训练期 semantic knowledge transfer，而不是检索后处理。
+## 12. 新的独立路线：Candidate-Conditioned LSA Semantic Pair-VPR
 
-### 11.4 对照、成本与停止规则
+新路线把问题从“单张图的语义应如何改变全局描述子”改为：
 
-低成本顺序固定为：
+> 在 RU 已召回的 top-K 候选中，dense LSA 连续语义能否帮助 RGB 局部特征判断一对图是否来自同一地点？
 
-1. Phase-0 teacher sufficiency/complementarity audit；
-2. 500-step 梯度、非零权重覆盖率、wrong-pair 与 clean-inference 合同预检；
-3. seed-42、3 epochs 的 `matched_continue`、`random_gate`、`aligned_advantage`；
-4. 只有 aligned 同时比冻结 RU、matched-continue 和 random-gate 多至少 4/740 个 R@1 query，才运行 `shuffled_teacher`、condition 和多 seed。
+它组合但不冒充复现以下论文原则：
 
-`random_gate` 必须逐 batch 匹配 aligned 的非零样本数和权重直方图，但随机分配给 pair；`shuffled_teacher` 保留权重多重集并跨地点轮换 teacher relation。最终只有 aligned 相对 RU、matched、random 与 shuffled **分别**至少多 4 query，或 season-full-db 至少 +1.0 pp 且 overall 最多下降 1 query，才可称为 semantic candidate。
+- [SemVPR（ICCV 2025）](https://openaccess.thecvf.com/content/ICCV2025/html/Zhang_Efficient_Visual_Place_Recognition_Through_Multimodal_Semantic_Knowledge_Integration_ICCV_2025_paper.html)：先用 crop CLS 做 Local Semantic Alignment，得到比 vanilla CLIP raw patch 更可靠的连续局部语义；
+- [StructVPR++（TPAMI 2025）](https://arxiv.org/abs/2503.06601)：显式进行图像对间的 semantic alignment，并对不可靠 pair 降权；
+- [Pair-VPR（RA-L 2025）](https://arxiv.org/abs/2410.06614)：全局召回后用 learned pair classifier 重排候选；
+- [R²Former（CVPR 2023）](https://openaccess.thecvf.com/content/CVPR2023/html/Zhu_R2Former_Unified_Retrieval_and_Reranking_Transformer_for_Place_Recognition_CVPR_2023_paper.html)：pair scorer 同时利用局部相关性、attention 与二维坐标；
+- [EffoVPR（ICLR 2025）](https://proceedings.iclr.cc/paper_files/paper/2025/hash/6a1b224b153e55c40a6359f9c9fb9d8c-Abstract-Conference.html)：DINOv2 中间层局部特征本身就是强 reranking 基础。
 
-若 Phase 0 或 Phase 1 失败，应停止在当前 GSV-Cities + RU/BoQ 上继续发明 semantic adapter。此后仍有科学意义的工作只剩“按作者架构完整复现 SemVPR/StructVPR++”，而不是继续给现有 BoQ 叠加小模块。
+第一步不是训练新网络，而是在 RU top-100 候选上做 LSA pair-sufficiency audit。对每个 query-candidate pair，只保留 DINO mutual-NN 且 LSA 语义相似度相对固定 GSV hard-negative 分布有正 margin 的局部对应；真正的“纠正”要求最佳 positive 的 pair score 胜过 top-100 内**全部** non-positive，而非只胜 RU 原 top-1。对照包括 DINO-full、100 seeds 的逐 pair edge-count/weight-matched DINO、raw-CLIP、token permutation 和确定性同城 wrong-place。只有 aligned 至少真实纠正 8 个 RU 错误、分别比确定性控制和 matched-control 的 95% 上界多至少 4 个，并使 positive candidate rank 优于 RU 的查询达到 37/740，才实现第二阶段。
 
-详细预注册设计另见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
+通过后训练一个只接收 RGB/DINO token 的轻量 pair classifier。LSA teacher 只监督跨图 correspondence 与 pair confidence，推理时删除 CLIP；RU 仍负责全库召回，pair classifier 只重排 top-K。它是标准两阶段 VPR，而不是固定规则的后处理。若必须保持单阶段部署，则只能在 pair classifier 先证明互补性后再单独研究 listwise distillation，不能提前假定可蒸馏回 BoQ。
 
-## 12. 证据索引与归档说明
+任何 Gate-A 条件失败都立即终止，不训练 classifier；因此这条路线的首个实验仍然低成本，并直接回答前面所有方案一直缺失的问题：语义在 RU 的具体错误候选对上是否真的提供额外证据。由于 MSLS-val 已被本项目反复查看，Gate A/C 只作为开发集 go/no-go；任何正收益都必须在冻结代码与配置后由 MSLS-test server 或事先登记的独立 benchmark 一次性确认。完整冻结协议、公式、对照、数据边界和停止规则见 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`。
+
+## 13. 证据索引与归档说明
 
 保留的主要证据：
 
@@ -565,6 +566,7 @@ L = L_VPR
 - Crop-CLS 原始证据：`doc/crop_semantic_film_runs/preflight_500steps.txt`、`preflight_audit.json`、`architecture_only_5ep.txt` 与 `aligned_5ep.txt`；wrong-region/wrong-place 当前仅有用户提供的训练机 checkpoint 清单，待原始日志下载后补归档。
 - Residual-CLIP：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（Phase A 预注册、实现索引、正式 FAIL 与停止决定）；训练机输出目录为 `doc/residual_clip_runs/paired_full_20260831_105942` 和 `doc/residual_clip_runs/semantic_gamma_sweep_20260831_123138`，其精确结果已固化在第 9 节，原始目录仍待同步回本机仓库。
 - RSCD-BoQ：代码、四组严格匹配配置、类别可靠性统计、512 图离线 mask 审计和 500-step TensorBoard 合同审计均已实现且通过；正式 `no-mask/uniform/aligned` 三组 3-epoch 首筛已完成，状态为 **COMPLETED / FAIL**。完整结果见 `doc/RSCD_BOQ_EXPERIMENT.md`；训练机 checkpoint 清单已归档到 `doc/rscd_runs/formal_checkpoint_inventory.txt`，原始三组训练日志仍待同步。
-- 下一候选 AG-SLRD-BoQ：Phase 0 的固定 150→12 类映射、GSV/MSLS 70×70 cache、place-supervised layout teacher、aligned/shuffled matched 配置、同序描述子提取和双 placebo 互补性审计均已实现，状态为 **PHASE 0 IMPLEMENTED / NOT RUN**。尚未实现 Phase 1 student；必须先通过 semantic teacher complementarity audit 才允许继续。完整代码索引、门槛与命令见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
+- AG-SLRD-BoQ：Phase 0 已完整运行并判定 **COMPLETED / FAIL**；teacher 训练与 aligned-layout learnability 通过，但 RU complementarity 未过线，Phase 1 按预注册规则未实现。权威结果与完整 provenance 为 `doc/ag_slrd_phase0_audit/summary.json`，逐 query 证据为 `per_query.csv`，正式判定为 `verdict.txt`；完整协议与 AMP 修复记录见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
+- 新候选 CC-LSA Pair-VPR：2026-09-06 已完成 LSA teacher、GSV-only calibration、RU top-100 局部特征缓存和 Gate A 对照审计代码，状态为 **GATE A IMPLEMENTED / TRAINING-MACHINE VALIDATION PENDING**。尚无新路线的训练或检索结果；最终版本测试由训练机执行。在 Gate A 证明 aligned LSA 对 RU top-100 错误候选具有控制后互补性之前，pair classifier 保持未实现。协议见 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`，同步与运行见 `doc/CC_LSA_GATE_A_RUNBOOK.md`。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

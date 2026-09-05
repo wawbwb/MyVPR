@@ -1,0 +1,32 @@
+schema: openvpr_cc_lsa_teacher_config
+version: 1
+experiment:
+  name: CC_LSA_teacher
+  seed: 42
+data:
+  dataset_root: datasets/gsv_cities
+  target_cache: .cache/cc_lsa/gsv_crop_cls_v1
+  image_size: [280, 280]
+  region_grid: [2, 2]
+model:
+  model_name: ViT-B-16
+  pretrained: openai
+  hf_mirror: https://hf-mirror.com
+  trainable_last_n_blocks: 2
+training:
+  output_dir: logs/cc_lsa/teacher_seed42
+  device: cuda:1
+  batch_size: 32
+  num_workers: 8
+  epochs: 5
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  amp_dtype: bfloat16
+contract:
+  raw_clip_r1_gain_pp: 5.0
+  wrong_region_r1_gain_pp: 10.0
+  token_permutation_r1_gain_pp: 10.0
+  correct_wrong_cosine_margin: 0.05
+  median_effective_rank: 16.0
+  median_position_std: 0.02
+  diagnostic_images: 512

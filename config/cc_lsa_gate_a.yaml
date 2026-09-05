@@ -1,0 +1,34 @@
+schema: openvpr_cc_lsa_gate_a_config
+version: 1
+seed: 42
+features:
+  image_size: [280, 280]
+  local_grid: [14, 14]
+  dino_feature_stage: ru_trained_dinov2_final_patch_map_pre_semantic_region_gate_pre_boq
+  dtype: float16
+calibration:
+  gsv_target_cache: .cache/cc_lsa/gsv_crop_cls_v1
+  max_holdout_images_per_city: 128
+  hard_negative_scope: same_city_different_place_ru_top1
+  semantic_quantile: 0.95
+score:
+  top_k: 100
+  top_edges: 20
+  token_permutation_seed: 42
+  matched_seeds:
+    start: 0
+    stop: 100
+  matched_percentile: 95
+thresholds:
+  expected_queries: 740
+  expected_ru_correct: 675
+  minimum_reachable_errors: 8
+  minimum_corrections: 8
+  control_gap_queries: 4
+  minimum_rank_improved: 37
+controls:
+  - dino_full
+  - raw_clip
+  - token_permutation
+  - wrong_place
+  - dino_count_weight_matched

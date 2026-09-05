@@ -1,0 +1,13 @@
+Evaluate precomputed descriptors: ru <- .cache/ag_slrd_descriptors/ru.npy
+Evaluate precomputed descriptors: aligned_semantic <- .cache/ag_slrd_descriptors/aligned.npy
+Evaluate precomputed descriptors: wrong_layout <- .cache/ag_slrd_descriptors/wrong_layout.npy
+Evaluate precomputed descriptors: shuffled_teacher <- .cache/ag_slrd_descriptors/shuffled_teacher.npy
+AG-SLRD Phase-0 complementarity audit: FAIL
+split=msls-val; references=18871; queries=740
+PASS  ru_baseline_reproduced: {'pass': True, 'value': 675, 'threshold': 675, 'registered_msls_value': '675/740 (91.22%)'}
+FAIL  semantic_only_at_least_registered_minimum: {'pass': False, 'value': 2, 'threshold': 8, 'registered_msls_threshold': '8/740'}
+FAIL  teacher_better_pair_rate_at_least_5pct: {'pass': False, 'value': 0.012162162162162163, 'threshold': 0.05}
+FAIL  aligned_enriches_ru_errors_over_both_controls: {'pass': False, 'aligned_semantic_only': 2, 'wrong_layout_only': 0, 'shuffled_teacher_only': 4}
+PASS  aligned_ranks_positives_better_than_both_controls: {'pass': True, 'vs_wrong_layout': {'aligned_better': 698, 'control_better': 42}, 'vs_shuffled_teacher': {'aligned_better': 283, 'control_better': 180}}
+PASS  aligned_teacher_beats_shuffled_on_gsv_holdout: {'pass': True, 'aligned_holdout_batch_r1': 0.8346123533158363, 'shuffled_holdout_batch_r1': 0.6776503292442877, 'metric_definition': 'mean within-batch R@1 over the fixed SHA256 place holdout'}
+Results written to: /home/wt/workspace/OpenVPRLab/doc/ag_slrd_phase0_audit

@@ -168,6 +168,7 @@ def extract_ru(args: argparse.Namespace) -> None:
         load_inference_model_from_ckpt,
     )
     from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset
+    from scripts.cache_msls_ag_slrd_layouts import load_msls_index
 
     output, sidecar, device = validate_common(args)
     checkpoint = args.checkpoint.expanduser().resolve()
@@ -178,6 +179,9 @@ def extract_ru(args: argparse.Namespace) -> None:
         dataset_path=msls_root,
         input_transform=build_transform(tuple(args.image_size)),
     )
+    canonical_paths, _, _, _, index_record = load_msls_index(msls_root)
+    if not np.array_equal(canonical_paths, dataset.image_paths):
+        raise ValueError("RU dataset order differs from the canonical MSLS index")
     loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -214,6 +218,7 @@ def extract_ru(args: argparse.Namespace) -> None:
         },
         "msls_path": str(msls_root),
         "image_size": list(args.image_size),
+        "msls_index": index_record,
     }
     atomic_json(sidecar, record)
     print(f"Wrote RU descriptors: {output}")

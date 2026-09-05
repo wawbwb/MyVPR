@@ -1,0 +1,563 @@
+{
+  "checks": {
+    "aligned_enriches_ru_errors_over_both_controls": {
+      "aligned_semantic_only": 2,
+      "pass": false,
+      "shuffled_teacher_only": 4,
+      "wrong_layout_only": 0
+    },
+    "aligned_ranks_positives_better_than_both_controls": {
+      "pass": true,
+      "vs_shuffled_teacher": {
+        "aligned_better": 283,
+        "control_better": 180
+      },
+      "vs_wrong_layout": {
+        "aligned_better": 698,
+        "control_better": 42
+      }
+    },
+    "aligned_teacher_beats_shuffled_on_gsv_holdout": {
+      "aligned_holdout_batch_r1": 0.8346123533158363,
+      "metric_definition": "mean within-batch R@1 over the fixed SHA256 place holdout",
+      "pass": true,
+      "shuffled_holdout_batch_r1": 0.6776503292442877
+    },
+    "ru_baseline_reproduced": {
+      "pass": true,
+      "registered_msls_value": "675/740 (91.22%)",
+      "threshold": 675,
+      "value": 675
+    },
+    "semantic_only_at_least_registered_minimum": {
+      "pass": false,
+      "registered_msls_threshold": "8/740",
+      "threshold": 8,
+      "value": 2
+    },
+    "teacher_better_pair_rate_at_least_5pct": {
+      "pass": false,
+      "threshold": 0.05,
+      "value": 0.012162162162162163
+    }
+  },
+  "created_utc": "2026-09-01T15:58:58.345620+00:00",
+  "descriptor_sidecars": {
+    "aligned_semantic": {
+      "checkpoint": {
+        "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/aligned/final.pt",
+        "sha256": "a3f804afafeb3d98b5652dd1a90148e98147ab39a48c30ca6a3cbe0007c223ec"
+      },
+      "complete": true,
+      "created_utc": "2026-09-01T15:57:47.821277+00:00",
+      "descriptor_dim": 512,
+      "descriptor_sha256": "b1cecb70794f64845d41be3f4bfc9db2385cf5c530db8ac61c0c626ad098e67f",
+      "kind": "semantic_layout",
+      "layout_cache": {
+        "array_sha256": {
+          "labels.npy": "d8ae2cccca222bbf873af41eb22a1f6e55e021c79c1073899affd0aebd973a0e",
+          "shuffled_indices.npy": "f8e6bc2aac2b61d8c8e4a6772d7722a27419a9c643944c4a1070510c7d155abd"
+        },
+        "manifest_sha256": "0543a57e4628e0beb56f9c7aeb068bea049aad462ffc6230474b85bdc80185ac",
+        "path": "/home/wt/workspace/OpenVPRLab/.cache/ade20k_semantic_layout/msls_val_grid70"
+      },
+      "layout_selection": "aligned",
+      "num_queries": 740,
+      "num_references": 18871,
+      "num_rows": 19611,
+      "order": "msls_standard_database_then_queries",
+      "schema": "openvpr_ag_slrd_msls_descriptors",
+      "teacher_training_mode": "aligned",
+      "version": 1
+    },
+    "ru": {
+      "checkpoint": {
+        "path": "/home/wt/workspace/OpenVPRLab/logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt",
+        "sha256": "38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e"
+      },
+      "complete": true,
+      "created_utc": "2026-09-01T15:57:18.634586+00:00",
+      "descriptor_dim": 12288,
+      "descriptor_sha256": "09dd7b25dec0bb706eff4d151de8abc34bbd21aa38945da4fae26beb90d6c8cc",
+      "image_size": [
+        280,
+        280
+      ],
+      "kind": "ru",
+      "msls_path": "/home/wt/workspace/OpenVPRLab/datasets/msls-val",
+      "num_queries": 740,
+      "num_references": 18871,
+      "num_rows": 19611,
+      "order": "msls_standard_database_then_queries",
+      "schema": "openvpr_ag_slrd_msls_descriptors",
+      "version": 1
+    },
+    "shuffled_teacher": {
+      "checkpoint": {
+        "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/shuffled/final.pt",
+        "sha256": "7c7272ae5e02c16dbcfde4e967f28cf4ba7640e4985f6f8864686533d673a0f9"
+      },
+      "complete": true,
+      "created_utc": "2026-09-01T15:58:25.218826+00:00",
+      "descriptor_dim": 512,
+      "descriptor_sha256": "eff44c04931e05bfcec28a338306dcc219cf7379de8ec3ee77d1bc03bb604cfd",
+      "kind": "semantic_layout",
+      "layout_cache": {
+        "array_sha256": {
+          "labels.npy": "d8ae2cccca222bbf873af41eb22a1f6e55e021c79c1073899affd0aebd973a0e",
+          "shuffled_indices.npy": "f8e6bc2aac2b61d8c8e4a6772d7722a27419a9c643944c4a1070510c7d155abd"
+        },
+        "manifest_sha256": "0543a57e4628e0beb56f9c7aeb068bea049aad462ffc6230474b85bdc80185ac",
+        "path": "/home/wt/workspace/OpenVPRLab/.cache/ade20k_semantic_layout/msls_val_grid70"
+      },
+      "layout_selection": "aligned",
+      "num_queries": 740,
+      "num_references": 18871,
+      "num_rows": 19611,
+      "order": "msls_standard_database_then_queries",
+      "schema": "openvpr_ag_slrd_msls_descriptors",
+      "teacher_training_mode": "shuffled",
+      "version": 1
+    },
+    "wrong_layout": {
+      "checkpoint": {
+        "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/aligned/final.pt",
+        "sha256": "a3f804afafeb3d98b5652dd1a90148e98147ab39a48c30ca6a3cbe0007c223ec"
+      },
+      "complete": true,
+      "created_utc": "2026-09-01T15:58:09.323691+00:00",
+      "descriptor_dim": 512,
+      "descriptor_sha256": "3f0ef965d96df70415feba6695bc826f69874006fe8809048748555cef41a357",
+      "kind": "semantic_layout",
+      "layout_cache": {
+        "array_sha256": {
+          "labels.npy": "d8ae2cccca222bbf873af41eb22a1f6e55e021c79c1073899affd0aebd973a0e",
+          "shuffled_indices.npy": "f8e6bc2aac2b61d8c8e4a6772d7722a27419a9c643944c4a1070510c7d155abd"
+        },
+        "manifest_sha256": "0543a57e4628e0beb56f9c7aeb068bea049aad462ffc6230474b85bdc80185ac",
+        "path": "/home/wt/workspace/OpenVPRLab/.cache/ade20k_semantic_layout/msls_val_grid70"
+      },
+      "layout_selection": "shuffled",
+      "num_queries": 740,
+      "num_references": 18871,
+      "num_rows": 19611,
+      "order": "msls_standard_database_then_queries",
+      "schema": "openvpr_ag_slrd_msls_descriptors",
+      "teacher_training_mode": "aligned",
+      "version": 1
+    }
+  },
+  "inputs": {
+    "aligned_semantic": {
+      "path": "/home/wt/workspace/OpenVPRLab/.cache/ag_slrd_descriptors/aligned.npy",
+      "sha256": "b1cecb70794f64845d41be3f4bfc9db2385cf5c530db8ac61c0c626ad098e67f"
+    },
+    "positives": {
+      "path": "/home/wt/workspace/OpenVPRLab/datasets/msls-val/msls_val_gt_25m.npy",
+      "sha256": "96dfa5b174c8cb805992a70aa28f8eaf48fd7fac2c44e93dac248ee23ab84427"
+    },
+    "ru": {
+      "path": "/home/wt/workspace/OpenVPRLab/.cache/ag_slrd_descriptors/ru.npy",
+      "sha256": "09dd7b25dec0bb706eff4d151de8abc34bbd21aa38945da4fae26beb90d6c8cc"
+    },
+    "shuffled_teacher": {
+      "path": "/home/wt/workspace/OpenVPRLab/.cache/ag_slrd_descriptors/shuffled_teacher.npy",
+      "sha256": "eff44c04931e05bfcec28a338306dcc219cf7379de8ec3ee77d1bc03bb604cfd"
+    },
+    "wrong_layout": {
+      "path": "/home/wt/workspace/OpenVPRLab/.cache/ag_slrd_descriptors/wrong_layout.npy",
+      "sha256": "3f0ef965d96df70415feba6695bc826f69874006fe8809048748555cef41a357"
+    }
+  },
+  "num_queries": 740,
+  "num_references": 18871,
+  "paired": {
+    "aligned_vs_ru": {
+      "both_correct@1": 342,
+      "both_wrong@1": 63,
+      "left": "aligned_semantic",
+      "left_better_rank": 9,
+      "left_better_rank_rate": 0.012162162162162163,
+      "left_only_correct@1": 2,
+      "mean_margin_advantage_left": -0.19399642944335938,
+      "mean_rank_advantage_left": -166.6418918918919,
+      "oracle_union_correct@1": 677,
+      "rank_tied": 343,
+      "right": "ru",
+      "right_better_rank": 388,
+      "right_only_correct@1": 333,
+      "top1_reference_changed": 548
+    },
+    "aligned_vs_shuffled_teacher": {
+      "both_correct@1": 256,
+      "both_wrong@1": 351,
+      "left": "aligned_semantic",
+      "left_better_rank": 283,
+      "left_better_rank_rate": 0.3824324324324324,
+      "left_only_correct@1": 88,
+      "mean_margin_advantage_left": 0.015021277591586113,
+      "mean_rank_advantage_left": 50.02972972972973,
+      "oracle_union_correct@1": 389,
+      "rank_tied": 277,
+      "right": "shuffled_teacher",
+      "right_better_rank": 180,
+      "right_only_correct@1": 45,
+      "top1_reference_changed": 491
+    },
+    "aligned_vs_wrong_layout": {
+      "both_correct@1": 0,
+      "both_wrong@1": 396,
+      "left": "aligned_semantic",
+      "left_better_rank": 698,
+      "left_better_rank_rate": 0.9432432432432433,
+      "left_only_correct@1": 344,
+      "mean_margin_advantage_left": 0.3817106783390045,
+      "mean_rank_advantage_left": 2362.591891891892,
+      "oracle_union_correct@1": 344,
+      "rank_tied": 0,
+      "right": "wrong_layout",
+      "right_better_rank": 42,
+      "right_only_correct@1": 0,
+      "top1_reference_changed": 740
+    },
+    "shuffled_teacher_vs_ru": {
+      "both_correct@1": 297,
+      "both_wrong@1": 61,
+      "left": "shuffled_teacher",
+      "left_better_rank": 11,
+      "left_better_rank_rate": 0.014864864864864866,
+      "left_only_correct@1": 4,
+      "mean_margin_advantage_left": -0.20901769399642944,
+      "mean_rank_advantage_left": -216.67162162162163,
+      "oracle_union_correct@1": 679,
+      "rank_tied": 297,
+      "right": "ru",
+      "right_better_rank": 432,
+      "right_only_correct@1": 378,
+      "top1_reference_changed": 576
+    },
+    "wrong_layout_vs_ru": {
+      "both_correct@1": 0,
+      "both_wrong@1": 65,
+      "left": "wrong_layout",
+      "left_better_rank": 8,
+      "left_better_rank_rate": 0.010810810810810811,
+      "left_only_correct@1": 0,
+      "mean_margin_advantage_left": -0.5757071375846863,
+      "mean_rank_advantage_left": -2529.2337837837836,
+      "oracle_union_correct@1": 675,
+      "rank_tied": 0,
+      "right": "ru",
+      "right_better_rank": 732,
+      "right_only_correct@1": 675,
+      "top1_reference_changed": 740
+    }
+  },
+  "registered_thresholds": {
+    "msls_semantic_only": "at least 8/740 queries",
+    "ru_baseline": "exactly 675/740 R@1 queries",
+    "teacher_better_pair_rate": "at least 5%"
+  },
+  "schema": "openvpr_ag_slrd_complementarity_audit",
+  "split_name": "msls-val",
+  "teacher_runs": {
+    "aligned": {
+      "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/aligned/run.json",
+      "record": {
+        "cache": {
+          "array_sha256": {
+            "labels.npy": "4e193aa7ba8706a4223707727e7255494e35142ec9ced853d27b03a2b2c50b15",
+            "shuffled_indices.npy": "9065ad66a7c139b5d41e77a17ba81d18457a4fab6a6ef02721f0add8c8cb2b15"
+          },
+          "dir": "/home/wt/workspace/OpenVPRLab/.cache/ade20k_semantic_layout/gsv_grid70",
+          "grid_size": [
+            70,
+            70
+          ],
+          "manifest_sha256": "86c20d15f1b20118cae9f97a9acd96aac49eeb30e4d27ad544256a7f6bf22d05",
+          "mapping_sha256": "fa742c8f9dd7e16f35ff494a81f56deeddb009b416016a444c0e98ee8980b9df",
+          "num_classes": 12,
+          "schema": "openvpr_ade20k_semantic_layout",
+          "source_manifest_sha256": "3244ce30571f8a34dcbdf4e458e5a9e671644f8af9e8a636c270fcc322ad0006",
+          "version": 1
+        },
+        "checkpoint": {
+          "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/aligned/final.pt",
+          "sha256": "a3f804afafeb3d98b5652dd1a90148e98147ab39a48c30ca6a3cbe0007c223ec"
+        },
+        "complete": true,
+        "config_path": "/home/wt/workspace/OpenVPRLab/config/ag_slrd_semantic_teacher_aligned.yaml",
+        "created_utc": "2026-09-01T15:34:20.832376+00:00",
+        "data": {
+          "cities": "all",
+          "dataset_root": "/home/wt/workspace/OpenVPRLab/datasets/gsv_cities",
+          "holdout_modulus": 10,
+          "holdout_places": 6320,
+          "holdout_remainder": 0,
+          "num_workers": 8,
+          "places_per_batch": 40,
+          "split_algorithm": "sha256_place_v1",
+          "train_places": 56194,
+          "views_per_place": 4
+        },
+        "final_metrics": {
+          "amp_overflow_retries": 0,
+          "amp_scale_end": 524288.0,
+          "epoch": 9,
+          "global_step": 14040,
+          "holdout_batch_r1": 0.8346123533158363,
+          "holdout_loss": 1.0029235165330428,
+          "optimizer_steps": 14040,
+          "train_batch_r1": 0.8863203463985709,
+          "train_loss": 0.8525385742428636
+        },
+        "mode": "aligned",
+        "model": {
+          "channels": [
+            64,
+            128,
+            256
+          ],
+          "descriptor_dim": 512,
+          "embed_dim": 32,
+          "ignore_index": 255,
+          "num_classes": 12
+        },
+        "schema": "openvpr_ag_slrd_semantic_teacher_run",
+        "seed": 42,
+        "selection": "final epoch; MSLS was not read",
+        "trainer": {
+          "amp": {
+            "backoff_factor": 0.5,
+            "growth_factor": 2.0,
+            "growth_interval": 2000,
+            "init_scale": 65536.0,
+            "max_retries_per_batch": 8,
+            "max_total_retries": 32
+          },
+          "device": "cuda:1",
+          "epochs": 10,
+          "loss_precision": "32-true",
+          "lr": 0.001,
+          "max_grad_norm": 10.0,
+          "optimizer": "adamw",
+          "output_dir": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/aligned",
+          "precision": "16-mixed",
+          "runtime": {
+            "amp_overflow_policy": "same_batch_retry_after_gradscaler_backoff_v1",
+            "amp_overflow_retries": 3,
+            "final_loss_scale": 524288.0,
+            "initial_loss_scale": 65536.0,
+            "maximum_loss_scale": 1048576.0,
+            "minimum_loss_scale": 65536.0,
+            "optimizer_steps": 14040,
+            "overflow_events": [
+              {
+                "epoch": 5,
+                "retry": 1,
+                "scale_after": 524288.0,
+                "scale_before": 1048576.0,
+                "scheduled_step": 8057
+              },
+              {
+                "epoch": 7,
+                "retry": 1,
+                "scale_after": 524288.0,
+                "scale_before": 1048576.0,
+                "scheduled_step": 10059
+              },
+              {
+                "epoch": 7,
+                "retry": 2,
+                "scale_after": 262144.0,
+                "scale_before": 524288.0,
+                "scheduled_step": 10059
+              }
+            ],
+            "scheduled_steps": 14040
+          },
+          "weight_decay": 0.0001
+        },
+        "version": 1
+      },
+      "sha256": "91e75a66cbb672398130c4583c250c52429e3f93a11e011b7beb16ebdbca65ba"
+    },
+    "shuffled": {
+      "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/shuffled/run.json",
+      "record": {
+        "cache": {
+          "array_sha256": {
+            "labels.npy": "4e193aa7ba8706a4223707727e7255494e35142ec9ced853d27b03a2b2c50b15",
+            "shuffled_indices.npy": "9065ad66a7c139b5d41e77a17ba81d18457a4fab6a6ef02721f0add8c8cb2b15"
+          },
+          "dir": "/home/wt/workspace/OpenVPRLab/.cache/ade20k_semantic_layout/gsv_grid70",
+          "grid_size": [
+            70,
+            70
+          ],
+          "manifest_sha256": "86c20d15f1b20118cae9f97a9acd96aac49eeb30e4d27ad544256a7f6bf22d05",
+          "mapping_sha256": "fa742c8f9dd7e16f35ff494a81f56deeddb009b416016a444c0e98ee8980b9df",
+          "num_classes": 12,
+          "schema": "openvpr_ade20k_semantic_layout",
+          "source_manifest_sha256": "3244ce30571f8a34dcbdf4e458e5a9e671644f8af9e8a636c270fcc322ad0006",
+          "version": 1
+        },
+        "checkpoint": {
+          "path": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/shuffled/final.pt",
+          "sha256": "7c7272ae5e02c16dbcfde4e967f28cf4ba7640e4985f6f8864686533d673a0f9"
+        },
+        "complete": true,
+        "config_path": "/home/wt/workspace/OpenVPRLab/config/ag_slrd_semantic_teacher_shuffled.yaml",
+        "created_utc": "2026-09-01T15:40:30.074223+00:00",
+        "data": {
+          "cities": "all",
+          "dataset_root": "/home/wt/workspace/OpenVPRLab/datasets/gsv_cities",
+          "holdout_modulus": 10,
+          "holdout_places": 6320,
+          "holdout_remainder": 0,
+          "num_workers": 8,
+          "places_per_batch": 40,
+          "split_algorithm": "sha256_place_v1",
+          "train_places": 56194,
+          "views_per_place": 4
+        },
+        "final_metrics": {
+          "amp_overflow_retries": 0,
+          "amp_scale_end": 524288.0,
+          "epoch": 9,
+          "global_step": 14040,
+          "holdout_batch_r1": 0.6776503292442877,
+          "holdout_loss": 1.2812405319153508,
+          "optimizer_steps": 14040,
+          "train_batch_r1": 0.6566283948231287,
+          "train_loss": 1.2986411609371165
+        },
+        "mode": "shuffled",
+        "model": {
+          "channels": [
+            64,
+            128,
+            256
+          ],
+          "descriptor_dim": 512,
+          "embed_dim": 32,
+          "ignore_index": 255,
+          "num_classes": 12
+        },
+        "schema": "openvpr_ag_slrd_semantic_teacher_run",
+        "seed": 42,
+        "selection": "final epoch; MSLS was not read",
+        "trainer": {
+          "amp": {
+            "backoff_factor": 0.5,
+            "growth_factor": 2.0,
+            "growth_interval": 2000,
+            "init_scale": 65536.0,
+            "max_retries_per_batch": 8,
+            "max_total_retries": 32
+          },
+          "device": "cuda:1",
+          "epochs": 10,
+          "loss_precision": "32-true",
+          "lr": 0.001,
+          "max_grad_norm": 10.0,
+          "optimizer": "adamw",
+          "output_dir": "/home/wt/workspace/OpenVPRLab/logs/ag_slrd_semantic_teacher/shuffled",
+          "precision": "16-mixed",
+          "runtime": {
+            "amp_overflow_policy": "same_batch_retry_after_gradscaler_backoff_v1",
+            "amp_overflow_retries": 3,
+            "final_loss_scale": 524288.0,
+            "initial_loss_scale": 65536.0,
+            "maximum_loss_scale": 1048576.0,
+            "minimum_loss_scale": 65536.0,
+            "optimizer_steps": 14040,
+            "overflow_events": [
+              {
+                "epoch": 5,
+                "retry": 1,
+                "scale_after": 524288.0,
+                "scale_before": 1048576.0,
+                "scheduled_step": 8117
+              },
+              {
+                "epoch": 7,
+                "retry": 1,
+                "scale_after": 524288.0,
+                "scale_before": 1048576.0,
+                "scheduled_step": 10235
+              },
+              {
+                "epoch": 8,
+                "retry": 1,
+                "scale_after": 262144.0,
+                "scale_before": 524288.0,
+                "scheduled_step": 11936
+              }
+            ],
+            "scheduled_steps": 14040
+          },
+          "weight_decay": 0.0001
+        },
+        "version": 1
+      },
+      "sha256": "2e087c057957ae2c7acd9836ea97be67f3707310ea2057d55d6338dc7340c845"
+    }
+  },
+  "variants": {
+    "aligned_semantic": {
+      "correct@1": 344,
+      "correct@10": 507,
+      "correct@5": 466,
+      "first_positive_rank_mean": 230.5364864864865,
+      "first_positive_rank_p50": 2.0,
+      "margin_mean": -0.02791859395802021,
+      "margin_positive_rate": 0.4648648648648649,
+      "num_queries": 740,
+      "r@1": 0.4648648648648649,
+      "r@10": 0.6851351351351351,
+      "r@5": 0.6297297297297297
+    },
+    "ru": {
+      "correct@1": 675,
+      "correct@10": 711,
+      "correct@5": 704,
+      "first_positive_rank_mean": 63.894594594594594,
+      "first_positive_rank_p50": 1.0,
+      "margin_mean": 0.16607783734798431,
+      "margin_positive_rate": 0.9121621621621622,
+      "num_queries": 740,
+      "r@1": 0.9121621621621622,
+      "r@10": 0.9608108108108108,
+      "r@5": 0.9513513513513514
+    },
+    "shuffled_teacher": {
+      "correct@1": 301,
+      "correct@10": 470,
+      "correct@5": 424,
+      "first_positive_rank_mean": 280.5662162162162,
+      "first_positive_rank_p50": 3.0,
+      "margin_mean": -0.04293987527489662,
+      "margin_positive_rate": 0.40675675675675677,
+      "num_queries": 740,
+      "r@1": 0.40675675675675677,
+      "r@10": 0.6351351351351351,
+      "r@5": 0.572972972972973
+    },
+    "wrong_layout": {
+      "correct@1": 0,
+      "correct@10": 9,
+      "correct@5": 2,
+      "first_positive_rank_mean": 2593.1283783783783,
+      "first_positive_rank_p50": 1471.0,
+      "margin_mean": -0.40962928533554077,
+      "margin_positive_rate": 0.0,
+      "num_queries": 740,
+      "r@1": 0.0,
+      "r@10": 0.012162162162162163,
+      "r@5": 0.002702702702702703
+    }
+  },
+  "verdict": "FAIL",
+  "version": 1
+}

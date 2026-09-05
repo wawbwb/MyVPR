@@ -1,7 +1,8 @@
 # Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）
 
-状态：**PHASE 0 IMPLEMENTED / NOT RUN**
+状态：**PHASE 0 COMPLETED / FAIL；PHASE 1 TERMINATED**
 设计冻结日期：2026-09-01
+结果归档日期：2026-09-02
 
 ## 1. 研究问题
 
@@ -302,3 +303,84 @@ skip/backoff。这是训练器 AMP 状态机缺陷，不是 teacher 效果结论
 该修复不改变模型、标签、数据顺序、学习率、batch、epoch 或选择规则，且
 同时应用于 aligned/shuffled；因此属于结果产生前的数值正确性修复，而非
 观察验证集后调参。
+
+## 8. Phase 0 正式结果与结案
+
+### 8.1 完整性
+
+- GSV semantic-layout cache 覆盖 529,506 张图，固定 150→12 类映射，忽略
+  patch 数为 0；
+- aligned 与 shuffled 使用同一 seed 42、56,194/6,320 place split、P=40、
+  K=4、10 epoch 和数值协议；
+- 两组均满足
+  `scheduled_steps = optimizer_steps = global_step = 14040`；
+- 两组各出现 3 次可恢复 AMP overflow，均通过 same-batch retry 完成；
+- 四套 MSLS descriptor 均为 18,871 database + 740 query，顺序、checkpoint
+  SHA、cache SHA、training mode 与 layout selection 均通过自动审计。
+
+修复前只完成 4 个 epoch 的 aligned 日志是 AMP 工程事故记录，不进入结果。
+
+### 8.2 Teacher learnability 与 MSLS retrieval
+
+固定 GSV holdout 上，aligned teacher 的 mean within-batch R@1 为
+`0.834612`，shuffled teacher 为 `0.677650`，说明正确 semantic layout
+关系确实能够被地点监督学习。
+
+| 变体 | R@1 | R@5 | R@10 | first-positive rank mean |
+| --- | ---: | ---: | ---: | ---: |
+| RU | 675/740 = **91.22%** | 95.14% | 96.08% | 63.89 |
+| aligned semantic | 344/740 = 46.49% | 62.97% | 68.51% | 230.54 |
+| shuffled teacher | 301/740 = 40.68% | 57.30% | 63.51% | 280.57 |
+| wrong layout | 0/740 | 0.27% | 1.22% | 2593.13 |
+
+aligned 与 RU 的四格为：
+
+```text
+both-correct     342
+RU-only          333
+semantic-only      2
+both-wrong        63
+oracle union     677/740
+```
+
+aligned positive rank 优于 RU 的查询只有 `9/740 = 1.216%`；RU 优于
+aligned 为 388，rank tied 为 343。aligned 补回的 query 249 与 336 同时
+也被 shuffled teacher 补回；shuffled teacher 总计补回 4 个 RU 错误。
+
+### 8.3 六项预注册判据
+
+| 判据 | 结果 |
+| --- | --- |
+| RU 精确复现 675/740 | PASS |
+| aligned semantic-only ≥ 8/740 | **FAIL：2/740** |
+| aligned teacher-better rank rate ≥ 5% | **FAIL：1.216%** |
+| aligned 补回数严格胜过 wrong-layout 与 shuffled-teacher | **FAIL：2 > 0，但 2 < 4** |
+| aligned rank 胜负数优于两个控制 | PASS：698:42、283:180 |
+| aligned GSV holdout R@1 高于 shuffled | PASS：0.834612 > 0.677650 |
+
+因此正确布局有可学习信号，但该信号迁移到 MSLS 后远弱于 RU，且几乎全部
+落在 RU 已经正确的查询上。Phase 0 的充分性/互补性合同明确失败。
+
+```text
+AG-SLRD-BoQ
+Teacher training / provenance: PASS
+Aligned-layout learnability: PASS
+RU complementarity screen: FAIL
+Phase 1 student: NOT IMPLEMENTED / TERMINATED BY PREREGISTERED RULE
+Overall status: COMPLETED / FAIL
+```
+
+按第 6 节与第 7.2 节冻结的规则，不实现 Phase 1，不扫描 superclass、teacher
+宽度、epoch、loss weight 或 condition。该结论只否定当前 12 类
+semantic-layout teacher 对强 RU 的互补性，不外推为语义 VPR 理论无效。
+
+### 8.4 归档证据
+
+- `doc/ag_slrd_phase0_audit/summary.json`：权威指标、完整 run record 与 SHA；
+- `doc/ag_slrd_phase0_audit/summary.csv`：四路 retrieval 汇总；
+- `doc/ag_slrd_phase0_audit/per_query.csv`：740 条逐 query 诊断；
+- `doc/ag_slrd_phase0_audit/verdict.txt`：正式 PASS/FAIL 判据。
+
+raw 70×70 cache 与四份 descriptor `.npy` 可再生成，不提交 Git。正式 teacher
+stdout 中绝大部分是 tqdm 刷新；结果归档以 `summary.json` 内嵌的完整
+provenance/run record 和上述紧凑证据为准。
