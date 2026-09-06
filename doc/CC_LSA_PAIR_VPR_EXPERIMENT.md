@@ -330,3 +330,21 @@ global descriptor 的语义提升。
   不是最终部署性能判据；Gate B/C 需继续检验是否能保住 RU 的已有命中。
 - 分阶段脚本为 `scripts/run_cc_lsa_gate_a.sh`，带实时 tqdm/日志与失败即停止机制。
   按用户要求，最终修改版在训练机执行测试、smoke 与正式实验，本机未执行本次最终版测试。
+
+## 11. 教师首轮结果与探索性继续（2026-09-06）
+
+用户提供的训练机输出显示 62,514 个 crop target 已完成，teacher 完整训练 5 epochs。
+GSV holdout crop-region R@1 为 97.0055%，raw CLIP 为 5.4905%，token-permutation
+为 25.0198%；correct/wrong cosine margin 为 0.138674。空间标准差为 0.021424，
+但前 512 张 holdout 图的空间 effective rank 中位数为 8.206716，低于预设 16。
+原始教师合同因此保持 **FAIL**；这些不是 MSLS 检索结果。
+
+后续按用户选择开放一次探索性 Gate A：复用同一 final.pt，不重训、不修改 teacher
+配置、checkpoint 或合同。只有显式 `--allow-failed-teacher-contract` 才允许校准与
+缓存加载该教师。校准、特征和审计必须采用一致的探索模式并记录完整原合同。
+计分、对照和原 Gate-A 数值阈值保持不变；输出只能标为 `EXPLORATORY_PASS` 或
+`EXPLORATORY_FAIL`，不能用于声称原先预注册的教师准入条件通过。
+
+运行入口为 `bash scripts/run_cc_lsa_gate_a.sh exploratory`，从 GSV calibration
+开始，随后提取 RU/MSLS features 并审计。输出为 `doc/cc_lsa_gate_a_exploratory`；
+探索缓存目录也与原正式目录分开。最终修改未在本机执行测试。

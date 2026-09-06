@@ -78,6 +78,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda:1")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--num-workers", type=int, default=8)
+    parser.add_argument("--allow-failed-teacher-contract", action="store_true",
+                        help="Exploratory only: retain the failed teacher contract and continue.")
     return parser.parse_args()
 
 
@@ -149,11 +151,14 @@ def main() -> None:
 
     ru_model = load_inference_model_from_ckpt(ru_checkpoint, device)
     lsa_model, lsa_checkpoint = load_lsa_checkpoint(
-        lsa_checkpoint_path, map_location=device, require_contract_pass=True
+        lsa_checkpoint_path, map_location=device,
+        require_contract_pass=not args.allow_failed_teacher_contract,
     )
     if lsa_checkpoint["target_cache"]["manifest_sha256"] != file_sha256(target_cache / "manifest.json"):
         raise ValueError("calibration target-cache split differs from the LSA training cache")
     model_cfg = lsa_checkpoint["model"]
+    if lsa_checkpoint["teacher_contract"].get("verdict") not in {"PASS", "FAIL"}:
+        raise ValueError("teacher contract verdict is missing or invalid")
     raw_teacher = CLIPTeacherEncoder(
         model_name=model_cfg["model_name"],
         pretrained=model_cfg["pretrained"],
@@ -268,6 +273,8 @@ def main() -> None:
         "schema": CC_LSA_CALIBRATION_SCHEMA,
         "version": CC_LSA_VERSION,
         "complete": True,
+        "exploratory_override": bool(args.allow_failed_teacher_contract),
+        "teacher_contract": lsa_checkpoint["teacher_contract"],
         "created_utc": utc_now(),
         "source": "GSV fixed holdout only; no MSLS labels or scores",
         "implementation_sha256": implementation_sha256(),

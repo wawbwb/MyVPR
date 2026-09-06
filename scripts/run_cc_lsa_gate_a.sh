@@ -5,8 +5,8 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 stage="${1:-all}"
 case "$stage" in
-  targets|smoke|teacher|calibrate|features|audit|all) ;;
-  *) echo "Usage: bash scripts/run_cc_lsa_gate_a.sh {targets|smoke|teacher|calibrate|features|audit|all}" >&2; exit 2 ;;
+  targets|smoke|teacher|calibrate|features|audit|all|exploratory) ;;
+  *) echo "Usage: bash scripts/run_cc_lsa_gate_a.sh {targets|smoke|teacher|calibrate|features|audit|all|exploratory}" >&2; exit 2 ;;
 esac
 
 target_cache='.cache/cc_lsa/gsv_crop_cls_v1'
@@ -16,6 +16,14 @@ calibration_scratch='/tmp/cc_lsa_calibration_v1'
 ru_descriptors='.cache/cc_lsa/ru_msls.npy'
 features='.cache/cc_lsa/msls_top100_v1'
 audit_output='doc/cc_lsa_gate_a'
+contract_args=()
+if [[ "$stage" == exploratory ]]; then
+  contract_args=(--allow-failed-teacher-contract)
+  calibration='.cache/cc_lsa/gsv_calibration_exploratory_v1'
+  calibration_scratch='/tmp/cc_lsa_calibration_exploratory_v1'
+  features='.cache/cc_lsa/msls_top100_exploratory_v1'
+  audit_output='doc/cc_lsa_gate_a_exploratory'
+fi
 mkdir -p doc/cc_lsa_runs
 
 log_run() {
@@ -35,6 +43,10 @@ require_ru() {
 }
 
 require_teacher() {
+  if [[ "$stage" == exploratory ]]; then
+    python -c 'import json, sys; from pathlib import Path; from src.cc_lsa_gate_a import file_sha256; p=Path(sys.argv[1]); r=json.loads((p.parent/"run.json").read_text()); c=r["teacher_contract"]; assert r["complete"] is True and r["verdict"] == c["verdict"] and c["verdict"] in ("PASS", "FAIL"), "Invalid teacher run"; assert r["checkpoint"]["sha256"] == file_sha256(p), "LSA checkpoint SHA mismatch"; assert c["config_sha256"] == file_sha256("config/cc_lsa_teacher.yaml"), "Teacher config changed"; print("EXPLORATORY: original teacher contract retained:", c["verdict"])' "$teacher_checkpoint"
+    return
+  fi
   python -c 'import json, sys; from pathlib import Path; from src.cc_lsa_gate_a import file_sha256; p=Path(sys.argv[1]); r=json.loads((p.parent/"run.json").read_text()); c=r["teacher_contract"]; assert r["complete"] is True and r["verdict"] == c["verdict"] == "PASS", "LSA teacher contract FAIL: stop here"; assert r["checkpoint"]["sha256"] == file_sha256(p), "LSA checkpoint SHA mismatch"; assert c["config_sha256"] == file_sha256("config/cc_lsa_teacher.yaml"), "Teacher config changed"; print("LSA teacher contract PASS; checkpoint and config SHA verified")' "$teacher_checkpoint"
 }
 
@@ -61,7 +73,7 @@ run_calibrate() {
   if [[ -f "$calibration/calibration.json" ]]; then
     echo "Calibration exists: $calibration; full hashes are rechecked by the final audit."
   else
-    log_run calibrate python -u scripts/calibrate_cc_lsa_gate_a.py --config config/cc_lsa_gate_a.yaml --dataset-root datasets/gsv_cities --ru-checkpoint "$RU_CKPT" --lsa-checkpoint "$teacher_checkpoint" --output "$calibration" --scratch-dir "$calibration_scratch" --device cuda:1 --batch-size 16 --num-workers 8
+    log_run calibrate python -u scripts/calibrate_cc_lsa_gate_a.py --config config/cc_lsa_gate_a.yaml --dataset-root datasets/gsv_cities --ru-checkpoint "$RU_CKPT" --lsa-checkpoint "$teacher_checkpoint" --output "$calibration" --scratch-dir "$calibration_scratch" --device cuda:1 --batch-size 16 --num-workers 8 "${contract_args[@]}"
   fi
 }
 
@@ -73,16 +85,21 @@ run_features() {
   if [[ ! -f "$ru_descriptors" || ! -f "$ru_descriptors.json" ]]; then
     log_run ru_descriptors python -u scripts/extract_ag_slrd_msls_descriptors.py ru --checkpoint "$RU_CKPT" --msls-path datasets/msls-val --output "$ru_descriptors" --device cuda:1 --batch-size 32 --num-workers 8 --image-size 280 280
   fi
-  log_run msls_features python -u scripts/cache_cc_lsa_msls_features.py --config config/cc_lsa_gate_a.yaml --ru-checkpoint "$RU_CKPT" --ru-descriptors "$ru_descriptors" --lsa-checkpoint "$teacher_checkpoint" --msls-path datasets/msls-val --output "$features" --device cuda:1 --batch-size 16 --num-workers 8
+  log_run msls_features python -u scripts/cache_cc_lsa_msls_features.py --config config/cc_lsa_gate_a.yaml --ru-checkpoint "$RU_CKPT" --ru-descriptors "$ru_descriptors" --lsa-checkpoint "$teacher_checkpoint" --msls-path datasets/msls-val --output "$features" --device cuda:1 --batch-size 16 --num-workers 8 "${contract_args[@]}"
 }
 
 run_audit() {
   require_teacher
-  log_run gate_a python -u scripts/audit_cc_lsa_gate_a.py --config config/cc_lsa_gate_a.yaml --feature-cache "$features" --calibration "$calibration" --msls-path datasets/msls-val --output "$audit_output" --device cuda:1
-  python -c 'import json; from pathlib import Path; r=json.loads(Path("doc/cc_lsa_gate_a/summary.json").read_text()); print("Gate A:", r["verdict"]["verdict"]); print("Pair classifier has not been implemented. Review Gate-A evidence before proceeding.")'
+  log_run gate_a python -u scripts/audit_cc_lsa_gate_a.py --config config/cc_lsa_gate_a.yaml --feature-cache "$features" --calibration "$calibration" --msls-path datasets/msls-val --output "$audit_output" --device cuda:1 "${contract_args[@]}"
+  python -c 'import json, sys; from pathlib import Path; r=json.loads((Path(sys.argv[1])/"summary.json").read_text()); print("Gate A:", r["verdict"]["verdict"]); print("Review Gate-A evidence before proceeding to pair-classifier training.")' "$audit_output"
 }
 
-if [[ "$stage" == all ]]; then
+if [[ "$stage" == exploratory ]]; then
+  require_ru
+  run_calibrate
+  run_features
+  run_audit
+elif [[ "$stage" == all ]]; then
   require_ru
   run_targets
   run_smoke

@@ -1,5 +1,19 @@
 # CC-LSA Pair-VPR Gate A 运行手册
 
+最新继续方式（教师已训练完但 rank 合同 FAIL）：同步探索性参数补丁后执行
+`bash scripts/run_cc_lsa_gate_a.sh exploratory`。该入口复用已有教师和 crop cache，
+从 calibration 继续；原合同保留 FAIL，结果写到 `doc/cc_lsa_gate_a_exploratory`，
+最终状态为 `EXPLORATORY_PASS/FAIL`。不要再次用 `all`，它仍执行原始严格准入。
+
+训练机命令：
+
+```bash
+cd ~/workspace/OpenVPRLab
+conda activate VPR
+export RU_CKPT='logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt'
+bash scripts/run_cc_lsa_gate_a.sh exploratory
+```
+
 本文只覆盖 `Candidate-Conditioned LSA Semantic Pair-VPR` 的 dense LSA teacher
 与 Gate A 充分性审计。Gate A 不训练 RGB pair classifier，也不修改冻结的 RU、
 DINOv2 或 BoQ。

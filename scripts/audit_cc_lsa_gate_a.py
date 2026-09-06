@@ -85,6 +85,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--msls-path", type=Path, default=Path("datasets/msls-val"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cuda:1")
+    parser.add_argument("--allow-failed-teacher-contract", action="store_true",
+                        help="Report EXPLORATORY_PASS/FAIL; never rewrite teacher admission as PASS.")
     return parser.parse_args()
 
 
@@ -388,6 +390,17 @@ def main() -> None:
     )
     calibration_path = calibration_dir / "calibration.json"
     calibration = _load_json(calibration_path)
+    expected_override = bool(args.allow_failed_teacher_contract)
+    for record in (manifest, calibration):
+        if record.get("exploratory_override", False) != expected_override:
+            raise ValueError("exploratory admission mode differs between command and cache")
+        teacher_verdict = record.get("teacher_contract", {}).get("verdict")
+        if teacher_verdict not in {"PASS", "FAIL"}:
+            raise ValueError("cache has no valid teacher contract")
+        if teacher_verdict != "PASS" and not expected_override:
+            raise ValueError("teacher contract failed; explicit exploratory flag is required")
+    if manifest["teacher_contract"] != calibration["teacher_contract"]:
+        raise ValueError("feature and calibration teacher contracts disagree")
     if calibration.get("schema") != CC_LSA_CALIBRATION_SCHEMA:
         raise ValueError("unsupported CC-LSA calibration schema")
     if calibration.get("version") != CC_LSA_VERSION or calibration.get("complete") is not True:
@@ -489,6 +502,10 @@ def main() -> None:
         minimum_rank_improved=int(thresholds["minimum_rank_improved"]),
     )
     output.mkdir(parents=True)
+    if expected_override:
+        verdict["score_criteria_verdict"] = verdict["verdict"]
+        verdict["verdict"] = "EXPLORATORY_" + verdict["verdict"]
+        verdict["teacher_admission_verdict"] = manifest["teacher_contract"]["verdict"]
     np.savez(
         output / "pair_scores.npz",
         **scores,
@@ -549,6 +566,8 @@ def main() -> None:
         "complete": True,
         "created_utc": utc_now(),
         "development_only": True,
+        "exploratory_override": expected_override,
+        "teacher_contract": manifest["teacher_contract"],
         "implementation_sha256": implementation_sha256(),
         "development_note": (
             "MSLS-val was previously inspected; this is a go/no-go screen, not an independent confirmation."
