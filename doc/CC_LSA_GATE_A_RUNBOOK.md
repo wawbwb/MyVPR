@@ -1,5 +1,8 @@
 # CC-LSA Pair-VPR Gate A 运行手册
 
+> 2026-09-06：探索性审计已完成并 FAIL，原定后续训练终止。
+> 下面命令仅供复现历史结果，不是当前运行建议。见 [结果归档](CC_LSA_RESULTS_ARCHIVE.md)。
+
 最新继续方式（教师已训练完但 rank 合同 FAIL）：同步探索性参数补丁后执行
 `bash scripts/run_cc_lsa_gate_a.sh exploratory`。该入口复用已有教师和 crop cache，
 从 calibration 继续；原合同保留 FAIL，结果写到 `doc/cc_lsa_gate_a_exploratory`，

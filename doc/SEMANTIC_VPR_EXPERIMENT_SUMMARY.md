@@ -1,6 +1,6 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-09-02
+更新日期：2026-09-06
 
 ## 1. 总结结论
 
@@ -23,7 +23,7 @@ Query-conditioned Semantic BoQ 已完成 10-epoch 首筛。aligned 在 MSLS-val 
 
 **Advantage-Gated Semantic-Layout Relational Distillation（AG-SLRD-BoQ）** 的 Phase 0 也已完成并判定为 **FAIL**。aligned layout teacher 在固定 GSV holdout 上明显胜过 shuffled teacher（83.46% 对 67.77%），证明正确布局关系能够被学习；但在 MSLS 上 aligned semantic-only 只补回 RU 的 2 个错误，positive rank 优于 RU 的查询仅 9/740，并且 shuffled-trained teacher 反而补回 4 个。当前 aligned 与 RU 的 oracle union 仅为 677/740，相对 RU 只增加 2 query。因此不实现 Phase 1，也不扫描 superclass、teacher 宽度或蒸馏权重。见第 11 节。
 
-至此，当前 `GSV-Cities + DINOv2-RU-BoQ` 下所有已实现的**单图语义 adapter**均未通过 matched baseline 与 corrupted-control 的因果门槛。后续不再给现有 BoQ 继续叠加语义小模块。新的独立候选改为 **Candidate-Conditioned LSA Semantic Pair-VPR（CC-LSA Pair-VPR）**：冻结 RU 作为第一阶段，只在 top-K 候选图像对上检验 dense LSA 连续语义是否能提供局部对应证据；先做零 student 训练的充分性审计，过线后才允许训练 RGB-only pair classifier。该路线属于 Pair-VPR/R²Former 式两阶段 VPR，不是当前 BoQ adapter 的延续。见第 12 节和 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`。
+至此，当前 `GSV-Cities + DINOv2-RU-BoQ` 下所有已实现的**单图语义 adapter**均未通过 matched baseline 与 corrupted-control 的因果门槛。后续的 **CC-LSA Pair-VPR** 也已完成教师与探索性 Gate A，结果失败，原定 pair classifier 不再实施。下一步建议先建立保留 RU 全局证据的纯视觉 learned pair verifier，再独立检验类别矛盾证据是否增加净纠错；它是未实现、未验证的新假设，不是对失败 Gate A 的放行。详见第 12 节及 [新方案](VISUAL_FIRST_SEMANTIC_PAIR_VERIFICATION.md)。
 
 除特别说明外，下面的结果主要来自 seed 42 的单次运行。单 seed 的负结果足以按预注册规则停止明显失败的路线，但不足以支撑小幅正收益的论文结论。
 
@@ -531,7 +531,13 @@ Overall status: COMPLETED / FAIL
 
 该结果否定的是当前 12 类 semantic-layout teacher 对强 RU 的互补性，不是否定所有语义 VPR。它同时触发原协议的停止边界：不实现 AG-SLRD Phase 1，不扫描 superclass、网络宽度、epoch 或蒸馏权重，并停止继续给当前 BoQ 设计单图 semantic adapter。完整协议与结果见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`，紧凑证据见 `doc/ag_slrd_phase0_audit/`。
 
-## 12. 新的独立路线：Candidate-Conditioned LSA Semantic Pair-VPR
+## 12. CC-LSA Pair-VPR：教师合同 FAIL，探索性 Gate A FAIL
+
+本节下方保留原设计作为历史记录，不再表示待执行建议。2026-09-06 已完成 5-epoch 教师训练和探索性 Gate A：教师 crop-region R@1 为 97.01%，但 effective rank 为 8.2067，未达到原定 16；显式绕过教师准入后，Gate A 仍为 **EXPLORATORY_FAIL**。aligned 重排只纠正 2 个 RU 错误，却破坏 300 个原本正确的查询，R@1 从 675/740 降至 377/740（50.95%）。不实现原定 Gate B/C，不继续延长该教师或扫描局部权重。
+
+完整教师指标、各对照的净退化及证据来源见 [CC-LSA 结果归档](CC_LSA_RESULTS_ARCHIVE.md)。这是否定当前教师与手工局部重排组合，不是证明所有 learned pair classifier 或语义 VPR 无效。尤其 DINO-full 也仅为 504/740，说明当前无学习局部评分不是可靠的 RU 替代品。
+
+### 12.1 原始设计（已终止）
 
 新路线把问题从“单张图的语义应如何改变全局描述子”改为：
 
@@ -567,6 +573,6 @@ Overall status: COMPLETED / FAIL
 - Residual-CLIP：`doc/DC_VLAQ_LITE_EXPERIMENT.md`（Phase A 预注册、实现索引、正式 FAIL 与停止决定）；训练机输出目录为 `doc/residual_clip_runs/paired_full_20260831_105942` 和 `doc/residual_clip_runs/semantic_gamma_sweep_20260831_123138`，其精确结果已固化在第 9 节，原始目录仍待同步回本机仓库。
 - RSCD-BoQ：代码、四组严格匹配配置、类别可靠性统计、512 图离线 mask 审计和 500-step TensorBoard 合同审计均已实现且通过；正式 `no-mask/uniform/aligned` 三组 3-epoch 首筛已完成，状态为 **COMPLETED / FAIL**。完整结果见 `doc/RSCD_BOQ_EXPERIMENT.md`；训练机 checkpoint 清单已归档到 `doc/rscd_runs/formal_checkpoint_inventory.txt`，原始三组训练日志仍待同步。
 - AG-SLRD-BoQ：Phase 0 已完整运行并判定 **COMPLETED / FAIL**；teacher 训练与 aligned-layout learnability 通过，但 RU complementarity 未过线，Phase 1 按预注册规则未实现。权威结果与完整 provenance 为 `doc/ag_slrd_phase0_audit/summary.json`，逐 query 证据为 `per_query.csv`，正式判定为 `verdict.txt`；完整协议与 AMP 修复记录见 `doc/AG_SLRD_BOQ_EXPERIMENT.md`。
-- 新候选 CC-LSA Pair-VPR：2026-09-06 已完成 LSA teacher、GSV-only calibration、RU top-100 局部特征缓存和 Gate A 对照审计代码，状态为 **GATE A IMPLEMENTED / TRAINING-MACHINE VALIDATION PENDING**。尚无新路线的训练或检索结果；最终版本测试由训练机执行。在 Gate A 证明 aligned LSA 对 RU top-100 错误候选具有控制后互补性之前，pair classifier 保持未实现。协议见 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`，同步与运行见 `doc/CC_LSA_GATE_A_RUNBOOK.md`。
+- CC-LSA Pair-VPR：教师合同 **FAIL**，显式绕过准入后的 Gate A 为 **EXPLORATORY_FAIL**，Gate B/C 终止。用户提供的训练机控制台与 summary.csv 已转录到 `doc/CC_LSA_RESULTS_ARCHIVE.md`；本归档不冒充已下载并独立核验的完整 per-query/JSON 原始审计。协议见 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`，运行手册仅保留复现用途。
 
 为减少仓库副产物，一次性诊断实现与大体积逐图数据在结论固化后清理。需要复现旧诊断时，可从以下 Git 提交恢复：semantic delta visualization `123d745`、counterfactual sweep `85e2816`、BoQ attention audit `ca158bd`、Phase-C smoke `8a08e81`、早期 CLIP sanity `4d19bfe`。训练日志、配置、核心模型代码和 checkpoint 加载路径不在清理范围内。

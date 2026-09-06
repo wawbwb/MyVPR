@@ -1,11 +1,13 @@
 # Candidate-Conditioned LSA Semantic Pair-VPR（CC-LSA Pair-VPR）
 
-状态：**GATE A IMPLEMENTED / TRAINING-MACHINE VALIDATION PENDING**  
+状态：**TEACHER CONTRACT FAIL / EXPLORATORY GATE A FAIL / TERMINATED**
 设计冻结日期：2026-09-02；实现交付日期：2026-09-06
 
 代码、同步与完整运行命令见 [Gate A 运行手册](CC_LSA_GATE_A_RUNBOOK.md)。当前实现覆盖
 LSA teacher、GSV-only calibration、冻结 RU 候选与六类对照审计。Gate B/C 的 pair
-classifier 仍以 Gate A 通过为前提；当前没有新的检索实验结果。
+classifier 未实施，现按失败结果终止。2026-09-06 的教师与检索结果见
+[结果归档](CC_LSA_RESULTS_ARCHIVE.md)：aligned 为 377/740，纠正 2 个 RU 错误、
+破坏 300 个 RU 正确查询。下文保留原协议，不表示建议继续执行。
 
 ## 1. 边界与研究问题
 
