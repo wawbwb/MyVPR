@@ -1,5 +1,7 @@
 # 视觉优先成对验证：阶段 V 运行命令
 
+V1 已完成，MSLS 净收益 0。下一轮使用独立的 [V2 同城困难采样运行手册](VISUAL_PAIR_HARD_SCREEN.md)，复用 V1 token，不覆盖下列历史结果。
+
 状态：初版代码已实现；按用户要求未在本机运行测试。不是 Pair-VPR/R²Former 的完整复现。语义阶段 S 尚未实现，须先检查阶段 V 的净收益。
 
 实现为原生 20×20 DINO mutual-NN edge set、共享 MLP/set pooling、小型 pair head 与 RU 分数残差融合。不读取 LSA teacher，不复用旧 14×14 缓存，不使用未经定义的 attention proxy。
