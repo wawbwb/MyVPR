@@ -34,7 +34,9 @@ SAM 提供无类别对象区域，不等于显式类别语义。如果最后 SLI
 每图四组数量严格一致：min(16, SAM有效数, SLIC有效数)，共享特征、32簇词典、
 PCA和每区域50个近邻预算。词典拟合使用归一化 DINO tokens；PCA样本四组等量。
 区域面积/覆盖率仍不完全相同，`mask_audit.json` 和结果中的统计会报告差异。
-SAM无有效区域时明确报错，绝不偷偷用网格替代。实际图像排名不足20时用-1补齐，
+SAM无有效区域时四组均记录零区域，保留RU描述子和原始图像索引，绝不偷偷用网格替代。
+区域查询无区域时以-1弃权，仍计入740个查询的分母；候选并集此时自然回到RU20。
+数据库无区域的图像不进入区域索引，但仍在RU索引和GT中。实际图像排名不足20时用-1补齐，
 不混入RU结果冒充区域命中。
 
 ## 训练机准备（继续使用 VPR 环境）
@@ -112,3 +114,25 @@ bash scripts/run_region_vlad_screen.sh eval
 是独立 R@1 提升还是仅提供互补候选，再决定下一阶段。
 MSLS已反复用于探索，这次仍是探索性结果；有效后需要另一个未调参测试集。
 不做事后按GT选query、挑区域或扫描融合权重；也不修改RU checkpoint。
+
+## 无有效 SAM 区域修复
+
+全库缓存在索引790的 `cph/database/images/sNoXa18uZcqS1SYE8lwNOA.jpg` 触发旧版保护。
+仅凭日志不能区分 SAM 本身输出零个掩码，还是面积筛选后全部被排除。
+修复不放宽阈值、不重拟合PCA：显式记录四组零区域及原始SAM数量。
+`empty_regions.json` 列出缓存中所有此类图像；评测 summary 记录数据库和查询ID。
+面积统计均值包含这些零区域样本，解读时结合空区域数量。
+
+只兼容已知 `fa3de35` 版本脚本SHA，其余特征代码、权重、参数与依赖仍须相同。
+旧fit manifest不改写；缓存迁移保存 `empty_region_migration.json` 后升级契约，
+已有非空分片不重算。未知版本或其他参数差异继续报错，不能手工删掉校验。
+GSV拟合若遇无区域仍停止，防止悄悄改变拟合样本。
+
+```bash
+git pull --ff-only origin main
+python -m pytest -q tests/test_region_vlad.py
+bash scripts/run_region_vlad_screen.sh cache
+bash scripts/run_region_vlad_screen.sh eval
+```
+
+本次未在本机运行测试，以上测试由训练机执行。

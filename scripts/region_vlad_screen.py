@@ -23,6 +23,30 @@ from src.region_vlad import (grid_masks, select_masks, neighbour_union, patch_me
 
 MODES = ('sam', 'slic', 'grid', 'shifted_sam')
 INDEX_FILES = ('msls_val_dbImages.npy', 'msls_val_qImages.npy', 'msls_val_gt_25m.npy')
+LEGACY_SCRIPT_SHA = '64a8e8a98e34c0829448d0014a8b3ba22462021dbd0d391bd9483b046dbd71be'
+
+
+def compatible_contract(old, new):
+    """Only whitelist fa3de35's stop-on-empty implementation; never waive other checks."""
+    if old == new:
+        return True
+    candidate = json.loads(json.dumps(old))
+    impl = candidate.get('implementation', {})
+    if impl.get('scripts/region_vlad_screen.py') != LEGACY_SCRIPT_SHA:
+        return False
+    if 'empty_region_policy' in candidate:
+        return False
+    impl['scripts/region_vlad_screen.py'] = new['implementation']['scripts/region_vlad_screen.py']
+    candidate['empty_region_policy'] = new['empty_region_policy']
+    return candidate == new
+
+
+def empty_regions(raw_count):
+    memberships = {m: np.zeros((0, 400), dtype=bool) for m in MODES}
+    stats = {m: {'count': 0, 'raw_count': raw_count if m == 'sam' else 0,
+                 'base_area_mean': 0., 'super_area_mean': 0., 'token_area_mean': 0.,
+                 'unique_super_masks': 0, 'delaunay_identity_fallback': False} for m in MODES}
+    return memberships, stats
 
 
 def sha(path):
@@ -73,7 +97,8 @@ def contract(args):
             'sam_points_per_side': 16, 'sam_pred_iou_thresh': 0.88,
             'sam_stability_score_thresh': 0.95, 'sam_crop_n_layers': 0,
             'slic_compactness': 10, 'minimum_mask_pixels': 196,
-            'modes': list(MODES), 'implementation': implementation(), 'versions': versions()}
+            'modes': list(MODES), 'implementation': implementation(), 'versions': versions(),
+            'empty_region_policy': 'all_four_zero_regions_keep_ru_query_abstains_v1'}
 
 
 class Extractor:
@@ -109,7 +134,10 @@ class Extractor:
             self.checked = True
         raw = self.sam.generate(rgb)
         sam_masks = [r['segmentation'] for r in raw if r['area'] >= 196]
-        require(len(sam_masks) > 0, f'No SAM masks: {path}; no silent grid fallback')
+        if not sam_masks:
+            memberships, stats = empty_regions(len(raw))
+            tqdm.write(f'NO_REGION: {path}; SAM raw={len(raw)}, eligible=0; keep RU, all four region branches abstain')
+            return tokens[0].cpu().numpy(), descriptor[0].cpu().numpy(), memberships, stats
         lab = slic(rgb, n_segments=self.args.max_regions, compactness=10, start_label=0)
         slic_masks = [lab == i for i in np.unique(lab)]
         count = min(self.args.max_regions, len(sam_masks), len(slic_masks))
@@ -158,6 +186,7 @@ def fit(args):
     samples, masks = [], []
     for p in tqdm(paths, desc='Fit: GSV train-only masks/features', dynamic_ncols=True):
         x, _, m, _ = extractor(safe_image(args.dataset_root, p))
+        require(len(m['sam']) > 0, f'No fit regions: {p}; do not silently change PCA training sample')
         samples.append(x)
         masks.append(m)
     x = np.concatenate(samples)
@@ -196,7 +225,7 @@ def cache(args):
     require(manifest['complete'], 'Incomplete fitted model')
     require(sha(args.model/'model.npz') == manifest['model_sha256'], 'Fitted model changed')
     c = contract(args)
-    require(c == manifest['contract'], 'Feature/mask/code/environment contract differs from fit')
+    require(compatible_contract(manifest['contract'], c), 'Feature/mask/code/environment contract differs from fit')
     db = np.load(args.dataset_root/INDEX_FILES[0]).astype(str).tolist()
     queries = np.load(args.dataset_root/INDEX_FILES[1]).astype(str).tolist()
     paths = db+queries
@@ -209,7 +238,18 @@ def cache(args):
                 'partial': len(paths) != len(db)+len(queries)}
     if args.output.exists():
         require(args.resume, 'Cache exists; use --resume with identical settings')
-        require(read(args.output/'contract.json') == expected, 'Cache resume contract mismatch')
+        previous = read(args.output/'contract.json')
+        checked = dict(previous)
+        require(compatible_contract(previous['contract'], c), 'Cache implementation contract mismatch')
+        checked['contract'] = c
+        require(checked == expected, 'Cache resume contract mismatch')
+        if previous != expected:
+            migration = args.output/'empty_region_migration.json'
+            if not migration.exists():
+                save(migration, {'original_contract': previous, 'new_contract': expected,
+                                 'reason': 'fa3de35 valid nonempty shards unchanged; empty samples now abstain'})
+            save(args.output/'contract.json', expected)
+            print('Migrated known fa3de35 cache; existing nonempty shards retained.', flush=True)
     else:
         args.output.mkdir(parents=True)
         save(args.output/'contract.json', expected)
@@ -233,6 +273,9 @@ def cache(args):
             tokens = torch.tensor(tokens, device=args.device)
             result = {}
             for mode in MODES:
+                if len(masks[mode]) == 0:
+                    result[mode] = np.empty((0, len(components)), dtype=np.float32)
+                    continue
                 raw = region_vlad(tokens, centers, torch.tensor(masks[mode], device=args.device))
                 projected = (raw-mean) @ components.T
                 require(torch.isfinite(projected).all() and (projected.norm(dim=1) > 1e-8).all(), 'Invalid PCA output')
@@ -252,6 +295,10 @@ def cache(args):
     audit = {mode: {key: float(np.mean([r[key] for r in rows])) for key in rows[0]}
              for mode, rows in summaries.items()}
     save(args.output/'mask_audit.json', audit)
+    empty_ids = [i for i, row in enumerate(summaries['sam']) if row['count'] == 0]
+    save(args.output/'empty_regions.json', {'count': len(empty_ids),
+                                          'images': [{'index': i, 'path': paths[i]} for i in empty_ids],
+                                          'policy': c['empty_region_policy']})
     save(args.output/'completed.json', {'complete': True, 'partial': expected['partial'],
                                       'contract_sha256': sha(args.output/'contract.json'),
                                       'shard_sha256': shard_hashes})
@@ -311,15 +358,20 @@ def evaluate(args):
             else:
                 query_regions.append(v)
         reference = torch.tensor(np.concatenate(refs), device=args.device)
+        require(len(reference) > 0, 'No database regions at all; stop evaluation')
         region_bytes[mode] = reference.numel()*reference.element_size()
         owners = np.asarray(owners)
         nearest, similarities = [], []
         for q in tqdm(query_regions, desc=f'Full database region search: {mode}', dynamic_ncols=True):
-            score, idx = (torch.tensor(q, device=args.device) @ reference.T).topk(args.region_top_k, dim=1)
+            score, idx = (torch.tensor(q, device=args.device) @ reference.T).topk(min(args.region_top_k, len(reference)), dim=1)
             nearest.append(idx.cpu().numpy())
             similarities.append(score.cpu().numpy())
-        low, high = min(float(v.min()) for v in similarities), max(float(v.max()) for v in similarities)
-        predictions[mode] = np.stack([image_vote(i, s, owners, low, high) for i, s in zip(nearest, similarities)])
+        nonempty = [v for v in similarities if v.size]
+        require(len(nonempty) > 0, 'No query regions at all; stop evaluation')
+        low, high = min(float(v.min()) for v in nonempty), max(float(v.max()) for v in nonempty)
+        predictions[mode] = np.stack([image_vote(i, s, owners, low, high) if s.size
+                                     else np.full(20, -1, dtype=np.int64)
+                                     for i, s in zip(nearest, similarities)])
         runtime[mode] = time.monotonic()-start
         del reference
     gt = np.load(args.dataset_root/INDEX_FILES[2], allow_pickle=True)
@@ -344,6 +396,9 @@ def evaluate(args):
               'mask_statistics_mean': mask_summary, 'search_including_shard_load_seconds': runtime,
               'database_region_tensor_bytes': region_bytes, 'total_extraction_seconds': extraction_seconds,
               'cache_contract_sha256': done['contract_sha256'], 'region_top_k': args.region_top_k,
+              'empty_regions': {'database_ids': [i for i, r in enumerate(stats['sam'][:ndb]) if r['count'] == 0],
+                                'query_ids': [i for i, r in enumerate(stats['sam'][ndb:]) if r['count'] == 0],
+                                'policy': 'All four regional branches abstain. RU retained. All 740 queries remain in denominator; no hidden RU fallback in regional R1.'},
               'warning': 'SAM is class-agnostic objectness. This RU-B/280 adaptation is NOT official SegVLAD reproduction. Union oracle is not achieved R1.'}
     args.output.mkdir(parents=True)
     np.savez_compressed(args.output/'predictions.npz', **predictions)

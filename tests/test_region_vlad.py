@@ -80,3 +80,30 @@ def test_shift_preserves_area_and_token_budget():
     shifted = np.roll(m, (140, 140), (1, 2))
     np.testing.assert_array_equal(m.sum((1, 2)), shifted.sum((1, 2)))
     np.testing.assert_array_equal(patch_membership(m).sum(1), patch_membership(shifted).sum(1))
+
+
+def test_empty_regions_explicit_all_four_abstain():
+    from scripts.region_vlad_screen import empty_regions, MODES
+    masks, stats = empty_regions(3)
+    for mode in MODES:
+        assert masks[mode].shape == (0, 400)
+        assert stats[mode]['count'] == 0
+    assert stats['sam']['raw_count'] == 3
+    np.testing.assert_array_equal(equal_budget_union(np.arange(20), np.full(20, -1)), np.arange(20))
+
+
+def test_migration_only_accepts_known_script_and_unchanged_settings():
+    from scripts.region_vlad_screen import compatible_contract, LEGACY_SCRIPT_SHA
+    old = {'implementation': {'scripts/region_vlad_screen.py': LEGACY_SCRIPT_SHA, 'other': 'same'}, 'weight': 'a'}
+    new = {'implementation': {'scripts/region_vlad_screen.py': 'new', 'other': 'same'}, 'weight': 'a',
+           'empty_region_policy': 'all_four_zero_regions_keep_ru_query_abstains_v1'}
+    assert compatible_contract(old, new)
+    assert compatible_contract(new, new)
+    assert not compatible_contract(old, {**new, 'weight': 'changed'})
+    assert not compatible_contract({**old, 'implementation': {'scripts/region_vlad_screen.py': 'unknown'}}, new)
+
+
+def test_abstaining_query_still_counted_as_miss():
+    from scripts.region_vlad_screen import measure
+    result = measure(np.full((1, 20), -1), [np.array([0])], np.array([True]))
+    assert result['r1'] == 0 and result['regressions'] == [0]
