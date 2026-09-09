@@ -1,0 +1,12 @@
+{
+  "complete": true,
+  "script_sha256": "bba616664b85491e18490d471861eca1ccce30a80f2cb5ae9b3e4bdbcc375ea0",
+  "source_summary_sha256": "05f8b7e01936df26c6d7f82fe4440c30915784acb3975c1ea8cafc9da952117c",
+  "numpy": "1.26.4",
+  "source_predictions_sha256": "46722d143a9a6ea5121e2847b12d61efa971d998d787d8811dcb278139950187",
+  "output_sha256": {
+    "summary.json": "98ebf95c94142d2b38de19b0c0e5b733bcd3235ed7cfa933449724f38e02db36",
+    "per_query.json": "13035de2d923dc15d02607c3dcbdc0335ab367ce181fd3b5c985f335194fdf21",
+    "candidates.npz": "f47fd5cc518384a170179666631099e4906689c4168ea7e512399ab82baa514c"
+  }
+}

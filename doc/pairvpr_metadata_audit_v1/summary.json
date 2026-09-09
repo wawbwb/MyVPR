@@ -1,0 +1,28 @@
+{
+  "complete": true,
+  "queries": 740,
+  "pair_rows": 11655,
+  "summary_sha256": "05f8b7e01936df26c6d7f82fe4440c30915784acb3975c1ea8cafc9da952117c",
+  "metadata_sha256": {
+    "cph/database/postprocessed.csv": "bc8c8817d44c1ea7b533b35e4b243da0e024037375518bb3510f2560b507b76f",
+    "cph/database/raw.csv": "17b3d22904e91c8204f7f4a3e72a00d9d29e8affa25c9bbb436dee74bfc4b8a0",
+    "cph/database/seq_info.csv": "337a5b309542cae95d6e442ad7caf2720a7f3038cbccc59e980bfd1f6de35e79",
+    "cph/query/postprocessed.csv": "45a2524c7ccc36914a5b7eb4d4d757a9cfa4b352c80666cd5abbb7f81d2b40fc",
+    "cph/query/raw.csv": "0269a70eb12e75e7cc40d61bfbbe7a55c094e4619c5d48ab377ef5d06f9e8039",
+    "cph/query/seq_info.csv": "aaf8d22af7d42727041eadd595c9868fa80809289acb4ec7e6d04f2f564941a5",
+    "sf/database/postprocessed.csv": "8e791610228d0ecbbc7b849eb45adf893f81b4fc11e6a2b9f38e512e318b51bf",
+    "sf/database/raw.csv": "b49895af79a5abc930364179aa4b2244922cdac9b966507dad185fd7c0555da9",
+    "sf/database/seq_info.csv": "8bdefa59ec23054db1cd0e79d040ddf0d8358486b4386b9ec54e872630acd5a4",
+    "sf/query/postprocessed.csv": "10dc27969a4c3716ad745a3cf212a4d03e890f6b4604e852f1934c20db511321",
+    "sf/query/raw.csv": "ae79d0ea9bae4c5c3adaf0a75d13fb22cae4b1ec96627e0f372cd47cf95baa55",
+    "sf/query/seq_info.csv": "5bd3c94f6f92cfd182e8b468a8860c0cb1c4fe412ebe0a6268aa8cf31d42e403"
+  },
+  "script_sha256": "3eec482d67dfbab9b06f1ceb80496289ebd7e8988855a6ecf6212ccd6773f211",
+  "notes": [
+    "Distances use supplied projected coordinates only within the same city; cross-city distances are blank.",
+    "25m difference is descriptive, not a replacement GT rule.",
+    "Raw ca circular difference is metadata only, not verified viewing overlap; pano/invalid angles require caution.",
+    "review_gt matches HTML choice: first GT in saved global list, else smallest GT index.",
+    "No model inference, GT changes, or threshold selection."
+  ]
+}

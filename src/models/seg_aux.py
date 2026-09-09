@@ -56,6 +56,10 @@ class SegAuxVPR(VPRFramework):
         # Segmentation head is absent from the inference computation.
         return self.features_and_descriptor(images)[1]
 
+    def semantic_weight_at_step(self, step):
+        ramp = int(self.hparams['seg_aux'].get('seg_ramp_steps', 0))
+        return self.seg_weight * (min(1.0, (step + 1) / ramp) if ramp else 1.0)
+
     def training_step(self, batch, batch_idx):
         images, place_labels, metadata = batch
         images = images.flatten(0, 1)
@@ -65,6 +69,8 @@ class SegAuxVPR(VPRFramework):
         self.log('batch_acc', accuracy, prog_bar=True)
         total = vpr_loss
         if self.seg_weight:
+            effective_weight = self.semantic_weight_at_step(self.global_step)
+            self.log('effective_seg_weight', effective_weight)
             # Deliberately NO detach: CE must update the shared DINO blocks.
             logits = self.seg_head(features)
             seg_loss, stats = self.target(
@@ -75,7 +81,7 @@ class SegAuxVPR(VPRFramework):
             )
             self.log('seg_loss', seg_loss, prog_bar=True)
             self.log_dict(stats)
-            total = total + self.seg_weight * seg_loss
+            total = total + effective_weight * seg_loss
             if self.global_step % self.diagnostic_interval == 0:
                 # Probe a shared parameter, not the semantic head. These are
                 # unscaled gradients; autograd.grad does not populate .grad.
@@ -88,8 +94,9 @@ class SegAuxVPR(VPRFramework):
                 if self.global_step == 0 and ns.item() == 0:
                     raise RuntimeError('Semantic loss does not reach shared backbone')
                 self.log('seg_shared_grad_norm', ns)
+                self.log('gradient_probe_step', float(self.global_step))
                 self.log('vpr_shared_grad_norm', nv)
-                self.log('weighted_seg_vpr_grad_ratio', self.seg_weight * ns / nv.clamp_min(1e-12))
+                self.log('weighted_seg_vpr_grad_ratio', effective_weight * ns / nv.clamp_min(1e-12))
                 self.log('seg_vpr_grad_cosine', (gv * gs).sum() / (nv * ns).clamp_min(1e-12))
         if not torch.isfinite(total):
             raise RuntimeError('Nonfinite SegAux loss')

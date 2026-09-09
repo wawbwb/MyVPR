@@ -1,0 +1,7 @@
+{
+  "checkpoint": "/home/wt/workspace/OpenVPRLab/logs/seg_aux/aligned_v1/checkpoints/last.ckpt",
+  "sha256": "2f87806fe2df9da457b1da6d6af082b2ac0972350d17fe82dcf719873262e733",
+  "saved_epoch": 2,
+  "saved_global_step": 4689,
+  "note": "Epoch-boundary resume; data-worker RNG is not restored exactly"
+}

@@ -1,0 +1,71 @@
+aggregator:
+  class: BoQ
+  module: src.models.aggregators
+  params:
+    in_channels: 768
+    num_layers: 2
+    num_queries: 64
+    proj_channels: 384
+    row_dim: 32
+backbone:
+  class: DinoV2
+  module: src.models.backbones
+  params:
+    backbone_name: dinov2_vitb14
+    num_unfrozen_blocks: 2
+compile: false
+datamodule:
+  augmentation_mode: photometric
+  batch_size: 40
+  cities: all
+  img_per_place: 4
+  num_workers: 8
+  query_semantic_cache_dir: .cache/ade20k_patch_labels/segformer_b0_ade20k_grid20
+  query_semantic_selection: aligned
+  train_image_size:
+  - 280
+  - 280
+  train_set_name: gsv-cities
+  val_image_size:
+  - 280
+  - 280
+  val_set_names:
+  - msls-val
+dev: false
+display_theme: default
+distillation:
+  enabled: true
+  semantic_region:
+    alpha: 0.2
+    apply_pretrained_gate: true
+    enabled: true
+    lambda_target: 0.0
+    mode: repeatability_uniqueness_only
+loss_function:
+  class: VPRLossFunction
+  module: src.losses
+  params:
+    loss_fn_name: MultiSimilarityLoss
+    miner_name: MultiSimilarityMiner
+seed: 42
+seg_aux:
+  cache_dir: .cache/ade20k_patch_labels/segformer_b0_ade20k_grid20
+  diagnostic_interval: 100
+  epochs: 5
+  head_lr: 0.0001
+  init_sha256: 38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e
+  lambda_seg: 0.02
+  lr: 2.0e-06
+  min_confidence: 0.5
+  mode: aligned
+  num_workers: 8
+  unfrozen_blocks: 2
+  weight_decay: 0.001
+silent: false
+train: true
+trainer:
+  lr: 2.0e-06
+  max_epochs: 5
+  max_steps: -1
+  optimizer: adamw
+  precision: 32-true

@@ -1,0 +1,187 @@
+{
+  "config": {
+    "seed": 42,
+    "silent": false,
+    "compile": false,
+    "dev": false,
+    "display_theme": "default",
+    "train": true,
+    "datamodule": {
+      "train_set_name": "gsv-cities",
+      "cities": "all",
+      "batch_size": 40,
+      "img_per_place": 4,
+      "train_image_size": [
+        280,
+        280
+      ],
+      "val_image_size": [
+        280,
+        280
+      ],
+      "val_set_names": [
+        "msls-val"
+      ],
+      "augmentation_mode": "photometric",
+      "num_workers": 8,
+      "query_semantic_cache_dir": ".cache/ade20k_patch_labels/segformer_b0_ade20k_grid20",
+      "query_semantic_selection": "aligned"
+    },
+    "backbone": {
+      "module": "src.models.backbones",
+      "class": "DinoV2",
+      "params": {
+        "backbone_name": "dinov2_vitb14",
+        "num_unfrozen_blocks": 2
+      }
+    },
+    "aggregator": {
+      "module": "src.models.aggregators",
+      "class": "BoQ",
+      "params": {
+        "in_channels": 768,
+        "proj_channels": 384,
+        "num_queries": 64,
+        "num_layers": 2,
+        "row_dim": 32
+      }
+    },
+    "loss_function": {
+      "module": "src.losses",
+      "class": "VPRLossFunction",
+      "params": {
+        "loss_fn_name": "MultiSimilarityLoss",
+        "miner_name": "MultiSimilarityMiner"
+      }
+    },
+    "trainer": {
+      "max_epochs": 5,
+      "precision": "32-true",
+      "lr": 2e-06,
+      "optimizer": "adamw",
+      "max_steps": -1
+    },
+    "distillation": {
+      "enabled": true,
+      "semantic_region": {
+        "enabled": true,
+        "mode": "repeatability_uniqueness_only",
+        "alpha": 0.2,
+        "lambda_target": 0.0,
+        "apply_pretrained_gate": true
+      }
+    },
+    "seg_aux": {
+      "cache_dir": ".cache/ade20k_patch_labels/segformer_b0_ade20k_grid20",
+      "init_sha256": "38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e",
+      "unfrozen_blocks": 2,
+      "lr": 2e-06,
+      "head_lr": 0.0001,
+      "weight_decay": 0.001,
+      "lambda_seg": 0.02,
+      "min_confidence": 0.5,
+      "diagnostic_interval": 100,
+      "epochs": 5,
+      "num_workers": 8,
+      "mode": "aligned"
+    }
+  },
+  "cache_sha256": {
+    "labels.npy": "4841aa2cca574276711ac53fad9b7ad7e1d15480b2d89510257c00d57f213036",
+    "confidence.npy": "f676ae84ba716effb3a93ffde3a1679ce50ca4d717d4f9608195c3c2a8d5a09d",
+    "shuffled_indices.npy": "9065ad66a7c139b5d41e77a17ba81d18457a4fab6a6ef02721f0add8c8cb2b15"
+  },
+  "manifest_sha256": "1eab059d77e65510f449ea96a62b8bb0ae42d0d70f1686b1d9ea4895070b3cc0",
+  "init_descriptor_error": 0.0,
+  "smoke_test": false,
+  "trainable": [
+    "backbone.dino.blocks.10.norm1.weight",
+    "backbone.dino.blocks.10.norm1.bias",
+    "backbone.dino.blocks.10.attn.qkv.weight",
+    "backbone.dino.blocks.10.attn.qkv.bias",
+    "backbone.dino.blocks.10.attn.proj.weight",
+    "backbone.dino.blocks.10.attn.proj.bias",
+    "backbone.dino.blocks.10.ls1.gamma",
+    "backbone.dino.blocks.10.norm2.weight",
+    "backbone.dino.blocks.10.norm2.bias",
+    "backbone.dino.blocks.10.mlp.fc1.weight",
+    "backbone.dino.blocks.10.mlp.fc1.bias",
+    "backbone.dino.blocks.10.mlp.fc2.weight",
+    "backbone.dino.blocks.10.mlp.fc2.bias",
+    "backbone.dino.blocks.10.ls2.gamma",
+    "backbone.dino.blocks.11.norm1.weight",
+    "backbone.dino.blocks.11.norm1.bias",
+    "backbone.dino.blocks.11.attn.qkv.weight",
+    "backbone.dino.blocks.11.attn.qkv.bias",
+    "backbone.dino.blocks.11.attn.proj.weight",
+    "backbone.dino.blocks.11.attn.proj.bias",
+    "backbone.dino.blocks.11.ls1.gamma",
+    "backbone.dino.blocks.11.norm2.weight",
+    "backbone.dino.blocks.11.norm2.bias",
+    "backbone.dino.blocks.11.mlp.fc1.weight",
+    "backbone.dino.blocks.11.mlp.fc1.bias",
+    "backbone.dino.blocks.11.mlp.fc2.weight",
+    "backbone.dino.blocks.11.mlp.fc2.bias",
+    "backbone.dino.blocks.11.ls2.gamma",
+    "aggregator.proj_c.weight",
+    "aggregator.proj_c.bias",
+    "aggregator.norm_input.weight",
+    "aggregator.norm_input.bias",
+    "aggregator.boqs.0.queries",
+    "aggregator.boqs.0.encoder.self_attn.in_proj_weight",
+    "aggregator.boqs.0.encoder.self_attn.in_proj_bias",
+    "aggregator.boqs.0.encoder.self_attn.out_proj.weight",
+    "aggregator.boqs.0.encoder.self_attn.out_proj.bias",
+    "aggregator.boqs.0.encoder.linear1.weight",
+    "aggregator.boqs.0.encoder.linear1.bias",
+    "aggregator.boqs.0.encoder.linear2.weight",
+    "aggregator.boqs.0.encoder.linear2.bias",
+    "aggregator.boqs.0.encoder.norm1.weight",
+    "aggregator.boqs.0.encoder.norm1.bias",
+    "aggregator.boqs.0.encoder.norm2.weight",
+    "aggregator.boqs.0.encoder.norm2.bias",
+    "aggregator.boqs.0.self_attn.in_proj_weight",
+    "aggregator.boqs.0.self_attn.in_proj_bias",
+    "aggregator.boqs.0.self_attn.out_proj.weight",
+    "aggregator.boqs.0.self_attn.out_proj.bias",
+    "aggregator.boqs.0.norm_q.weight",
+    "aggregator.boqs.0.norm_q.bias",
+    "aggregator.boqs.0.cross_attn.in_proj_weight",
+    "aggregator.boqs.0.cross_attn.in_proj_bias",
+    "aggregator.boqs.0.cross_attn.out_proj.weight",
+    "aggregator.boqs.0.cross_attn.out_proj.bias",
+    "aggregator.boqs.0.norm_out.weight",
+    "aggregator.boqs.0.norm_out.bias",
+    "aggregator.boqs.1.queries",
+    "aggregator.boqs.1.encoder.self_attn.in_proj_weight",
+    "aggregator.boqs.1.encoder.self_attn.in_proj_bias",
+    "aggregator.boqs.1.encoder.self_attn.out_proj.weight",
+    "aggregator.boqs.1.encoder.self_attn.out_proj.bias",
+    "aggregator.boqs.1.encoder.linear1.weight",
+    "aggregator.boqs.1.encoder.linear1.bias",
+    "aggregator.boqs.1.encoder.linear2.weight",
+    "aggregator.boqs.1.encoder.linear2.bias",
+    "aggregator.boqs.1.encoder.norm1.weight",
+    "aggregator.boqs.1.encoder.norm1.bias",
+    "aggregator.boqs.1.encoder.norm2.weight",
+    "aggregator.boqs.1.encoder.norm2.bias",
+    "aggregator.boqs.1.self_attn.in_proj_weight",
+    "aggregator.boqs.1.self_attn.in_proj_bias",
+    "aggregator.boqs.1.self_attn.out_proj.weight",
+    "aggregator.boqs.1.self_attn.out_proj.bias",
+    "aggregator.boqs.1.norm_q.weight",
+    "aggregator.boqs.1.norm_q.bias",
+    "aggregator.boqs.1.cross_attn.in_proj_weight",
+    "aggregator.boqs.1.cross_attn.in_proj_bias",
+    "aggregator.boqs.1.cross_attn.out_proj.weight",
+    "aggregator.boqs.1.cross_attn.out_proj.bias",
+    "aggregator.boqs.1.norm_out.weight",
+    "aggregator.boqs.1.norm_out.bias",
+    "aggregator.fc.weight",
+    "aggregator.fc.bias",
+    "seg_head.0.weight",
+    "seg_head.0.bias",
+    "seg_head.2.weight",
+    "seg_head.2.bias"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "complete": true,
+  "queries": 740,
+  "references": 18871,
+  "global_vs_refined": {
+    "both_correct": 630,
+    "reference_only": 9,
+    "variant_only": 63,
+    "both_wrong": 38,
+    "corrections": 63,
+    "regressions": 9,
+    "net": 54,
+    "oracle_union_count": 702
+  },
+  "ru_vs_refined": {
+    "both_correct": 667,
+    "reference_only": 8,
+    "variant_only": 26,
+    "both_wrong": 39,
+    "corrections": 26,
+    "regressions": 8,
+    "net": 18,
+    "oracle_union_count": 701
+  },
+  "global_correct": 639,
+  "refined_correct": 693,
+  "ru_correct": 675,
+  "top100_oracle": 724,
+  "remaining_reachable_errors": 31,
+  "remaining_unreachable_errors": 16,
+  "recall": {
+    "global": {
+      "1": 0.8635135135135135,
+      "5": 0.9378378378378378,
+      "10": 0.9459459459459459,
+      "100": 0.9783783783783784
+    },
+    "refined": {
+      "1": 0.9364864864864865,
+      "5": 0.9716216216216216,
+      "10": 0.972972972972973,
+      "100": 0.9783783783783784
+    }
+  },
+  "exploratory": true,
+  "note": "K>100 reranked recall is intentionally not reported; RU is a different system.",
+  "predictions_sha256": "46722d143a9a6ea5121e2847b12d61efa971d998d787d8811dcb278139950187"
+}

@@ -1,0 +1,6662 @@
+[
+  {
+    "query": 0,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 1,
+    "refined_correct": false,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 2,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 3,
+    "refined_correct": true,
+    "added_ru_candidates": 19,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 4,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 5,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 6,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 7,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 8,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 9,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 10,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 11,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 12,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 13,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 14,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 15,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 16,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 17,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 18,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 19,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 20,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 21,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 22,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 23,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 24,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 25,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 26,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 27,
+    "refined_correct": false,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 28,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 29,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 30,
+    "refined_correct": false,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 31,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 32,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 33,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 34,
+    "refined_correct": false,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 35,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 36,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 37,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 38,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 39,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 40,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 41,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 42,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 43,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 44,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 45,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 46,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 47,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 48,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 49,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 50,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 51,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 52,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 53,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 54,
+    "refined_correct": false,
+    "added_ru_candidates": 12,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 55,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 56,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 57,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 58,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 59,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 60,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 61,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 62,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 63,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 64,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 65,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 66,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 67,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 68,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 69,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 70,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 71,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 72,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 73,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 74,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 75,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 76,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 77,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 78,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 79,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 80,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 81,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 82,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 83,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 84,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 85,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 86,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 87,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 88,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 89,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 90,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 91,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 92,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 93,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 94,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 95,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 96,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 97,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 98,
+    "refined_correct": false,
+    "added_ru_candidates": 19,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 99,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 100,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 101,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 102,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 103,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 104,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 105,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 106,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 107,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 108,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 109,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 110,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 111,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 112,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 113,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 114,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 115,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 116,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 117,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 118,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 119,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 120,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 121,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 122,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 123,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 124,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 125,
+    "refined_correct": false,
+    "added_ru_candidates": 16,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 126,
+    "refined_correct": false,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 127,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 128,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 129,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 130,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 131,
+    "refined_correct": false,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 132,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 133,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 134,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 135,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 136,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 137,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 138,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 139,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 140,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 141,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 142,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 143,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 144,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 145,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 146,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 147,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 148,
+    "refined_correct": false,
+    "added_ru_candidates": 7,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 149,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 150,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 151,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 152,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 153,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 154,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 155,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 156,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 157,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 158,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 159,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 160,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 161,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 162,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 163,
+    "refined_correct": false,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 164,
+    "refined_correct": false,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 165,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 166,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 167,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 168,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 169,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 170,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 171,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 172,
+    "refined_correct": false,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 173,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 174,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 175,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 176,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 177,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 178,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 179,
+    "refined_correct": true,
+    "added_ru_candidates": 18,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 180,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 181,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 182,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 183,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 184,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 185,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 186,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 187,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 188,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 189,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 190,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 191,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 192,
+    "refined_correct": false,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 193,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 194,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 195,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 196,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 197,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 198,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 199,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 200,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 201,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 202,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 203,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 204,
+    "refined_correct": false,
+    "added_ru_candidates": 6,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 205,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 206,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 207,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 208,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 209,
+    "refined_correct": false,
+    "added_ru_candidates": 15,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 210,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 211,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 212,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 213,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 214,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 215,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 216,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 217,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 218,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 219,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 220,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 221,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 222,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 223,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 224,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 225,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 226,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 227,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 228,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 229,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 230,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 231,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 232,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 233,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 234,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 235,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 236,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 237,
+    "refined_correct": false,
+    "added_ru_candidates": 16,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 238,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 239,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 240,
+    "refined_correct": false,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 241,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 242,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 243,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 244,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 245,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 246,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 247,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 248,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 249,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 250,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 251,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 252,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 253,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 254,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 255,
+    "refined_correct": false,
+    "added_ru_candidates": 14,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 256,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 257,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 258,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 259,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 260,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 261,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 262,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 263,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 264,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 265,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 266,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 267,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 268,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 269,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 270,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 271,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 272,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 273,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 274,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 275,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 276,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 277,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 278,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 279,
+    "refined_correct": false,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 280,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 281,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 282,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 283,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 284,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 285,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 286,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 287,
+    "refined_correct": false,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 288,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 289,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 290,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 291,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 292,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 293,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 294,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 295,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 296,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 297,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 298,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 299,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 300,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 301,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 302,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 303,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 304,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 305,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 306,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 307,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 308,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 309,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 310,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 311,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 312,
+    "refined_correct": true,
+    "added_ru_candidates": 18,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 313,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 314,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 315,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 316,
+    "refined_correct": true,
+    "added_ru_candidates": 18,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 317,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 318,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 319,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 320,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 321,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 322,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 323,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 324,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 325,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 326,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 327,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 328,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 329,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 330,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 331,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 332,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 333,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 334,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 335,
+    "refined_correct": false,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 336,
+    "refined_correct": false,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 337,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 338,
+    "refined_correct": false,
+    "added_ru_candidates": 13,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 339,
+    "refined_correct": true,
+    "added_ru_candidates": 18,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 340,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 341,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 342,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 343,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 344,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 345,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 346,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 347,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 348,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 349,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 350,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 351,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 352,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 353,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 354,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 355,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 356,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 357,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 358,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 359,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 360,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 361,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 362,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 363,
+    "refined_correct": false,
+    "added_ru_candidates": 9,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 364,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 365,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 366,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 367,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 368,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 369,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 370,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 371,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 372,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 373,
+    "refined_correct": false,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 374,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 375,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 376,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 377,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 378,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 379,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 380,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 381,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 382,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 383,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 384,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 385,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 386,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 387,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 388,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 389,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 390,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 391,
+    "refined_correct": false,
+    "added_ru_candidates": 15,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 392,
+    "refined_correct": false,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 393,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 394,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 395,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 396,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 397,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 398,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 399,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 400,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 401,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 402,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 403,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 404,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 405,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 406,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 407,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 408,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 409,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 410,
+    "refined_correct": false,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 411,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 412,
+    "refined_correct": false,
+    "added_ru_candidates": 10,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 413,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 414,
+    "refined_correct": false,
+    "added_ru_candidates": 12,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 415,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 416,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 417,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 418,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 419,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 420,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 421,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 422,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 423,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 424,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 425,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 426,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 427,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 428,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 429,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 430,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 431,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 432,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 433,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 434,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 435,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 436,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 437,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 438,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 439,
+    "refined_correct": false,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 440,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 441,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 442,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 443,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 444,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 445,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 446,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 447,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 448,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 449,
+    "refined_correct": false,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 450,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 451,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 452,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 453,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 454,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 455,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 456,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 457,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 458,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 459,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 460,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 461,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 462,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 463,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 464,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 465,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 466,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 467,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 468,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 469,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 470,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 471,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 472,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 473,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 474,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 475,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 476,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 477,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 478,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 479,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 480,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 481,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 482,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 483,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 484,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 485,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 486,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 487,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 488,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 489,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 490,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 491,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 492,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 493,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 494,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 495,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 496,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 497,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 498,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 499,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 500,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 501,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 502,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 503,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 504,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 505,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 506,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 507,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 508,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 509,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 510,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 511,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 512,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 513,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 514,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 515,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 516,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 517,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 518,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 519,
+    "refined_correct": false,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 520,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 521,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 522,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 523,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 524,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 525,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 526,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 527,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 528,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 529,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 530,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 531,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 532,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 533,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 534,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 535,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 536,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 537,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 538,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 539,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 540,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 541,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 542,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 543,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 544,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 545,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 546,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 547,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 548,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 549,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 550,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 551,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 552,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 553,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 554,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 555,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 556,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 557,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 558,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 559,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 560,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 561,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 562,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 563,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 564,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 565,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 566,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 567,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 568,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 569,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 570,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 571,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 572,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 573,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 574,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 575,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 576,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 577,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 578,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 579,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 580,
+    "refined_correct": false,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 581,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 582,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 583,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 584,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 585,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 586,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 587,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 588,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 589,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 590,
+    "refined_correct": true,
+    "added_ru_candidates": 19,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 591,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 592,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 593,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 594,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 595,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 596,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 597,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 598,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 599,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 600,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 601,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 602,
+    "refined_correct": true,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 603,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 604,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 605,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 606,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 607,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 608,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 609,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 610,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 611,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 612,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 613,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 614,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 615,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 616,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 617,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 618,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 619,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 620,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 621,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 622,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 623,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 624,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 625,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 626,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 627,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 628,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 629,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 630,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 631,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 632,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 633,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 634,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 635,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 636,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 637,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 638,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 639,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 640,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 641,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 642,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 643,
+    "refined_correct": true,
+    "added_ru_candidates": 15,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 644,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 645,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 646,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 647,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 648,
+    "refined_correct": false,
+    "added_ru_candidates": 0,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 649,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 650,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 651,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 652,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 653,
+    "refined_correct": false,
+    "added_ru_candidates": 17,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 654,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 655,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 656,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 657,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 658,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 659,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 660,
+    "refined_correct": false,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 661,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 662,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 663,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 664,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 665,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 666,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 667,
+    "refined_correct": false,
+    "added_ru_candidates": 17,
+    "pair100": false,
+    "pair120": false,
+    "pair100_union_ru20": false,
+    "union_padded120": false
+  },
+  {
+    "query": 668,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 669,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 670,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 671,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 672,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 673,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 674,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 675,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 676,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 677,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 678,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 679,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 680,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 681,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 682,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 683,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 684,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 685,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 686,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 687,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 688,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 689,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 690,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 691,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 692,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 693,
+    "refined_correct": true,
+    "added_ru_candidates": 11,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 694,
+    "refined_correct": false,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 695,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 696,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 697,
+    "refined_correct": true,
+    "added_ru_candidates": 14,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 698,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 699,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 700,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 701,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 702,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 703,
+    "refined_correct": true,
+    "added_ru_candidates": 16,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 704,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 705,
+    "refined_correct": true,
+    "added_ru_candidates": 13,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 706,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 707,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 708,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 709,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 710,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 711,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 712,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 713,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 714,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 715,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 716,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 717,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 718,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 719,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 720,
+    "refined_correct": true,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 721,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 722,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 723,
+    "refined_correct": true,
+    "added_ru_candidates": 5,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 724,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 725,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 726,
+    "refined_correct": false,
+    "added_ru_candidates": 12,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 727,
+    "refined_correct": true,
+    "added_ru_candidates": 2,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 728,
+    "refined_correct": true,
+    "added_ru_candidates": 8,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 729,
+    "refined_correct": true,
+    "added_ru_candidates": 9,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 730,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 731,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 732,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 733,
+    "refined_correct": true,
+    "added_ru_candidates": 7,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 734,
+    "refined_correct": true,
+    "added_ru_candidates": 1,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 735,
+    "refined_correct": true,
+    "added_ru_candidates": 4,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 736,
+    "refined_correct": true,
+    "added_ru_candidates": 0,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 737,
+    "refined_correct": true,
+    "added_ru_candidates": 6,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 738,
+    "refined_correct": true,
+    "added_ru_candidates": 10,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  },
+  {
+    "query": 739,
+    "refined_correct": true,
+    "added_ru_candidates": 3,
+    "pair100": true,
+    "pair120": true,
+    "pair100_union_ru20": true,
+    "union_padded120": true
+  }
+]

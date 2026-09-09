@@ -1,0 +1,17 @@
+# V2: head-only initialization + joint semantic-weight ramp.
+# Start from original RU, NOT the completed v1 aligned checkpoint.
+seed: 42
+seg_aux:
+  cache_dir: .cache/ade20k_patch_labels/segformer_b0_ade20k_grid20
+  init_sha256: 38feab0601f553ed03a1ea4f6955f02bcad82618bc784cab6f4191f30e9c9f3e
+  unfrozen_blocks: 2
+  lr: 0.000002
+  head_lr: 0.0001
+  weight_decay: 0.001
+  lambda_seg: 0.02
+  min_confidence: 0.5
+  diagnostic_interval: 100
+  epochs: 5
+  num_workers: 8
+  head_warmup_steps: 500
+  seg_ramp_steps: 1000

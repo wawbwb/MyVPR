@@ -1,0 +1,116 @@
+{
+  "complete": true,
+  "queries": 740,
+  "variants": {
+    "pair100": {
+      "oracle_count": 724,
+      "oracle_recall": 0.9783783783783784,
+      "newly_reachable_vs_pair100": [],
+      "still_unreachable": [
+        54,
+        98,
+        125,
+        148,
+        204,
+        209,
+        237,
+        255,
+        338,
+        363,
+        391,
+        412,
+        414,
+        645,
+        648,
+        667
+      ]
+    },
+    "pair120": {
+      "oracle_count": 724,
+      "oracle_recall": 0.9783783783783784,
+      "newly_reachable_vs_pair100": [],
+      "still_unreachable": [
+        54,
+        98,
+        125,
+        148,
+        204,
+        209,
+        237,
+        255,
+        338,
+        363,
+        391,
+        412,
+        414,
+        645,
+        648,
+        667
+      ]
+    },
+    "pair100_union_ru20": {
+      "oracle_count": 725,
+      "oracle_recall": 0.9797297297297297,
+      "newly_reachable_vs_pair100": [
+        98
+      ],
+      "still_unreachable": [
+        54,
+        125,
+        148,
+        204,
+        209,
+        237,
+        255,
+        338,
+        363,
+        391,
+        412,
+        414,
+        645,
+        648,
+        667
+      ]
+    },
+    "union_padded120": {
+      "oracle_count": 725,
+      "oracle_recall": 0.9797297297297297,
+      "newly_reachable_vs_pair100": [
+        98
+      ],
+      "still_unreachable": [
+        54,
+        125,
+        148,
+        204,
+        209,
+        237,
+        255,
+        338,
+        363,
+        391,
+        412,
+        414,
+        645,
+        648,
+        667
+      ]
+    }
+  },
+  "equal_budget_comparison": {
+    "union_only_reachable": [
+      98
+    ],
+    "pair120_only_reachable": [],
+    "net_oracle_count": 1
+  },
+  "extra_ru_candidates": {
+    "min": 0,
+    "mean": 6.278378378378378,
+    "max": 19,
+    "total": 4646
+  },
+  "candidate_capacity_gain_pp": 0.13513513513513514,
+  "decision": "CANDIDATE_GAIN_ONLY_REQUIRES_SCORING_AND_REGRESSION_CHECK",
+  "warning": "Oracle reachability is NOT achieved R@1. No model reranking, fusion weights or semantic claims. MSLS is exploratory."
+}

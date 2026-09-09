@@ -68,6 +68,37 @@ def test_vpr_only_has_no_trainable_semantic_head():
     assert not any(p.requires_grad for p in model.seg_head.parameters())
 
 
+def test_semantic_ramp_and_legacy_weight():
+    model = make_model()
+    assert model.semantic_weight_at_step(0) == 0.02
+    model.hparams['seg_aux']['seg_ramp_steps'] = 1000
+    assert abs(model.semantic_weight_at_step(0) - 0.00002) < 1e-12
+    assert model.semantic_weight_at_step(499) == 0.01
+    assert model.semantic_weight_at_step(999) == 0.02
+    assert model.semantic_weight_at_step(2000) == 0.02
+    model.seg_weight = 0.0
+    assert model.semantic_weight_at_step(500) == 0.0
+
+
+def test_head_prewarm_preserves_retrieval_weights(tmp_path):
+    from types import SimpleNamespace
+    from scripts.train_seg_aux import prewarm_head
+    model = make_model()
+    before = {n: p.detach().clone() for n, p in model.named_parameters()}
+    batch = (torch.randn(2, 2, 4, 3, 3), torch.zeros(2, 2), {
+        'query_semantic_labels': torch.zeros(2, 2, 3, 3, dtype=torch.long),
+        'query_semantic_confidence': torch.ones(2, 2, 3, 3),
+        'query_semantic_cache_indices': torch.arange(4).reshape(2, 2)})
+    dm = SimpleNamespace(setup=lambda stage: None, train_dataloader=lambda: [batch])
+    cfg = {'seed': 42, 'seg_aux': dict(model.hparams['seg_aux'], head_warmup_steps=2)}
+    prewarm_head(model, dm, cfg, tmp_path, torch.device('cpu'), smoke=True)
+    for n, p in model.named_parameters():
+        if not n.startswith('seg_head.'):
+            assert torch.equal(before[n], p)
+    assert any(not torch.equal(before[n], p) for n, p in model.named_parameters()
+               if n.startswith('seg_head.'))
+
+
 def test_empty_confidence_is_finite_and_differentiable():
     model = make_model()
     logits = torch.randn(2, 150, 3, 3, requires_grad=True)

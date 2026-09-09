@@ -1,8 +1,12 @@
 # 语义增强 VPR 实验总结
 
-更新日期：2026-09-06
+更新日期：2026-09-09
 
 ## 1. 总结结论
+
+最新状态（2026-09-09）：借鉴 SegVPR 的共享骨干分割辅助训练（SegAux-BoQ）V1、V2 已归档并停止扩展。V2 通过分割头预热与权重渐增缓解了监测参数上的初期梯度失衡，但 aligned 最终为 671/740（90.68%），仅比同预算 VPR-only 多1个查询，仍比冻结RU少4个。没有证明正确语义监督提供稳定增益，不继续加轮次、扫权重或启动 shuffled。详见第13节和 [SegAux结果归档](SEG_AUX_RESULTS_ARCHIVE.md)。这不否定原版SegVPR或所有语义路线。
+
+此前状态（2026-09-07）：官方 Pair-VPR 已完成推理复现及配对审计，refined 为 693/740（93.65%）。轻量 visual pair V1/V2、后续粗 token 几何加权路线均已停止；RU/Pair 候选并集仅新增 q98 一个可达查询，未进行真实重排，不继续扩展。场景文字身份信息仅为候选方向，尚未实现或验证增益，见 [场景文字方案](SCENE_TEXT_IDENTITY_PAIR_VPR.md)。下文旧设计不表示仍在推进。
 
 当前结果允许继续研究“语义如何进入 VPR”，但不支持继续微调已经失败的注入方式。到目前为止，没有一种语义方案同时满足以下两个条件：
 
@@ -557,9 +561,36 @@ Overall status: COMPLETED / FAIL
 
 任何 Gate-A 条件失败都立即终止，不训练 classifier；因此这条路线的首个实验仍然低成本，并直接回答前面所有方案一直缺失的问题：语义在 RU 的具体错误候选对上是否真的提供额外证据。由于 MSLS-val 已被本项目反复查看，Gate A/C 只作为开发集 go/no-go；任何正收益都必须在冻结代码与配置后由 MSLS-test server 或事先登记的独立 benchmark 一次性确认。完整冻结协议、公式、对照、数据边界和停止规则见 `doc/CC_LSA_PAIR_VPR_EXPERIMENT.md`。
 
-## 13. 证据索引与归档说明
+## 12.2 官方 Pair-VPR 与局部几何诊断（2026-09-07）
+
+官方 Pair-VPR 推理复现及配对审计：global 639/740 → refined 693/740，纠错 63、误伤 9；相对 RU 675/740 的跨系统比较为纠错 26、误伤 8，不是纯重排消融。候选 top100 oracle 为 724/740，最终错误中 31 个可达、16 个不可达。
+
+固定 10 查询、58 对的 MNN 仿射审计不支持增加简单几何分数：7 个远距离错误中，原评分最佳 GT 仅 3 例内点数更多；成功对照 q49/q325 的错误候选内点数甚至超过全部已检查 GT。停止当前粗 token MNN 数量、覆盖率、仿射内点的加权扫描；这不否定所有几何或语义方法。
+
+候选并集筛查已完成：Pair100 与 Pair120 oracle 均为 724/740；Pair100∪RU20 及补齐120的并集均为 725/740，仅 q98 新增可达。平均增加 6.278 对/查询，总计4646对。状态为 COMPLETED / WEAK CANDIDATE COMPLEMENTARITY / NOT ADVANCED；有微弱可达性增益，不冒充预注册零增益 FAIL，也不冒充实际 R@1 提升。停止当前配置的进一步全量重排。完整结果边界与命令见 [候选互补性筛查](PAIR_VPR_CANDIDATE_UNION.md)。
+
+## 13. SegAux-BoQ：共享骨干分割辅助训练，已归档
+
+借鉴SegVPR的联合学习机制，不是原版复现：ADE20K伪标签CE与VPR损失共同更新DINOv2最后两个block，BoQ可训练、RU gate参数冻结；推理不运行分割头。V1直接联合训练，V2先预热分割头500步，再在联合训练前1000步将语义权重渐增至0.02；联合预算均为5轮，P40/K4、280×280、seed42。
+
+| 实验 | 最佳训练后R@1 | 最终R@1 | 最终正确数 | 相对冻结RU |
+| --- | ---: | ---: | ---: | ---: |
+| 冻结RU | 91.22% | 91.22% | 675/740 | 0 |
+| V1 aligned | 91.08% | 90.95% | 673/740 | −2 |
+| V2 VPR-only | 90.95% | 90.54% | 670/740 | −5 |
+| V2 aligned预热+渐增 | 91.22% | 90.68% | 671/740 | −4 |
+
+V2两组均完成7815步；V1 aligned从第3轮末恢复，V2对照从第2轮末恢复，数据worker随机状态未完全恢复，不能声称逐批严格匹配。V1对照未完整完成，不作最终公平对照。
+
+日志去重后各有78次梯度测量。V1首个加权语义/VPR梯度比为44.87，V2为0.000604；V2第一轮最大测量值0.938，全程最大2.63，说明早期失衡得到缓解。V2梯度余弦41/78次为负，第4轮14/16次为负、均值−0.426，提示任务冲突但不建立退化因果。统计仅对应一个共享参数，不代表全网络或AdamW实际更新。
+
+结论：工程流程完成、语义可学习、整体R@1增益未获支持。aligned可能缓解部分普通微调退化，但最终仅多1个查询，缺少shuffled与重复实验，不能认定语义因果收益。停止当前配置扩展；不以本轮结果否定原版SegVPR或整个语义VPR方向。原始日志、恢复记录与权重保留，详细统计口径见 [归档文档](SEG_AUX_RESULTS_ARCHIVE.md)。
+
+## 14. 证据索引与归档说明
 
 保留的主要证据：
+
+- SegAux-BoQ：`doc/SEG_AUX_RESULTS_ARCHIVE.md`、`doc/SEG_AUX_BOQ.md`，以及已下载的 `doc/seg_aux_aligned_v1/`、`doc/seg_aux_warm_v2/`（两组CSV全部version、contract、completed、resume及head_warmup）。权重保留在训练机，本次未删除或重新下载。
 
 - MixVPR 训练原始输出：`doc/A2结果.md`、`doc/B1.md`、`doc/B2_*.md`、`doc/C0.txt`、`doc/C2.md`、`doc/C3_*`、`doc/D1.md`、`doc/D2.md`；
 - semantic reliability/alias/positive：`doc/VPR_SEMANTIC_RELIABILITY.md`、`doc/semantic_alias_tb_raw.csv`、`doc/semantic_alias_tb_summary.csv`、对应训练日志；
