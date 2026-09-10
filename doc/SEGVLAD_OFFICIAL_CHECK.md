@@ -2,6 +2,30 @@
 
 状态：准备检查脚本已实现，未在本机运行测试、导入上游或运行模型。
 
+## 官方包缺少domain PCA：显式使用map分支
+
+用户下载的包仅列出 `_order3_dinoNV.pkl`、`_order3_map.pkl`、
+`_order3_map_dinoNV.pkl`，没有原定domain/indoor的 `_order3.pkl`。
+因此提供显式 `--vocab-vlad map`：同时选择 `17places/c_centers.pt` 和
+`17places_r_fitted_pca_model_order3_map.pkl`，透传到官方主程序。
+不复制/改名PCA，不使用dinoNV，不修改官方源码。默认仍为domain。
+map结果是另一套词典配置，不能冒充先前domain配置或未经核对直接对应论文表格。
+运行前检查PCA为1024×49152、词典为32×1536；尺寸一致也不单独证明来源完全匹配。
+
+```bash
+python -m pytest -q tests/test_segvlad_official.py
+python scripts/segvlad_official.py check --repo ../Revisit-Anything-official --data-root datasets/segvlad_official/17places_full --vocab-vlad map --output "doc/segvlad_official_map_check_$(date +%Y%m%d_%H%M%S)"
+```
+
+检查通过后（若词典缺失，先反馈，不替换indoor词典）：
+
+```bash
+set -o pipefail
+python -u scripts/segvlad_official.py run --repo ../Revisit-Anything-official --data-root datasets/segvlad_official/17places_full --vocab-vlad map --gpu 1 --output "doc/segvlad_official_map_run_$(date +%Y%m%d_%H%M%S)" 2>&1 | tee "doc/segvlad_official_map_run_$(date +%Y%m%d_%H%M%S).txt"
+```
+
+下面保留原始domain准备流程供溯源；本次选择map时请使用上面的命令。
+
 当前RU适配版的SAM R@1为382/740，网格488/740，RU675/740；SAM候选并集净可达性为0。
 停止该适配配置，不继续调权重。现在换用官方配置验证，而不是声称官方方法已经失败。
 

@@ -42,6 +42,16 @@ def literal_config(repo):
     return result['datasets']['17places'], result['experiments'][EXPERIMENT]
 
 
+def vocabulary_assets(repo, base, cfg, exp, mode):
+    if mode not in ('domain', 'map'):
+        raise ValueError('Vocabulary must be domain or map')
+    cluster = cfg['domain_vlad_cluster' if mode == 'domain' else 'map_vlad_cluster']
+    pca_key = 'pca_model_pkl' if mode == 'domain' else 'pca_model_pkl_map'
+    return (base/'out'/('17places'+exp[pca_key]),
+            repo/'cache/vocabulary/dinov2_vitg14/l31_value_c32'/cluster/'c_centers.pt',
+            f'{mode}/{cluster}')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('action', choices=('check', 'run'))
@@ -49,6 +59,8 @@ def main():
     p.add_argument('--data-root', type=Path, required=True, help='Parent containing 17places/ref, query, out')
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--gpu', default='1', help='Physical GPU exposed before torch import')
+    p.add_argument('--vocab-vlad', choices=('domain', 'map'), default='domain',
+                   help='Select matching official vocabulary AND PCA; never rename PCA files')
     args = p.parse_args()
     repo, data, output = args.repo.resolve(), args.data_root.resolve(), args.output.resolve()
     if output.exists():
@@ -63,8 +75,8 @@ def main():
     needed = [base/cfg[k] for k in ('data_subpath1_r', 'data_subpath2_q')]
     needed += [base/'out'/cfg[k] for k in ('masks_h5_filename_r', 'masks_h5_filename_q',
                                            'dino_h5_filename_r', 'dino_h5_filename_q')]
-    needed += [base/'out'/('17places'+exp['pca_model_pkl']),
-               repo/'cache/vocabulary/dinov2_vitg14/l31_value_c32/indoor/c_centers.pt']
+    pca_path, centers_path, vocabulary = vocabulary_assets(repo, base, cfg, exp, args.vocab_vlad)
+    needed += [pca_path, centers_path]
     missing = [str(v) for v in needed if not v.exists()]
     # Probe real imports in a subprocess, using upstream path exactly as execution.
     probe = subprocess.run([sys.executable, '-c', 'import func_vpr; import utilities; import gt; import faiss; print("UPSTREAM_IMPORT_OK")'],
@@ -72,7 +84,8 @@ def main():
     output.mkdir(parents=True)
     (output/'imports.txt').write_text(probe.stdout+'\n'+probe.stderr, encoding='utf8')
     report = {'upstream_commit': head, 'dataset': '17places', 'experiment': EXPERIMENT,
-              'vocabulary': 'domain/indoor', 'dataset_config': cfg, 'experiment_config': exp,
+              'vocabulary': vocabulary, 'pca_path': str(pca_path), 'centers_path': str(centers_path),
+              'dataset_config': cfg, 'experiment_config': exp,
               'python': sys.executable, 'missing_files': missing, 'imports_ok': probe.returncode == 0,
               'ready_to_attempt': not missing and probe.returncode == 0,
               'upstream_sources_sha256': {name: sha(repo/name) for name in
@@ -100,6 +113,9 @@ def main():
         pca = pickle.load(f)
     if tuple(pca.components_.shape) != (1024, 49152):
         p.error(f'Official cached PCA incompatible: {pca.components_.shape}; do not silently change dimensions')
+    centers = torch.load(centers_path, map_location='cpu', weights_only=True)
+    if not isinstance(centers, torch.Tensor) or tuple(centers.shape) != (32, 1536):
+        p.error('Official vocabulary must be a 32x1536 tensor')
     # Record exact artifacts before executing unchanged upstream algorithms.
     report['artifact_sha256'] = {str(v): sha(v) for v in needed if v.is_file()}
     (output/'preflight.json').write_text(json.dumps(report, indent=2), encoding='utf8')
@@ -108,7 +124,7 @@ def main():
     import place_rec_global_config as config
     config.workdir_data = str(data)  # path-only runtime override, no source edits
     sys.argv = ['place_rec_main.py', '--dataset', '17places', '--experiment', EXPERIMENT,
-                '--vocab-vlad', 'domain', '--save-results']
+                '--vocab-vlad', args.vocab_vlad, '--save-results']
     print('Running unchanged official entry point; native results go into 17places/out/results', flush=True)
     runpy.run_path(str(repo/'place_rec_main.py'), run_name='__main__')
     (output/'completed.json').write_text(json.dumps({'entrypoint_returned': True,
