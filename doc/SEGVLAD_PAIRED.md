@@ -1,5 +1,23 @@
 # 17Places：官方 SegVLAD 与 AnyLoc 成对比较
 
+## 三套GT固定预测对照
+
+重复投票诊断返回官方GT下R@1：AnyLoc385、SegVLAD387、封顶389。
+原始NPY和修订NPY与官方±15窗口不同，不能直接把上述净收益视为对标注稳健。
+
+```bash
+python -m pytest -q tests/test_segvlad_gt_protocols.py
+python -u scripts/segvlad_gt_protocols.py --paired doc/segvlad_paired_20260910_095818 --diagnostic doc/segvlad_vote_diagnostic_v1 --data-root datasets/segvlad_official/17places_full --output doc/segvlad_gt_protocols_v1
+```
+
+纯标准库CPU处理；不加载模型或pickle、不重新训练。本机未运行测试。
+核验文件名stem与零基索引一致、NPY查询ID唯一且全覆盖、原始预测和输入哈希一致。
+NPY第一列按查询ID、第二列按参考ID解释；这是结构映射核验，不是物理真值认证。
+三套GT全部保留：官方±15、压缩包original、压缩包revised。越界ID单独记录，
+因预测只含合法参考ID，去除越界ID不改变命中；如出现空有效GT则停止，不悄悄变分母。
+输出summary.json、per_query.json、mapping_audit.json、completed.json。
+属于事后协议敏感性分析，不据此选择最有利协议宣称新方法有效。
+
 ## GT与重复投票诊断
 
 四案例图片提示：237的222→221恰跨±15窗口；会议室多个候选外观相似。
