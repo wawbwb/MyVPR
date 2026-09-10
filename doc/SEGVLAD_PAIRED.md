@@ -1,5 +1,27 @@
 # 17Places：官方 SegVLAD 与 AnyLoc 成对比较
 
+## 2026-09-10 成对结果与案例复查
+
+用户返回 `segvlad_paired_20260910_095818`：AnyLoc R@1–5 正确数为
+385/390/392/393/395；SegVLAD 为387/394/395/397/399。
+纠错 query index 243、257、291，退步237，净增2（+0.4926个百分点）。
+有小幅正收益，不能据4个正确性变化样本宣称稳定语义增益。
+
+`scripts/segvlad_case_review.py` 在 CPU 读取已有结果，核验 masks/matches 哈希、
+图像顺序与投票排名，生成四案例可离线浏览的HTML及图片。
+显示两方法top1、GT索引偏移、双方最强三组区域对应、窗口边缘参考图。
+区域可视化是官方order3邻居mask的并集示意，不是attention、精确token贡献，
+也不能仅凭高相似度认定同一地点。不调用模型，不改变排序。
+
+```bash
+python -m pytest -q tests/test_segvlad_case_review.py
+python -u scripts/segvlad_case_review.py --repo ../Revisit-Anything-official --data-root datasets/segvlad_official/17places_full --paired doc/segvlad_paired_20260910_095818 --output doc/segvlad_case_review_v1
+```
+
+下载整个 `doc/segvlad_case_review_v1`（包含images），打开index.html；人工判定
+同一物理场景、重复物体、GT边界或不确定。先看四案例，再决定是否投入公平区域消融。
+代码和测试未在本机执行。
+
 已观察的 SegVLAD map/order3/PCA1024 结果：406 queries，R@1–5 正确数
 387/394/395/397/399。sklearn 降到作者 PCA 的 1.3.0 后，汇总正确数不变。
 这只是官方缓存检索运行成功，不是端到端复现或 MSLS 收益证明。
