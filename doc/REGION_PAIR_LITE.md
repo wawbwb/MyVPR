@@ -1,5 +1,25 @@
 # RU-BoQ候选区域验证：轻量探索
 
+## 完成后的低成本分数诊断
+
+本次用户返回：RU 675/740；SAM 671（0 纠错、4 退步，query 30/145/228/670）；
+grid 673（0/2）；shifted 674（1/2）。本配置筛选未通过，不能据此否定全部语义方法。
+
+`diagnose_region_pair_lite.py` 只读取已有分数、候选、GT 和运行元数据，不加载模型、
+不读取大特征缓存、不重新提取 SAM。先复现完整排序和纠错/退步统计，再输出：
+可达错误查询中正样本的分数优势；固定门槛的阻挡原因（可重叠）；所有纠错和退步的
+20 个候选逐项分数、支持数和门槛情况；以及去掉门槛直接取区域 argmax 的诊断结果。
+后者不是推荐的新方法。GT 仅用于事后分析，不进行阈值搜索或重新选择正式配置。
+
+```bash
+python -m pytest -q tests/test_diagnose_region_pair_lite.py
+python -u scripts/diagnose_region_pair_lite.py --run doc/region_pair_lite_v1 --source doc/visual_pair_msls_hard_mix_v2 --dataset-root datasets/msls-val --output doc/region_pair_lite_diagnostic_v1
+```
+
+查看 `summary.json` 与 `changed_correctness_cases.json`；完整逐查询信息见
+`per_query.json`，来源哈希见 `provenance.json`。输出目录必须未存在，旧结果不覆盖。
+此补丁未在本机执行测试，交由训练机运行。
+
 ## 空分片恢复（EOFError）
 
 原续跑逻辑仅检查文件存在，会跳过空或损坏的 NPZ。修复后每次先完整读取并校验所有必需分片，
