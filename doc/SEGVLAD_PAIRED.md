@@ -1,5 +1,26 @@
 # 17Places：官方 SegVLAD 与 AnyLoc 成对比较
 
+## GT与重复投票诊断
+
+四案例图片提示：237的222→221恰跨±15窗口；会议室多个候选外观相似。
+291的三个最强区域对应使用相同查询区域80，参考覆盖图高度一致。
+这些是待验证线索，不足以认定物理地点正确性或重复投票导致最终收益。
+
+```bash
+python -m pytest -q tests/test_segvlad_vote_diagnostic.py
+python -u scripts/segvlad_vote_diagnostic.py --repo ../Revisit-Anything-official --data-root datasets/segvlad_official/17places_full --paired doc/segvlad_paired_20260910_095818 --output doc/segvlad_vote_diagnostic_v1
+```
+
+CPU离线，无模型训练。本机未执行测试。
+输入必须是可信作者NPY/本地pickle，运行前核验原有哈希。
+输出 packaged_gt.json 完整导出两份标注及ReadMe，不假定索引起点、方向或类别含义。
+summary.json/per_query.json 比较全部406查询的原始投票与封顶投票：
+每个查询区域向同一参考图仅保留最大的一次贡献，保持原top50区域候选与归一化。
+support_duplicates.json 统计原四案例相关图像的精确邻域mask并集重复率；
+不等价于VLAD向量重复率，不检测高IoU近重复。
+不同查询区域之间仍可能重叠；封顶结果只是事后敏感性诊断，不能作为调参后无偏收益。
+不会改变官方GT或覆盖已有结果。下载整个输出目录后再解释标注内容和指标变化。
+
 ## 2026-09-10 成对结果与案例复查
 
 用户返回 `segvlad_paired_20260910_095818`：AnyLoc R@1–5 正确数为
