@@ -4,6 +4,9 @@ import json
 import os
 from pathlib import Path
 import sys
+import zipfile
+import zlib
+from uuid import uuid4
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import numpy as np
@@ -16,6 +19,64 @@ def write(path,value):
     temp.write_text(json.dumps(value,indent=2),encoding='utf8'); temp.replace(path)
 
 
+LEGACY_SCRIPT_SHA = '2a24a8c8309860f40f466883cc1dd22dfd72de825029752246205f471019a101'
+
+
+def compatible_legacy_contract(old, current):
+    candidate = json.loads(json.dumps(old))
+    code = candidate.get('code', {})
+    key = 'scripts/region_pair_lite.py'
+    if code.get(key) != LEGACY_SCRIPT_SHA:
+        return False
+    code[key] = current['code'][key]
+    return candidate == current
+
+
+def read_shard(path):
+    """Read every member (including CRC) and validate the unchanged cache schema."""
+    modes = ('sam', 'grid', 'shifted')
+    with np.load(path, allow_pickle=False) as archive:
+        if set(archive.files) != {k for m in modes for k in (m, m+'_xy')}:
+            raise ValueError('unexpected shard keys')
+        arrays = {k: archive[k] for k in archive.files}
+    if arrays['sam'].ndim != 2:
+        raise ValueError('invalid SAM descriptor dimensions')
+    n = len(arrays['sam'])
+    if n != 0 and not 3 <= n <= 16:
+        raise ValueError('invalid region count')
+    for mode in modes:
+        d, xy = arrays[mode], arrays[mode+'_xy']
+        if d.shape != (n, 768) or xy.shape != (n, 2):
+            raise ValueError('invalid region/centroid shape')
+        if d.dtype != np.float16 or xy.dtype != np.float32:
+            raise ValueError('invalid region/centroid dtype')
+        if not np.isfinite(d).all() or not np.isfinite(xy).all():
+            raise ValueError('non-finite shard values')
+        if (xy < 0).any() or (xy > 1).any():
+            raise ValueError('centroids outside normalized image')
+    return arrays
+
+
+def inspect_shard(path):
+    if not path.exists():
+        return 'missing'
+    try:
+        read_shard(path)
+    except (EOFError, ValueError, zipfile.BadZipFile, zlib.error) as error:
+        return f'{type(error).__name__}: {error}'
+    return None
+
+
+def save_shard(path, arrays):
+    temp = path.with_name(path.name+'.'+uuid4().hex+'.tmp')
+    with temp.open('xb') as handle:
+        np.savez_compressed(handle, **arrays)
+        handle.flush()
+        os.fsync(handle.fileno())
+    read_shard(temp)
+    temp.replace(path)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source',type=Path,required=True,help='Existing visual_pair_msls_* output with local.npy/descriptors.npy/per_query.npz')
@@ -26,6 +87,8 @@ def main():
     p.add_argument('--device',default='cuda:1')
     p.add_argument('--limit-images',type=int,default=0)
     a=p.parse_args()
+    for name in ('checkpoint', 'sam_checkpoint'):
+        if not getattr(a, name).is_file(): p.error(f'{name} must point to an existing checkpoint file')
     if (a.output/'completed.json').exists(): p.error('Run completed; no overwrites')
     import torch
     from PIL import Image
@@ -56,11 +119,39 @@ def main():
         'code':{n:sha(ROOT/n) for n in ('scripts/region_pair_lite.py','src/region_pair_lite.py','src/region_vlad.py')},
         'required_images':len(required),'max_regions':16,'scope':'Exploratory, fixed thresholds; no GT-based selection'}
     if (a.output/'contract.json').exists():
-        if json.loads((a.output/'contract.json').read_text())!=contract: p.error('Resume contract changed')
+        old = json.loads((a.output/'contract.json').read_text())
+        if old != contract:
+            if not compatible_legacy_contract(old, contract): p.error('Resume contract changed')
+            write(a.output/'contract_migration.json', {'previous': old, 'current': contract,
+                'reason': 'Cache integrity/recovery only; extraction and scoring unchanged'})
+            write(a.output/'contract.json', contract)
+            print('Migrated known original cache contract; all data/model/scorer hashes unchanged.', flush=True)
     else:
         a.output.mkdir(parents=True,exist_ok=True); (a.output/'shards').mkdir(exist_ok=True)
         write(a.output/'contract.json',contract)
     print(f'Reusing native cache. New region arrays about {len(required)*3*16*768*2/1024**2:.1f} MiB plus memberships/metadata.',flush=True)
+    pending=[]; repairs=[]
+    (a.output/'shards').mkdir(exist_ok=True)
+    for i in tqdm(required, desc='Validate existing region shards'):
+        target=a.output/'shards'/f'{i:06d}.npz'
+        reason=inspect_shard(target)
+        if reason is None: continue
+        pending.append(i)
+        entry={'image_index': int(i), 'reason': reason}
+        if reason != 'missing':
+            quarantine=a.output/'quarantine'
+            quarantine.mkdir(exist_ok=True)
+            destination=quarantine/(target.name+'.'+uuid4().hex+'.bad')
+            # Move only this exact shard, within this run; never delete caches.
+            target.resolve().relative_to(a.output.resolve())
+            destination.resolve().relative_to(a.output.resolve())
+            target.rename(destination)
+            entry['quarantined_to']=str(destination)
+            print(f'Repair image {i}: {reason}; retained at {destination}', flush=True)
+        repairs.append(entry)
+    write(a.output/('cache_validation_'+uuid4().hex+'.json'), {
+        'reused': len(required)-len(pending), 'to_generate': len(pending), 'repairs': repairs})
+    print(f'Valid shards reused: {len(required)-len(pending)}; missing/damaged to generate: {len(pending)}', flush=True)
     # Audit legacy cache mapping by fresh deterministic checkpoint samples, not labels.
     if not (a.output/'cache_audit.json').exists():
         from scripts.eval_condition_robustness import load_inference_model_from_ckpt, build_transform
@@ -78,9 +169,8 @@ def main():
     from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
     from src.region_vlad import grid_masks
     generator=None; processed=0
-    for i in tqdm(required,desc='Compact candidate-region cache'):
+    for i in tqdm(pending,desc='Compact candidate-region cache'):
         target=a.output/'shards'/f'{i:06d}.npz'
-        if target.exists(): continue
         if generator is None:
             sam=sam_model_registry['vit_b'](checkpoint=str(a.sam_checkpoint)).to(a.device).eval()
             generator=SamAutomaticMaskGenerator(sam,points_per_side=16,points_per_batch=32,
@@ -104,9 +194,7 @@ def main():
             for mode,m in controls.items():
                 d,xy=pool(np.asarray(local[i],dtype='float32'),m)
                 arrays[mode]=d.astype('float16'); arrays[mode+'_xy']=xy.astype('float32')
-        temp=target.with_suffix('.tmp')
-        with temp.open('wb') as f: np.savez_compressed(f,**arrays)
-        temp.replace(target); processed+=1
+        save_shard(target, arrays); processed+=1
         if a.limit_images and processed>=a.limit_images:
             print('SMOKE COMPLETE; rerun without --limit-images to continue'); return
     predictions={'ru':candidates.copy()}; all_scores={}; supports={}

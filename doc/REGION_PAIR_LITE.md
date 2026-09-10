@@ -1,5 +1,21 @@
 # RU-BoQ候选区域验证：轻量探索
 
+## 空分片恢复（EOFError）
+
+原续跑逻辑仅检查文件存在，会跳过空或损坏的 NPZ。修复后每次先完整读取并校验所有必需分片，
+有效分片保留，损坏分片移入同一输出目录的 `quarantine/`（可恢复），只重算损坏或缺失的图片。
+合法的零区域数组代表弃权，不视为损坏。新分片写入后刷新磁盘、校验，再原子替换。
+`cache_validation_*.json` 记录复用数量及修复清单；不修改区域参数、匹配规则或评测阈值。
+仅允许已知原版脚本哈希的维护性迁移，其他输入、权重、评分代码哈希仍须完全一致。
+保留原来的 `doc/region_pair_lite_v1`，不要删除缓存或换输出目录。
+
+训练机验证（未在本机运行测试）：
+
+```bash
+python -m pytest -q tests/test_region_pair_lite.py tests/test_region_pair_lite_cache.py
+python -u scripts/region_pair_lite.py --source doc/visual_pair_msls_hard_mix_v2 --checkpoint "${RU_CKPT:?请先设置RU_CKPT}" --sam-checkpoint .cache/sam/sam_vit_b_01ec64.pth
+```
+
 已移除官方DINO-G/SAM-H全量MSLS适配。此方案不是SegVLAD复现。
 保留RU-BoQ，复用已有visual-pair评测缓存的local.npy（19611×400×768）、
 descriptors.npy和per_query.npz。没有这些文件时停止，不自动生成大缓存。
