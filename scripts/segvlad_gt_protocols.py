@@ -36,6 +36,13 @@ def check_names(names, directory):
         require((directory/name).is_file(), f'Missing image {directory/name}')
 
 
+def validate_predictions(pred, count, method, query_id):
+    context = f'Invalid top5: method={method}, query={query_id}, predictions={pred!r}'
+    require(isinstance(pred, list) and 1 <= len(pred) <= 5, context)
+    require(all(type(x) is int and 0 <= x < count for x in pred), context)
+    require(len(set(pred)) == len(pred), context)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--paired', type=Path, required=True)
@@ -67,7 +74,7 @@ def main():
         require(r['gt'] == d['gt'] == official[q], 'GT mismatch between runs')
         require(r['segvlad_top5'] == d['original_top5'], 'Original predictions changed')
         for name, pred in [('anyloc',r['anyloc_top5']),('segvlad',r['segvlad_top5']),('capped',d['capped_top5'])]:
-            require(len(pred) == 5 and len(set(pred)) == 5 and all(type(x) is int and 0 <= x < n for x in pred), 'Invalid top5')
+            validate_predictions(pred, n, name, q)
             predictions[name].append(pred)
     raw_gts = {'official_window15':official}
     for label, filename in [('packaged_original','ground_truth_new.npy'),('packaged_revised','my_ground_truth_new.npy')]:
@@ -78,7 +85,10 @@ def main():
     def save(name,value):
         (out/name).write_text(json.dumps(value,indent=2,ensure_ascii=False),encoding='utf8')
     audit_report = {'index_mapping':'All image stems equal zero-based indices. NPY first column used as query ID; second as reference IDs. This does not certify physical-place correctness.',
-        'readme':annotations.get('readme'), 'protocols':{}}
+        'readme':annotations.get('readme'), 'protocols':{},
+        'short_candidate_lists':{name:[{'query_id':q,'length':len(pred)} for q,pred in enumerate(preds) if len(pred)<5]
+                                 for name,preds in predictions.items()},
+        'short_list_policy':'Retain original candidates and order. Recall@K uses available prefix; no padding, no query exclusion.'}
     protocols = {}
     for label, gt in raw_gts.items():
         valid = [sorted(set(x for x in row if 0 <= x < n)) for row in gt]
