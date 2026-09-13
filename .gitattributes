@@ -1,1 +1,2 @@
 scripts/run_clip_token_drop.sh text eol=lf
+scripts/run_pairvpr_cls.sh text eol=lf
