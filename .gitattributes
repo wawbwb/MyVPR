@@ -4,3 +4,4 @@ scripts/run_dynamic_invariance.sh text eol=lf
 scripts/run_dynamic_challenge.sh text eol=lf
 scripts/run_dynamic_challenge_v2.sh text eol=lf
 scripts/run_static_evidence.sh text eol=lf
+scripts/run_candidate_set_screen.sh text eol=lf
