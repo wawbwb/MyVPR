@@ -6,3 +6,4 @@ scripts/run_dynamic_challenge_v2.sh text eol=lf
 scripts/run_static_evidence.sh text eol=lf
 scripts/run_candidate_set_screen.sh text eol=lf
 scripts/run_pitts_pair_admission.sh text eol=lf
+scripts/run_candidate_set_pitts.sh text eol=lf
