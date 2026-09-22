@@ -1,0 +1,31 @@
+# Frozen WPPR Pitts transfer
+
+No retraining, threshold tuning, or survivor-count sweep. Same GSV epoch1 head,
+44 candidates, 12 survivors, FP32 official Pair-VPR. Test ALL7608 Pitts30k-val
+queries against existing top20/top44 scores. This dataset has historical exposure;
+it is a frozen cross-dataset transfer check, not an untouched final test set.
+
+First stage: fixed first32 original query IDs, three rotated repeats of top20,
+top44 and WPPR. Includes query image read/encode, global retrieval, candidate
+image read/encode, GPU transfers, decoder and selection. Database GLOBAL vectors
+are resident; database DENSE features are NOT persisted. No inter-query dense
+reuse during timing. OS filesystem caches are uncontrolled, so not a disk-cold
+benchmark. Audits/startup excluded. This deliberately tests whether additional
+24 image encodings offset decoder savings. It does not represent a system with
+a fully precomputed dense-feature bank. No large feature cache is created.
+
+Second stage: all7608 queries; existing44 scores are the reference, selected
+continuation scores must reproduce within1e-4. A CPU LRU64 of dense features
+reduces extraction cost; its throughput is not used for speed claims. Small
+per-query score shards are checksummed and resumable. No online accuracy stopping.
+Report paired corrections/regressions vs20 and44, winner/tail retention, and
+panorama-cluster bootstrap intervals. Model/image/plan identities are checked.
+
+```bash
+python -m pytest -q tests/test_wppr_pitts_transfer.py tests/test_wppr_runtime.py
+CUDA_VISIBLE_DEVICES=1 python -u scripts/wppr_pitts_transfer.py
+```
+
+Output doc/wppr_pitts_transfer_v1. Interrupted transfer resumes verified shards;
+interrupted first32 timing restarts the timing set. Expected runtime must be
+estimated from the live training machine, not from theoretical layer counts.
