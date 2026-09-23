@@ -12,6 +12,38 @@ from scripts.adaptive_pair_budget import verified
 from src.wppr_runtime import progressive,full
 from src.top44_confirmation import cluster_interval
 
+LEGACY_CODE = '4e8bef60cceceb299bfd9f987476c8190d13045d91eb0373b358c5dcd2a15599'
+TIE_POLICY = dict(max_descriptor_abs=1e-6, max_score_gap=1e-6,
+    action='same candidate set; cached descriptor must reproduce frozen order; retain frozen order and audit; otherwise stop')
+
+
+def reconcile_candidates(expected, actual, scores, cached_scores, descriptor, cached_descriptor):
+    """Only a validated near-tie permutation may use the original frozen order."""
+    expected=np.asarray(expected);actual=np.asarray(actual)
+    if np.array_equal(expected,actual):return expected,None
+    arrays=[scores,cached_scores,descriptor,cached_descriptor]
+    if not all(np.isfinite(v).all() for v in arrays):raise ValueError('Nonfinite retrieval values')
+    if expected.shape!=(44,) or actual.shape!=(44,) or len(set(expected.tolist()))!=44 or set(expected.tolist())!=set(actual.tolist()):
+        raise ValueError('Candidate set changed; not a tie permutation')
+    if descriptor.shape!=cached_descriptor.shape:raise ValueError('Descriptor shape changed')
+    drift=float(np.max(np.abs(descriptor-cached_descriptor)))
+    if drift>TIE_POLICY['max_descriptor_abs']:raise ValueError('Query descriptor drift too large')
+    if not np.array_equal(np.argsort(-cached_scores,kind='stable')[:44],expected):
+        raise ValueError('Cached descriptor does not reproduce frozen order')
+    changed=np.flatnonzero(expected!=actual)
+    gaps=np.maximum(np.abs(scores[expected[changed]]-scores[actual[changed]]),
+                    np.abs(cached_scores[expected[changed]]-cached_scores[actual[changed]]))
+    if np.max(gaps)>TIE_POLICY['max_score_gap']:raise ValueError('Non-tied candidate order changed')
+    return expected,dict(descriptor_max_abs=drift,max_score_gap=float(np.max(gaps)),
+                         ranks_1based=(changed+1).tolist(),frozen_ids=expected.tolist(),recomputed_ids=actual.tolist())
+
+
+def compatible_legacy(old,new):
+    expected={k:v for k,v in new.items() if k!='tie_policy'}
+    expected['code']=dict(new['code'])
+    expected['code']['scripts/wppr_pitts_transfer.py']=LEGACY_CODE
+    return old==expected
+
 
 def paired(rows, baseline):
     delta=np.array([int(r['selected_correct'])-int(r[baseline]) for r in rows])
@@ -49,8 +81,19 @@ def main():
                   for n in ['scripts/wppr_pitts_transfer.py','src/wppr_runtime.py']},
             policy='All7608, fixed GSV head44->12, no tuning. First32 query IDs,3 rotated timing repeats. FP32 batch1.',
             timing='Online query encoding + global retrieval + candidate image read/encoding + decoder. NO persisted database dense cache. OS file cache uncontrolled; not disk-cold. Startup/hash audits excluded.')
+        contract['tie_policy']=TIE_POLICY
         if a.output.exists():
-            if read(a.output/'contract.json')!=contract:raise ValueError('Output differs')
+            old_contract=read(a.output/'contract.json')
+            if old_contract!=contract:
+                if (a.output/'completed.json').exists() or not compatible_legacy(old_contract,contract):raise ValueError('Output differs')
+                reused={}
+                for file in sorted((a.output/'pairs').glob('*.npz')):
+                    load_npz(file);reused[file.name]=sha(file)
+                timing_file=a.output/'pipeline_timing.json'
+                write(a.output/'legacy_migration.json',dict(original_contract=old_contract,
+                    retained_shards=reused,timing_sha256=sha(timing_file) if timing_file.exists() else None,
+                    note='Known338105b only; unchanged head/model/scoring; new near-tie audit for subsequent queries'))
+                print('Verified legacy shards retained:',len(reused),flush=True)
             if (a.output/'completed.json').exists():verified(a.output);print('Already complete');return
         else:a.output.mkdir(parents=True)
         write(a.output/'contract.json',contract);(a.output/'pairs').mkdir(exist_ok=True)
@@ -80,10 +123,21 @@ def main():
             z=load_npz(path)
             if not np.array_equal(z['labels'],np.isin(z['candidates'],r['gt'])):raise ValueError('GT mismatch')
             return z
-        def query(r):
+        def query(r,expected=None):
             x,_=image(a.dataset,{'path':r['path']},r['image_sha256'])
             q,g=model(x[None].cuda(),None,'global')
-            ids=np.argsort(-(g[0]@db.T).cpu().numpy(),kind='stable')[:44]
+            scores=(g[0]@db.T).cpu().numpy()
+            ids=np.argsort(-scores,kind='stable')[:44]
+            if expected is not None and not np.array_equal(ids,expected):
+                qi=r['query_index']
+                if qi not in old_lookup:raise ValueError('Candidate mismatch without cached query descriptor; stop')
+                cached=np.asarray(vectors[nd+old_lookup[qi]])
+                cached_scores=(torch.from_numpy(cached).cuda()@db.T).cpu().numpy()
+                ids,event=reconcile_candidates(expected,ids,scores,cached_scores,g[0].cpu().numpy(),cached)
+                event['query_index']=qi
+                audit_dir=a.output/'retrieval_ties';audit_dir.mkdir(exist_ok=True)
+                write(audit_dir/f'{qi:06d}.json',event)
+                print('AUDITED NEAR TIE:',qi,event['ranks_1based'],flush=True)
             return q,ids
         def dense(i):
             x,_=image(a.dataset,{'path':plan['database'][i]},hashes[i])
@@ -124,7 +178,7 @@ def main():
                 if path.exists() and path.with_suffix('.sha.json').exists():
                     saved=load_npz(path)
                 else:
-                    old=reference(r);q,ids=query(r)
+                    old=reference(r);q,ids=query(r,old['candidates'])
                     if not np.array_equal(ids,old['candidates']):raise ValueError('Candidates changed')
                     features=[]
                     for i in ids:

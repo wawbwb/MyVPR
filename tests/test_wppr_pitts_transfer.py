@@ -1,4 +1,7 @@
 from scripts.wppr_pitts_transfer import paired
+import numpy as np
+import pytest
+from scripts.wppr_pitts_transfer import reconcile_candidates,compatible_legacy,LEGACY_CODE,TIE_POLICY
 
 
 def test_paired_counts_and_original_ids():
@@ -10,3 +13,35 @@ def test_paired_counts_and_original_ids():
     assert result['regressions']==[11]
     assert result['selected_correct']==result['baseline_correct']==2
     assert result['delta_r1_pp']==0
+
+
+def tie_inputs():
+    expected=np.arange(44);actual=expected.copy();actual[28:30]=[29,28]
+    cached=np.linspace(1,0,50);cached[29]=cached[28]-1e-8
+    scores=cached.copy();scores[29]=scores[28]+1e-8
+    return expected,actual,scores,cached,np.zeros(512),np.full(512,2e-7)
+
+
+def test_near_tie_preserves_original_order():
+    args=tie_inputs();ids,audit=reconcile_candidates(*args)
+    assert np.array_equal(ids,args[0])
+    assert audit['ranks_1based']==[29,30]
+
+
+@pytest.mark.parametrize('failure',['set','descriptor','gap','cached_order','nan'])
+def test_unsafe_differences_rejected(failure):
+    args=list(tie_inputs())
+    if failure=='set':args[1][29]=49
+    if failure=='descriptor':args[4][0]=1e-3
+    if failure=='gap':args[2][29]+=1e-3
+    if failure=='cached_order':args[3][29]+=1e-3
+    if failure=='nan':args[2][0]=np.nan
+    with pytest.raises(ValueError):reconcile_candidates(*args)
+
+
+def test_migration_only_known_code_and_identical_sources():
+    new=dict(head='abc',code={'scripts/wppr_pitts_transfer.py':'new','src/wppr_runtime.py':'same'},tie_policy=TIE_POLICY)
+    old=dict(head='abc',code={'scripts/wppr_pitts_transfer.py':LEGACY_CODE,'src/wppr_runtime.py':'same'})
+    assert compatible_legacy(old,new)
+    old['head']='other'
+    assert not compatible_legacy(old,new)

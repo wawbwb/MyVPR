@@ -29,3 +29,19 @@ CUDA_VISIBLE_DEVICES=1 python -u scripts/wppr_pitts_transfer.py
 Output doc/wppr_pitts_transfer_v1. Interrupted transfer resumes verified shards;
 interrupted first32 timing restarts the timing set. Expected runtime must be
 estimated from the live training machine, not from theoretical layer counts.
+
+## Audited near-tie recovery
+
+The first run stopped after1981 queries: q1981 ranks29/30 swapped due to a
+2.20e-7 descriptor difference. Same44 candidate set; cached query global vector
+reproduced the original ranking. The fix accepts ONLY same-set permutations
+with descriptor max absolute drift<=1e-6, BOTH recomputed/cached score gaps<=1e-6,
+and exact frozen-order reproduction from cached descriptors. All differences
+are written to retrieval_ties/queryID.json. Missing cached query descriptor,
+different candidate set, larger drift or non-tied rank changes still abort.
+Timing remains strict online retrieval and is not retroactively changed.
+
+Known338105b incomplete runs can migrate with identical head/data/runtime hashes.
+The original contract, hashes of retained verified shards and timing report are
+recorded in legacy_migration.json. This is an audited protocol amendment, not
+an unmodified prospective experiment. All1981 prior shards are retained.
