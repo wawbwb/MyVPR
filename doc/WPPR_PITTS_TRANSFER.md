@@ -45,3 +45,18 @@ Known338105b incomplete runs can migrate with identical head/data/runtime hashes
 The original contract, hashes of retained verified shards and timing report are
 recorded in legacy_migration.json. This is an audited protocol amendment, not
 an unmodified prospective experiment. All1981 prior shards are retained.
+
+## Frozen-candidate accuracy protocol amendment
+
+The next stop at q3666 involved a tied44/45 boundary changing candidate membership.
+Accuracy evaluation now takes verified reference candidate IDs/order for EVERY
+query, independently of online retrieval. Images, model identity and selected
+pair scores remain checked. Prior3666 rows already used these exact frozen
+lists; their teacher/labels/shortlist/scores are revalidated on resume. Only
+known original/tie-fix contracts can migrate. frozen_candidate_migration.json
+preserves their contract and shard/timing hashes without overwriting the earlier
+legacy migration audit. No training, survivor-count change or label-based choice.
+
+Existing first32 online timing is unchanged. Accuracy is explicitly conditional
+on fixed retrieved candidates, NOT an online retrieval robustness measurement.
+This amendment follows an observed numerical boundary issue and must be disclosed.

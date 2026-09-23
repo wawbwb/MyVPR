@@ -2,6 +2,7 @@ from scripts.wppr_pitts_transfer import paired
 import numpy as np
 import pytest
 from scripts.wppr_pitts_transfer import reconcile_candidates,compatible_legacy,LEGACY_CODE,TIE_POLICY
+from scripts.wppr_pitts_transfer import TIE_CODE,ACCURACY_POLICY,validate_saved
 
 
 def test_paired_counts_and_original_ids():
@@ -45,3 +46,20 @@ def test_migration_only_known_code_and_identical_sources():
     assert compatible_legacy(old,new)
     old['head']='other'
     assert not compatible_legacy(old,new)
+
+
+def test_tie_contract_migration_retains_runtime_and_sources():
+    new=dict(head='abc',accuracy_policy=ACCURACY_POLICY,code={'scripts/wppr_pitts_transfer.py':'new','src/wppr_runtime.py':'same'})
+    old=dict(head='abc',tie_policy=TIE_POLICY,code={'scripts/wppr_pitts_transfer.py':TIE_CODE,'src/wppr_runtime.py':'same'})
+    assert compatible_legacy(old,new)
+    old['code']['src/wppr_runtime.py']='changed'
+    assert not compatible_legacy(old,new)
+
+
+def test_reused_shards_match_frozen_source():
+    prediction=-np.arange(44,dtype=float);keep=np.arange(12)
+    ref=dict(scores=prediction,labels=np.zeros(44,dtype=bool))
+    row=dict(keep=keep,prediction=prediction,teacher=prediction.copy(),labels=ref['labels'].copy(),scores=prediction[:12].copy())
+    validate_saved(row,ref)
+    row['teacher'][20]+=1
+    with pytest.raises(ValueError):validate_saved(row,ref)

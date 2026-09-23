@@ -13,6 +13,8 @@ from src.wppr_runtime import progressive,full
 from src.top44_confirmation import cluster_interval
 
 LEGACY_CODE = '4e8bef60cceceb299bfd9f987476c8190d13045d91eb0373b358c5dcd2a15599'
+TIE_CODE = 'b31c30794daa0c0e9c204c514aec289b6342973ee7df88ebfbfa54562549bb96'
+ACCURACY_POLICY = 'Frozen verified candidate IDs/order for ALL accuracy rows; online retrieval only in independent timing; protocol amended after q3666 boundary tie'
 TIE_POLICY = dict(max_descriptor_abs=1e-6, max_score_gap=1e-6,
     action='same candidate set; cached descriptor must reproduce frozen order; retain frozen order and audit; otherwise stop')
 
@@ -39,10 +41,25 @@ def reconcile_candidates(expected, actual, scores, cached_scores, descriptor, ca
 
 
 def compatible_legacy(old,new):
-    expected={k:v for k,v in new.items() if k!='tie_policy'}
+    expected={k:v for k,v in new.items() if k not in ('tie_policy','accuracy_policy')}
     expected['code']=dict(new['code'])
     expected['code']['scripts/wppr_pitts_transfer.py']=LEGACY_CODE
+    if old==expected:return True
+    expected['code']['scripts/wppr_pitts_transfer.py']=TIE_CODE
+    expected['tie_policy']=TIE_POLICY
     return old==expected
+
+
+def validate_saved(saved,reference):
+    keep=saved['keep']
+    if keep.shape!=(12,) or keep.dtype.kind not in 'iu' or len(set(keep.tolist()))!=12 or np.any((keep<0)|(keep>=44)):
+        raise ValueError('Invalid saved shortlist')
+    if not np.array_equal(saved['teacher'],reference['scores']) or not np.array_equal(saved['labels'],reference['labels']):
+        raise ValueError('Saved teacher/labels differ from frozen source')
+    if saved['scores'].shape!=(12,) or not np.allclose(saved['scores'],reference['scores'][keep],atol=1e-4,rtol=1e-4):
+        raise ValueError('Saved continuation scores changed')
+    if saved['prediction'].shape!=(44,) or not np.isfinite(saved['prediction']).all() or not np.array_equal(keep,np.argsort(-saved['prediction'],kind='stable')[:12]):
+        raise ValueError('Saved shortlist differs from predictions')
 
 
 def paired(rows, baseline):
@@ -81,7 +98,7 @@ def main():
                   for n in ['scripts/wppr_pitts_transfer.py','src/wppr_runtime.py']},
             policy='All7608, fixed GSV head44->12, no tuning. First32 query IDs,3 rotated timing repeats. FP32 batch1.',
             timing='Online query encoding + global retrieval + candidate image read/encoding + decoder. NO persisted database dense cache. OS file cache uncontrolled; not disk-cold. Startup/hash audits excluded.')
-        contract['tie_policy']=TIE_POLICY
+        contract['accuracy_policy']=ACCURACY_POLICY
         if a.output.exists():
             old_contract=read(a.output/'contract.json')
             if old_contract!=contract:
@@ -90,9 +107,9 @@ def main():
                 for file in sorted((a.output/'pairs').glob('*.npz')):
                     load_npz(file);reused[file.name]=sha(file)
                 timing_file=a.output/'pipeline_timing.json'
-                write(a.output/'legacy_migration.json',dict(original_contract=old_contract,
+                write(a.output/'frozen_candidate_migration.json',dict(original_contract=old_contract,
                     retained_shards=reused,timing_sha256=sha(timing_file) if timing_file.exists() else None,
-                    note='Known338105b only; unchanged head/model/scoring; new near-tie audit for subsequent queries'))
+                    note='Known338105b/067b8e0 only; original candidates already used by retained shards; accuracy now independent of online retrieval; no change to timing'))
                 print('Verified legacy shards retained:',len(reused),flush=True)
             if (a.output/'completed.json').exists():verified(a.output);print('Already complete');return
         else:a.output.mkdir(parents=True)
@@ -139,6 +156,13 @@ def main():
                 write(audit_dir/f'{qi:06d}.json',event)
                 print('AUDITED NEAR TIE:',qi,event['ranks_1based'],flush=True)
             return q,ids
+        def frozen_query(r):
+            x,_=image(a.dataset,{'path':r['path']},r['image_sha256'])
+            q,g=model(x[None].cuda(),None,'global')
+            qi=r['query_index']
+            if qi in old_lookup and not np.allclose(g[0].cpu().numpy(),vectors[nd+old_lookup[qi]],atol=1e-6,rtol=0):
+                raise ValueError('Frozen query encoder drift')
+            return q
         def dense(i):
             x,_=image(a.dataset,{'path':plan['database'][i]},hashes[i])
             f,g=model(x[None].cuda(),None,'global')
@@ -175,11 +199,11 @@ def main():
             memo=OrderedDict();rows=[]
             for r in tqdm(plan['queries'],desc='Pitts frozen44->12'):
                 qi=r['query_index'];path=a.output/'pairs'/f'{qi:06d}.npz'
+                old=reference(r)
                 if path.exists() and path.with_suffix('.sha.json').exists():
                     saved=load_npz(path)
                 else:
-                    old=reference(r);q,ids=query(r,old['candidates'])
-                    if not np.array_equal(ids,old['candidates']):raise ValueError('Candidates changed')
+                    q=frozen_query(r);ids=old['candidates']
                     features=[]
                     for i in ids:
                         i=int(i)
@@ -191,6 +215,7 @@ def main():
                     if not np.allclose(ss,old['scores'][kk],atol=1e-4,rtol=1e-4):raise ValueError('Continuation scores differ')
                     npz(path,keep=kk,scores=ss,prediction=pred.cpu().numpy(),teacher=old['scores'],labels=old['labels'])
                     saved=load_npz(path)
+                validate_saved(saved,old)
                 winner=int(saved['keep'][np.argmax(saved['scores'])]);tw=int(np.argmax(saved['teacher']));lab=saved['labels']
                 rows.append(dict(query=qi,group=r['group'],selected_correct=bool(lab[winner]),
                     full44_correct=bool(lab[tw]),full20_correct=bool(lab[np.argmax(saved['teacher'][:20])]),
@@ -202,7 +227,8 @@ def main():
         write(a.output/'per_query.json',rows)
         write(a.output/'summary.json',dict(vs20=paired(rows,'full20_correct'),vs44=paired(rows,'full44_correct'),
             winner_retained=sum(r['winner_retained'] for r in rows),tail_count=len(tail),tail_retained=sum(r['winner_retained'] for r in tail),
-            pipeline_mean_seconds=cost,scope='Frozen GSV-trained head, Pitts historically exposed validation; no tuning, not untouched test. Timing no persistent DB dense cache; accuracy LRU runtime NOT a speed benchmark.'))
+            pipeline_mean_seconds=cost,accuracy_policy=ACCURACY_POLICY,
+            scope='Frozen GSV-trained head, Pitts historically exposed validation; no tuning, not untouched test. Accuracy conditional on frozen candidate lists; not online retrieval robustness. Timing uses online retrieval with no persistent DB dense cache; accuracy LRU runtime NOT a speed benchmark.'))
         write(a.output/'progress.json',dict(phase='complete'));complete(a.output)
         print(read(a.output/'summary.json'))
 
