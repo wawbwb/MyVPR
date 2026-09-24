@@ -81,6 +81,29 @@ Single-seed development results cannot establish stable gains or novelty.
 
 ## Still not implemented
 
+## Expanded development evaluation (locked after first screen)
+
+`scripts/eval_pmd_expanded.py` evaluates the remaining1792 GSV dev queries,
+excluding the256 used for checkpoint selection. It freezes each arm's existing
+best checkpoint (baseline epoch0, ordinary epoch3, forced/partial epoch1), keeps
+the original top20 candidates, and performs no further optimization or epoch
+selection. This pool has been explored by prior experiments: it is expanded
+development screening, NOT an independent test. Original frozen pair outcomes
+are reported alongside all four arms. Partial is compared pairwise against each
+control; reachable and unreachable original errors are counted separately.
+
+Frozen encoder/prefix computation is shared; all four trained final blocks are
+applied separately. Scores are first checked against two original selection-set
+queries. Only small per-query score shards are written, not dense feature caches.
+`--resume` validates source/checkpoint/code hashes and reuses verified shards.
+
+```bash
+python -m pytest -q tests/test_eval_pmd_expanded.py
+CUDA_VISIBLE_DEVICES=1 python -u scripts/eval_pmd_expanded.py --resume
+```
+
+## Remaining research work
+
 Synthetic correspondence supervision and independent confirmation evaluation
 remain subsequent work. A smoke PASS only establishes functioning implementation.
 Never infer patch correspondences from place labels.
