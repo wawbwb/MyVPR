@@ -41,12 +41,48 @@ python -m pytest -q tests/test_partial_matching.py
 CUDA_VISIBLE_DEVICES=1 python -u scripts/pmd_preflight.py
 ```
 
-## Not implemented/authorized by this gate
+## Four-arm GSV screening
 
-Formal training, checkpoint/resume, synthetic correspondence supervision,
-held-out retrieval evaluation, controlled unfreezing and full four-arm ablation
-remain subsequent work. A PASS only establishes functioning implementation.
-Before training, lock place-disjoint GSV train/dev, matched sampling/budget and
-fixed top20 evaluation. Never infer patch correspondences from place labels.
+`scripts/train_pmd.py` implements a matched first screen, not a final efficacy
+experiment. All arms unfreeze the original final decoder block; the remaining
+official weights stay frozen. Baseline bypasses the adapter. Ordinary, forced,
+and partial modes share projection dimensions and initialization. Partial adds
+one active dustbin scalar. Dropout stays disabled in every arm.
+
+Policy is locked in the run contract: 1024 hash-selected reachable GSV train
+queries, 256 place-disjoint GSV dev queries, fixed original top20, three epochs,
+seed42, final-block LR1e-5, adapter LR1e-4. Each query uses one positive (rotating
+by epoch) and its highest-global-ranked negative. No candidate expansion and no
+teacher-score regression. Dev chooses the earliest best epoch, including epoch0;
+both best and last epoch are reported, so selecting the unchanged initial model
+cannot be mistaken for training improvement. This previously explored GSV dev
+pool is a screening set, NOT untouched confirmation data.
+
+Atomic checkpoints include trainable weights, AdamW moments, RNG state, epoch and
+query cursor; save every32 queries and at epoch boundaries. Resume repeats only
+work since the last saved update. Original frozen weights are reconstructed from
+the strictly verified official checkpoint. Small CPU feature LRU only; no new
+dense on-disk feature cache. Checkpoints are retained.
+
+Run on the training machine (physical GPU1 selected by the launcher):
+
+```bash
+python -m pytest -q tests/test_partial_matching.py tests/test_train_pmd.py
+bash scripts/run_pmd_screen.sh smoke
+bash scripts/run_pmd_screen.sh train
+python scripts/summarize_pmd_screen.py
+```
+
+The launcher resumes each arm automatically. Smoke checks initial score identity,
+finite training and checkpoint round-trips. Unit tests additionally compare the
+next optimizer update after resume. The paired report counts corrections and
+regressions against the frozen teacher AND the continued-training baseline.
+Single-seed development results cannot establish stable gains or novelty.
+
+## Still not implemented
+
+Synthetic correspondence supervision and independent confirmation evaluation
+remain subsequent work. A smoke PASS only establishes functioning implementation.
+Never infer patch correspondences from place labels.
 Monitor dustbin collapse and use known-transform correspondence examples when
 adding correspondence supervision; easy smoke loss is not efficacy evidence.
