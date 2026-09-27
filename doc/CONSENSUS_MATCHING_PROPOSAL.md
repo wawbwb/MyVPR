@@ -64,6 +64,23 @@ No dense feature cache: one529x529 correlation map is about1.07MiB FP32 per pair
 8-channel intermediates are larger and autograd adds memory. This is NOT an
 estimate of total GPU usage. Existing encoder/checkpoints/candidate caches reused.
 
+## Authorized first training screen
+
+Four arms baseline/pointwise/spatial/shuffled; same1024 hash-selected reachable
+training queries and fixed20 candidates,3 epochs,seed42. All2048 GSV dev queries
+evaluated every epoch, including epoch0 reproduction. Entire dev has previously
+been examined; this remains development screening, not new test evidence.
+Select earliest best dev epoch including0; also report final epoch to expose
+selection effects. Last-block LR1e-5, adapter1e-4, pairwise softplus temperature10,
+weight decay.001. Other original parameters frozen, dropout disabled. Shared
+sampling/order, positive rotates by epoch, top-ranked negative fixed.
+Checkpoint weights, optimizer and RNG every32 queries. No new dense disk cache.
+
+`scripts/run_consensus_screen.sh` first runs all four smoke tests, then all four
+three-epoch runs, then paired summary including spatial vs shuffled/pointwise and
+reachable original errors. Any failure stops the queue; re-run resumes checkpoints.
+No automatic claim of efficacy based on loss or a nonzero gradient.
+
 ```bash
 python -m pytest -q tests/test_consensus_matching.py
 CUDA_VISIBLE_DEVICES=1 python -u scripts/consensus_preflight.py
