@@ -45,9 +45,11 @@ Preserve descriptor identity preflight, hashes, immutable split and per-view
 outcomes. Atomic resumable per-place shards need about400MiB, no dense token
 cache. Original image bytes are not hashed; metadata files and model are hashed.
 
-Training and later MSLS/Pitts evaluations are deliberately NOT launched until
-this evidence is reviewed. Planned arms: temperature, competition, shuffled
-competition; RU fixed. Any claimed benefit must beat matched controls, repeat
+The diagnostic finished: two4096-view partitions had17/15 errors. Both blocks
+showed higher overlap/entropy and lower effective rank for errors, but this is
+association with few correlated error views, not proof of causation.
+The user approved the matched training screen after reviewing these results.
+Arms: temperature, competition, shuffled competition; RU fixed. Any claimed benefit must beat matched controls, repeat
 across seeds and distinguish exposed development sets from unseen tests.
 
 Remote test: python -m pytest -q tests/test_competitive_query.py
@@ -57,3 +59,31 @@ Remote diagnosis (physical GPU1 only):
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -u scripts/audit_competitive_query.py --checkpoint "$RU_CKPT" --output doc/competitive_query_audit_v1 --resume
 ```
+
+## Approved matched training v1
+
+- Freeze ALL historical parameters and buffers; only one scalar/head/block is
+  trained. Same parameter count, initialization, samples and batch budget.
+- Original hash4096 GSV places, four views,16 places/batch,3 subset passes.
+  AdamW lr.01, zero decay, FP32, gradient clip1. No tuning on MSLS/Pitts.
+- Competition projected into[0,2]; temperature log inverse-temperature into
+  [-2,2]. This explicit sign-domain difference is part of the mechanisms.
+- Skip optimizer updates on exactly zero mined loss for ALL arms; record zero
+  batches and effective updates. Equal seen batches need not mean equal updates.
+- Use hash-disjoint1024-place GSV development retrieval to choose earliest max
+  correct count, then minimum smooth hardest-positive/negative margin loss.
+  Include epoch0. Data are historically exposed, not independent final tests.
+- Evaluate full MSLS/Pitts only for frozen RU, fixed last and GSV-selected
+  checkpoint. No MSLS/Pitts epoch search. Baseline must reproduce675/740 and
+  7160/7608 before training. No imposed numerical gain threshold after the fact.
+- Compare paired fixes/regressions against RU and both controls. One seed is
+  only a screen; no automatic scaling up, tuning or success declaration.
+- Save optimizer, RNG, cursor and immutable contract every256 places and each
+  epoch; `--resume` requires the same code/data. Preserve existing experiments.
+- All three real-data smoke tests must pass before ANY formal arm starts.
+  Check zero start, connectivity probe (never optimized), frozen tensors and
+  checkpoint roundtrip. Unit tests execute on training machine, not local PC.
+
+Launch: `bash scripts/run_competitive_query_screen.sh` (GPU1).
+Progress: `logs/competitive_query/{mode}_screen_v1/progress.json`.
+Final paired summary: `doc/competitive_query_screen_v1/summary.json`.
