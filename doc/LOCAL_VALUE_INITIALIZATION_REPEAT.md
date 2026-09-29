@@ -1,5 +1,28 @@
 # LCV-BoQ initialization confirmation
 
+## CLOSED — 2026-09-29
+
+User requested termination after completed replication. No further LCV training,
+kernel/weight sweeps or additional seeds are planned. Preserve checkpoints.
+All four new runs and the final summary passed completed-manifest hash checks.
+
+GSV-selected net correct vs RU, seeds42/43/44:
+
+| Arm | MSLS | Pitts30k |
+| --- | --- | --- |
+| Local contrast | -2, -2, -1 | +5, -5, +3 |
+| Shuffled contrast | -2, -1, 0 | +1, +3, 0 |
+
+Fixed round3 local contrast: MSLS -3/-1/-4; Pitts +6/-7/-5.
+Mean selected Pitts gain is only one query; selected local contrast does not
+reliably outperform shuffled neighborhoods. MSLS degradation persists. All
+new runs had 768 nonzero-loss optimizer updates with original weights unchanged.
+Verdict: replication did not establish useful, stable structural benefit.
+This is initialization sensitivity on the same data, not independent test evidence.
+Remote evidence: `doc/local_value_repeat_v1/summary.json` and completed manifests.
+
+The protocol below is historical, not an instruction to restart the route.
+
 Original seed42: GSV-selected local contrast epoch2 has MSLS673 (RU675),
 Pitts7165 (RU7160); shuffled epoch3 has MSLS673, Pitts7161. This is not a
 cross-dataset success. Fixed-last results are also preserved, not substituted.
