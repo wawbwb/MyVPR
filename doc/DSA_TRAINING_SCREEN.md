@@ -64,3 +64,28 @@ bash scripts/run_dsa_screen.sh
 Outputs: `logs/dsa_screen_v1/{pca,shuffled_fisher,place_fisher}`.
 Each has contract (including exact schedule), progress, history, last/best
 checkpoints, predictions, summary and completed hashes. Do not alter old runs.
+
+## CLOSED — user decision, 2026-09-30
+
+All three runs completed and their completion hashes were verified. Identical
+batch schedules; frozen original tensors unchanged. No further DSA training,
+rank/lr sweeps or additional seeds are planned. Preserve checkpoints and evidence.
+
+| Arm | GSV-selected epoch | MSLS correct /740 | Pitts correct /7608 | Fixed-last MSLS / Pitts |
+|---|---:|---:|---:|---:|
+| RU | 0 | 675 | 7160 | 675 /7160 |
+| PCA | 1 | 673 | 7152 | 669 /7137 |
+| Shuffled Fisher | 2 | 675 | 7158 | 675 /7157 |
+| True Fisher | 3 | 673 | 7158 | 673 /7158 |
+
+True Fisher paired against RU: MSLS1 correction/3 regressions; Pitts11/13.
+Effective updates: PCA718, shuffled716, true716. True Fisher loss fell from
+0.10796 to0.08274; mean GSV descriptor L2 drift reached0.09349. This was not
+an inactive branch. All three epochs of true/shuffled Fisher retained exactly
+the same GSV correctness outcomes as RU (4081/4096); checkpoint selection was
+driven only by the auxiliary margin tiebreaker on a saturated development set.
+
+Conclusion: current fixed-subspace Q/V adaptation failed to demonstrate final
+VPR gains. Positive intermediate-vector diagnostics do not establish beneficial
+token-level parameter-update directions. This does not disprove all supervised
+subspace learning. Do not relabel phase0 as passed or claim stable gains.
