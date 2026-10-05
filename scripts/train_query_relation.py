@@ -16,8 +16,7 @@ from scripts.adaptive_pair_budget import verified
 from scripts.eval_condition_robustness import load_inference_model_from_ckpt
 from src.models.depth_query import DepthQueryVPR
 from src.models.query_relation import MODES, install
-from src.query_relation_training import score_development
-from src.dsa_training import schedules
+from src.query_relation_training import score_development, protocol_schedule
 from src.dataloaders.train.gsv_cities import GSVCitiesDataset
 from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset
 from src.dataloaders.valid.pittsburgh import PittsburghDataset
@@ -44,7 +43,14 @@ def main():
     p.add_argument('--resume', action='store_true')
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--workers', type=int, default=4)
+    p.add_argument('--sampling', choices=('mixed', 'broad_matched'), default='mixed')
+    p.add_argument('--learning-rate', type=float, choices=(1e-4, 1e-5), default=1e-4)
     a = p.parse_args()
+    if (a.sampling != 'mixed' or a.learning_rate != 1e-4) and a.mode != 'appearance':
+        p.error('Protocol controls are restricted to appearance; do not retune aligned on benchmarks')
+    policy = dict(POLICY, lr=a.learning_rate, sampling=a.sampling,
+                  hard_batches=64 if a.sampling == 'mixed' else 0,
+                  broad_batches=256 if a.sampling == 'mixed' else 320)
     import fcntl
     from torchvision.transforms import v2 as T
     from tqdm import tqdm
@@ -93,9 +99,9 @@ def main():
     audit = read(a.preflight_run/'summary.json')
     if set(audit['preflights']) != set(MODES) or any(not v['frozen_unchanged'] for v in audit['preflights'].values()):
         raise ValueError('Incomplete preflight')
-    schedule = schedules(plan)
+    schedule = protocol_schedule(plan, a.sampling)
     if a.smoke:
-        schedule = [[plan['epochs'][0]['batches'][0], schedule[0][0]]]
+        schedule = [[schedule[0][0], schedule[0][4]]]
         indices = [id_to_index[v] for b in schedule[0] for v in b]
     source = ['scripts/train_query_relation.py', 'src/models/query_relation.py', 'src/query_relation_training.py',
               'src/models/depth_query.py', 'src/dsa_training.py', 'scripts/train_depth_query.py', 'src/models/aggregators/boq.py',
@@ -106,7 +112,7 @@ def main():
     for path in metadata:
         if pc['metadata'].get(str(path)) != sha(path): raise ValueError('Preflight GSV metadata changed')
     for name in ('msls-val', 'pitts30k-val'): metadata += sorted((a.dataset_root/name).glob('*.npy'))
-    contract = dict(mode=a.mode, smoke=a.smoke, policy=POLICY, checkpoint_sha256=RU_SHA, plan_sha256=plan_hash,
+    contract = dict(mode=a.mode, smoke=a.smoke, policy=policy, checkpoint_sha256=RU_SHA, plan_sha256=plan_hash,
         preflight_completed_sha256=sha(a.preflight_run/'completed.json'), batch_schedule=schedule,
         train_places=[str(train.places_ids[i]) for i in indices], dev_places=[str(dev.places_ids[i]) for i in development],
         data={str(f): sha(f) for f in metadata}, code={f: hashlib.sha256((ROOT/f).read_bytes().replace(b'\r\n', b'\n')).hexdigest() for f in source})
@@ -131,7 +137,7 @@ def main():
     print('Zero-start error', error, 'trainable parameters', sum(p.numel() for p in active), flush=True)
     trainable_names = {k for k,p in model.named_parameters() if p.requires_grad}
     frozen = {k: v.detach().cpu().clone() for k, v in model.state_dict().items() if k not in trainable_names}
-    opt = torch.optim.AdamW(active, lr=POLICY['lr'], weight_decay=0.)
+    opt = torch.optim.AdamW(active, lr=policy['lr'], weight_decay=0.)
     loss_fn = VPRLossFunction()
     state = dict(epoch=0, cursor=0, loss_sum=0., zero_batches=0, steps=0, history=[], contract_sha256=sha(a.output/'contract.json'))
     if (a.output/'last.pt').exists():
@@ -240,7 +246,7 @@ def main():
         write(a.output/'preflight.json', dict(initial_error=error, probe_gradient=probe_norm, optimizer_steps=state['steps'], frozen_unchanged=True, resume_roundtrip=True))
     else:
         benchmark(state['epoch'])
-    write(a.output/'summary.json', dict(mode=a.mode, policy=POLICY, reported_epoch=state['epoch'], history=state['history'],
+    write(a.output/'summary.json', dict(mode=a.mode, policy=policy, reported_epoch=state['epoch'], history=state['history'],
                                       trainable_parameters=sum(p.numel() for p in active), frozen_unchanged=True))
     write(a.output/'progress.json', dict(phase='complete'))
     complete(a.output)

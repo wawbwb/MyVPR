@@ -46,3 +46,26 @@ Launch: `bash scripts/run_query_relation_screen.sh`.
 Outputs: `logs/query_relation_screen_v1/{appearance,aligned,shuffled}`;
 `progress.json`, `history.json`, `last.pt`, benchmark per-query predictions,
 `summary.json`, `completed.json`. No best.pt exists in this protocol.
+
+## Completed result — 2026-10-05
+
+All three runs completed; completion hashes verified, identical batch schedules,
+frozen weights unchanged. Fixed epoch3, no post-hoc checkpoint selection.
+
+| Arm | MSLS correct /740 | Pitts correct /7608 | Effective updates |
+|---|---:|---:|---:|
+| RU |675|7160|0|
+| appearance |672|7149|715|
+| aligned |671|7149|715|
+| shuffled |672|7145|717|
+
+Aligned fixes/breaks relative to RU: MSLS1/5, Pitts12/23. Its final mean GSV
+descriptor L2 drift is0.1652, so the branch is active. Training loss falls from
+0.10857 to0.08317 while expanded-gallery margin loss rises from0.021768 at RU
+to0.022268. This is consistent with poor transfer, not a demonstrated causal
+explanation. Equal recall counts do not imply identical per-query predictions.
+
+**CLOSED for this configuration:** no RU improvement and no aligned advantage
+over appearance. Do not claim all geometry methods are invalid. Preserve runs.
+Next step is the separately registered `QUERY_PROTOCOL_SCREEN.md`, not another
+QR architecture search or retrospective epoch selection.

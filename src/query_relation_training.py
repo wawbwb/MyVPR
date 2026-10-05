@@ -3,6 +3,26 @@ import torch
 import numpy as np
 
 
+def protocol_schedule(plan, sampling):
+    """Same 256 broad batches; replace the 64 hard slots with random place batches.
+
+    Extra broad draws are without replacement within the 1024-place epoch draw.
+    They can repeat places in the base 4096 coverage, as hard slots also do.
+    No development identity or benchmark result is consulted.
+    """
+    from src.dsa_training import schedules
+    if sampling not in ('mixed', 'broad_matched'):
+        raise ValueError('Unknown sampling policy')
+    result = schedules(plan)
+    if sampling == 'broad_matched':
+        for epoch, batches in enumerate(result):
+            extra = np.random.default_rng(52031 + epoch).permutation(4096)[:1024]
+            for block in range(64):
+                batches[block * 5 + 4] = [plan['train_places'][int(i)]
+                                         for i in extra[block*16:(block+1)*16]]
+    return result
+
+
 @torch.no_grad()
 def score_development(features,query_start,chunk=32):
     if features.ndim!=2 or len(features)%4 or query_start%4 or not 0<=query_start<len(features):
