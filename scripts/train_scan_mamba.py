@@ -22,8 +22,10 @@ from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset
 from src.dataloaders.valid.pittsburgh import PittsburghDataset
 from src.losses.vpr_losses import VPRLossFunction
 from src.query_relation_training import score_development
+from src.scan_mamba_diagnostics import fixed_step,gradient_comparison
 
 POLICY=dict(seed=42,size=280,views=4,places_per_batch=16,holdout_places=1024,
+            revision=2,optimizer_clock='Unconditional AdamW step each batch; None gradients become zero',
             aggregator_lr=1e-5,mixer_lr=1e-4,weight_decay=0.,clip=1.,precision='fp32',
             inner=64,state=8,rank=4,consistency_weight=.1,pilot_steps=128,
             full_epochs=3,microbatch=4,selection='Fixed last only; pilot is not an accuracy gate',
@@ -70,9 +72,13 @@ def main():
         schedule.append(batches[:4 if a.stage=='smoke' else 128] if a.stage!='full' else batches)
     paths=['scripts/train_scan_mamba.py','src/models/scan_mamba.py','src/models/depth_query.py',
            'src/models/aggregators/boq.py','src/losses/vpr_losses.py','scripts/train_depth_query.py',
-           'src/dataloaders/train/gsv_cities.py','scripts/eval_condition_robustness.py','src/models/backbones/dinov2.py']
+           'src/dataloaders/train/gsv_cities.py','scripts/eval_condition_robustness.py','src/models/backbones/dinov2.py',
+           'src/scan_mamba_diagnostics.py','src/query_relation_training.py']
     metadata=sorted(Path('datasets/gsv_cities/Dataframes').glob('*.csv'))
     if not metadata:raise ValueError('Missing metadata')
+    if a.stage=='full':
+        for directory in ('msls-val','pitts30k-val'):
+            metadata.extend(sorted((Path('datasets')/directory).glob('*.npy')))
     contract=dict(mode=a.mode,stage=a.stage,policy=POLICY,ru_sha256=RU_SHA,
         source={name:code_hash(ROOT/name) for name in paths},metadata={str(f):sha(f) for f in metadata},
         versions=dict(torch=torch.__version__,numpy=np.__version__),
@@ -101,11 +107,12 @@ def main():
         if state['contract_sha256']!=sha(a.output/'contract.json'):raise ValueError('Resume mismatch')
     print('MODE',a.mode,'STAGE',a.stage,'zero error',err,'trainable',sum(v.numel() for v in active.values()),flush=True)
 
-    def descriptors(images,training=False):
+    def descriptors(images,training=False,bypass=False):
         result=[]
         for chunk in images.split(4):
             features=model.features(chunk)
-            result.append(checkpoint(model.aggregate,features,use_reentrant=False) if training else model.aggregate(features))
+            if training and bypass:raise ValueError('Bypass is diagnostic only')
+            result.append(checkpoint(model.aggregate,features,use_reentrant=False) if training else model.aggregate(features,bypass=bypass))
         return tuple(torch.cat([r[i] for r in result]) for i in range(3))
 
     @torch.no_grad()
@@ -119,19 +126,63 @@ def main():
             results.append(dict(vpr_loss=float(loss),scan_disagreement=float(descriptor_consistency(r,c))))
         write(a.output/f'probe_{tag}.json',results)
         indices=holdout[:8 if a.stage=='smoke' else 128]
-        ds=[];disagreement=[]
+        ds=[];disagreement=[];bypass_distances=[]
         for images,_ in DataLoader(MatchedPlaces(dev,indices,0),batch_size=8,num_workers=a.workers):
-            d,r,c=descriptors(images.flatten(0,1).cuda());ds.append(d.cpu());disagreement.append(float(descriptor_consistency(r,c)))
+            pixels=images.flatten(0,1).cuda()
+            d,r,c=descriptors(pixels);ds.append(d.cpu());disagreement.append(float(descriptor_consistency(r,c)))
+            bypass=descriptors(pixels,bypass=True)[0]
+            bypass_distances.extend((d-bypass).norm(dim=1).cpu().tolist())
         f=torch.cat(ds)
         if tag=='initial':torch.save(f,a.output/'initial_dev.tmp');(a.output/'initial_dev.tmp').replace(a.output/'initial_dev.pt')
         reference=torch.load(a.output/'initial_dev.pt',weights_only=True)
         result=score_development(f.cuda(),0)
-        result.update(descriptor_drift=float((f-reference).norm(dim=1).mean()),scan_disagreement=float(np.mean(disagreement)))
+        result.update(descriptor_drift=float((f-reference).norm(dim=1).mean()),scan_disagreement=float(np.mean(disagreement)),
+            mixer_bypass_l2_mean=float(np.mean(bypass_distances)),mixer_bypass_l2_max=float(np.max(bypass_distances)),
+            bypass_scope='Same trained BoQ with mixer disabled; sensitivity only, NOT original RU or a retrained control')
         write(a.output/f'holdout_{tag}.json',result)
+
+    def gradient_probe(tag):
+        if not a.mode.startswith('mamba'):return
+        indices=[i for b in schedule[0][:2] for i in b]
+        results=[]
+        for images,labels in DataLoader(MatchedPlaces(train,indices,0),batch_size=16,num_workers=a.workers):
+            opt.zero_grad(set_to_none=True)
+            d,r,c=descriptors(images.flatten(0,1).cuda(),True)
+            vpr,_=lossfn(d,labels.flatten().cuda());consistency=descriptor_consistency(r,c)
+            values=dict(vpr=float(vpr.detach()),consistency=float(consistency.detach()),
+                gradients=gradient_comparison(vpr,consistency,active.items()))
+            results.append(values)
+        opt.zero_grad(set_to_none=True)
+        write(a.output/f'gradient_{tag}.json',dict(weight=.1,
+            scope='Read-only same two augmented batches; weighted consistency is counterfactual for ordinary Mamba',batches=results))
+
+    @torch.no_grad()
+    def benchmark(tag):
+        for ds in (MapillarySLSDataset(Path('datasets/msls-val'),clean),PittsburghDataset(Path('datasets/pitts30k-val'),clean)):
+            path=a.output/f'{ds.dataset_name}_{tag}.json'
+            if path.exists():continue
+            write(a.output/'progress.json',dict(phase='benchmark',mode=a.mode,tag=tag,dataset=ds.dataset_name))
+            features=[]
+            for images,_ in tqdm(DataLoader(ds,batch_size=16,num_workers=a.workers),desc=f'{ds.dataset_name} {tag}'):
+                features.append(descriptors(images.cuda())[0].cpu())
+            f=torch.cat(features).cuda();db=f[:ds.num_references]
+            predictions=np.concatenate([(q@db.T).topk(20,dim=1).indices.cpu().numpy() for q in f[ds.num_references:].split(32)])
+            hits=np.asarray([[np.isin(row[:k],gt).any() for k in (1,5,20)] for row,gt in zip(predictions,ds.ground_truth)])
+            if tag=='initial' and int(hits[:,0].sum())!={'msls-val':675,'pitts30k-val':7160}[ds.dataset_name]:
+                raise ValueError('RU recall mismatch')
+            write(path,dict(correct=hits[:,0].tolist(),predictions=predictions.tolist(),recall=hits.mean(0).tolist(),correct_count=int(hits[:,0].sum())))
 
     if not (a.output/'holdout_initial.json').exists():
         if state['steps']!=0:raise ValueError('Missing initial diagnostic')
         probe('initial');save(a.output/'last.pt',model,opt,state)
+    if not (a.output/'gradient_initial.json').exists() and a.mode.startswith('mamba'):
+        if state['steps']!=0:raise ValueError('Missing initial gradient diagnostic')
+        gradient_probe('initial')
+    if a.stage=='full':
+        initial_files=[a.output/f'{ds}_initial.json' for ds in ('msls-val','pitts30k-val')]
+        if not all(f.exists() for f in initial_files):
+            if state['steps']!=0:raise ValueError('Missing initial benchmark')
+            benchmark('initial')
     for epoch in range(state['epoch'],len(schedule)):
         indices=[i for b in schedule[epoch][state['cursor']:] for i in b]
         data=MatchedPlaces(train,indices,epoch)
@@ -149,7 +200,7 @@ def main():
                 grad_value=model.mixer.ssm.select.weight.grad
                 ssmgrad=float(grad_value.abs().sum()) if grad_value is not None else 0.
                 state['ssm_gradient_seen'] |= ssmgrad>0
-            if float(loss.detach())!=0:opt.step();state['steps']+=1
+            fixed_step(opt,active.values());state['steps']+=1
             state['cursor']+=1
             state['rows'].append(dict(epoch=epoch+1,batch=state['cursor'],vpr=float(vpr.detach()),
                 consistency=float(consistency.detach()),gradient_norm=grad,ssm_gradient=ssmgrad,seconds=time.monotonic()-t))
@@ -157,17 +208,13 @@ def main():
             if state['cursor']%16==0:save(a.output/'last.pt',model,opt,state)
         state.update(epoch=epoch+1,cursor=0);save(a.output/'last.pt',model,opt,state)
     if state['steps']==0:raise ValueError('No actual optimizer update')
+    if state['steps']!=sum(len(s) for s in schedule):raise ValueError('Optimizer clock differs from batch schedule')
+    if not any(r['vpr']>0 for r in state['rows']):raise ValueError('No informative VPR batch')
+    if any(int(opt.state[p]['step'])!=state['steps'] for p in active.values()):raise ValueError('Per-parameter Adam clocks differ')
     if a.mode.startswith('mamba') and not state['ssm_gradient_seen']:raise ValueError('No upstream selective-state gradient')
     probe('final')
-    if a.stage=='full':
-        with torch.no_grad():
-            for ds in (MapillarySLSDataset(Path('datasets/msls-val'),clean),PittsburghDataset(Path('datasets/pitts30k-val'),clean)):
-                features=[]
-                for images,_ in tqdm(DataLoader(ds,batch_size=16,num_workers=a.workers),desc=ds.dataset_name):features.append(descriptors(images.cuda())[0].cpu())
-                f=torch.cat(features).cuda();db=f[:ds.num_references]
-                predictions=np.concatenate([(q@db.T).topk(20,dim=1).indices.cpu().numpy() for q in f[ds.num_references:].split(32)])
-                hits=np.asarray([[np.isin(row[:k],gt).any() for k in (1,5,20)] for row,gt in zip(predictions,ds.ground_truth)])
-                write(a.output/(ds.dataset_name+'.json'),dict(correct=hits[:,0].tolist(),predictions=predictions.tolist(),recall=hits.mean(0).tolist()))
+    gradient_probe('final')
+    if a.stage=='full':benchmark('final')
     for k,v in model.state_dict().items():
         if k in frozen and not torch.equal(v.cpu(),frozen[k]):raise ValueError('Frozen parameter or buffer changed: '+k)
     before={k:v.detach().clone() for k,v in active.items()}
@@ -176,6 +223,7 @@ def main():
     write(a.output/'history.json',state['rows'])
     write(a.output/'summary.json',dict(mode=a.mode,stage=a.stage,optimizer_steps=state['steps'],zero_start_error=err,
         frozen_unchanged=True,checkpoint_roundtrip=True,ssm_gradient_seen=state['ssm_gradient_seen'],
+        matched_optimizer_clock=True,nonzero_vpr_batches=sum(r['vpr']>0 for r in state['rows']),
         trainable_parameters=sum(v.numel() for v in active.values()),
         mixer_parameters=sum(v.numel() for v in model.mixer.parameters()) if model.mixer else 0,
         max_memory_allocated=torch.cuda.max_memory_allocated(),scope='Pilot is mechanism/learning feasibility, not benchmark success or failure' if a.stage!='full' else 'Fixed last single-seed exploratory benchmark; not independent final tests'))

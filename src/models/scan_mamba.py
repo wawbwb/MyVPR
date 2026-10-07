@@ -106,7 +106,7 @@ class ScanMambaVPR(nn.Module):
     def features(self, images):
         return self.base.features(images)[-1]
 
-    def aggregate(self, features):
+    def aggregate(self, features, bypass=False):
         agg = self.base.aggregator
         tokens = agg.norm_input(agg.proj_c(features).flatten(2).transpose(1,2))
         def readout(x):
@@ -114,7 +114,7 @@ class ScanMambaVPR(nn.Module):
             for block in agg.boqs:
                 x,y,_ = block(x); outs.append(y)
             return F.normalize(agg.fc(torch.cat(outs,1).transpose(1,2)).flatten(1),dim=-1)
-        if self.mixer is None:
+        if self.mixer is None or bypass:
             d=readout(tokens);return d,d,d
         row,col = self.mixer(tokens,*features.shape[-2:])
         dr = readout(row)

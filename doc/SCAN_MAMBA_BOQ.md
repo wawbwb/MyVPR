@@ -84,3 +84,33 @@ artifacts have hashes. GPU1 PyTorch allocation cap40%; no unrelated process kill
 
 Run: `bash scripts/run_scan_mamba_pilot.sh`.
 Outputs: `logs/scan_mamba_v1/{mode}_{smoke,pilot}`.
+
+## v1 results and v2 protocol correction — 2026-10-07
+
+All v1 pilots completed. Fixed8-batch average loss starts0.042167;
+final BoQ0.029263, conv0.026616, Mamba0.026597, consistent0.025802.
+The512-image within-holdout gallery is saturated at512 correct for every arm,
+so it is not useful for an accuracy verdict. Ordinary/consistent scan disparity
+is1.02e-6/1.46e-6. Consistent made128 Adam updates versus91 in other arms, because
+tiny auxiliary losses activated updates on zero-VPR batches. The apparent
+advantage is confounded by optimizer clocks; preserve v1 as a diagnostic, not
+evidence of consistency effectiveness.
+
+v2 changes NO architecture or loss weight. Every batch calls AdamW in EVERY arm,
+including zero VPR batches; absent gradients become explicit zeros so every
+trainable parameter has an identical step clock. Record positive VPR batch count
+separately. Checkpoint and contract revisions forbid resuming v1 into v2.
+
+Initial/final diagnostics add weighted consistency/VPR gradient norms and cosine
+on the SAME first2 augmented batches. This is read-only; no optimizer update.
+Also compare descriptors with the mixer bypassed while retaining trained BoQ:
+this measures mixer sensitivity, not RU equivalence or a separately trained arm.
+
+User authorized full training after corrected mechanical checks. New launcher
+`bash scripts/run_scan_mamba_v2.sh` runs all4 smoke then all4 pilot stages, checks
+hashes/matched schedules/128 updates/nonzero gradients/bypass response, then
+automatically runs all4 full stages from FRESH RU, not pilot checkpoints.
+No performance-based gate or tuning. All3 complete GSV training epochs, same
+schedule, fixed-last MSLS/Pitts. Initial full benchmark must reproduce675/7160.
+Outputs `logs/scan_mamba_v2`; no v1 data removed. Rough runtime budget is many
+hours on GPU1, unlike the128-batch pilot. Any failure stops the queue.
