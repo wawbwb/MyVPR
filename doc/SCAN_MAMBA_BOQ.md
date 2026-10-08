@@ -114,3 +114,24 @@ No performance-based gate or tuning. All3 complete GSV training epochs, same
 schedule, fixed-last MSLS/Pitts. Initial full benchmark must reproduce675/7160.
 Outputs `logs/scan_mamba_v2`; no v1 data removed. Rough runtime budget is many
 hours on GPU1, unlike the128-batch pilot. Any failure stops the queue.
+
+## v2 full results — 2026-10-08
+
+All four3-epoch full runs completed; artifact hashes were verified remotely.
+Each made11529 Adam calls. Frozen backbone and checkpoint roundtrip checks passed;
+both Mamba arms had genuine selective-state gradients.
+
+| Arm | MSLS correct /740 | Pitts correct /7608 | MSLS fixes/breaks vs RU | Pitts fixes/breaks vs RU |
+|---|---:|---:|---:|---:|
+| Original RU | 675 (91.22%) | 7160 (94.11%) | — | — |
+| BoQ fine-tune | 663 (89.59%) | 7115 (93.52%) | 0/12 | 34/79 |
+| Conv | 665 (89.86%) | 7110 (93.45%) | 1/11 | 34/84 |
+| Mamba | 666 (90.00%) | 7115 (93.52%) | 2/11 | 35/80 |
+| Mamba consistent | 665 (89.86%) | 7108 (93.43%) | 1/11 | 33/85 |
+
+Current configuration does NOT demonstrate a benefit over original RU.
+Consistency does not improve ordinary Mamba. Its3-query MSLS advantage over
+retrained BoQ is not evidence of a generalizable improvement. Do not conclude
+that all Mamba VPR methods fail. The shared BoQ tuning degradation motivates
+[a separately frozen-RU correction experiment](PROTECTED_MAMBA_BOQ.md).
+Existing artifacts and checkpoints are retained.
