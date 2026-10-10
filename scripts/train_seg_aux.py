@@ -49,6 +49,8 @@ def prewarm_head(model, dm, config, output, device, smoke=False):
                                  weight_decay=config['seg_aux']['weight_decay'])
     # Detect in-place modification of any retrieval parameter during prewarm.
     retrieval = list(model.backbone.parameters()) + list(model.aggregator.parameters()) + list(model.semantic_region_gate.parameters())
+    if model.vpr_guidance is not None:
+        retrieval += list(model.vpr_guidance.parameters())
     versions = [p._version for p in retrieval]
     dm.setup('fit')
     loader = dm.train_dataloader()
@@ -65,7 +67,7 @@ def prewarm_head(model, dm, config, output, device, smoke=False):
                 images, _, meta = next(iterator)
             with torch.no_grad():
                 features = model.backbone(images.flatten(0, 1).to(device))
-            logits = model.seg_head(features.detach())
+            logits = model.semantic_logits(features.detach())
             loss, stats = model.target(
                 logits, meta['query_semantic_labels'].flatten(0, 1).to(device),
                 meta['query_semantic_confidence'].flatten(0, 1).to(device),
@@ -92,7 +94,7 @@ def prewarm_head(model, dm, config, output, device, smoke=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', default='config/boq_dinov2_seg_aux.yaml')
-    parser.add_argument('--mode', required=True, choices=['vpr_only', 'aligned', 'shuffled'])
+    parser.add_argument('--mode', required=True, choices=['vpr_only', 'aligned', 'shuffled', 'plain', 'guided'])
     parser.add_argument('--init-checkpoint', required=True)
     parser.add_argument('--device', type=int, default=1, help='Visible CUDA index')
     parser.add_argument('--output', required=True, help='New run directory, or original directory with --resume')
@@ -115,6 +117,13 @@ def main():
     cfg = yaml.safe_load(Path(args.config).read_text(encoding='utf-8'))
     s = cfg['seg_aux']
     s['mode'] = args.mode
+    if s.get('vpr_guidance', False):
+        if args.mode not in ('vpr_only', 'plain', 'guided'):
+            parser.error('Guidance screen requires vpr_only/plain/guided')
+        if not math.isfinite(s.get('attention_lr', 0)) or s.get('attention_lr', 0) <= 0:
+            parser.error('attention_lr must be finite and positive')
+    elif args.mode in ('plain', 'guided'):
+        parser.error('plain/guided require vpr_guidance: true')
     for key in ('lr', 'head_lr', 'lambda_seg'):
         if not math.isfinite(s[key]) or s[key] <= 0:
             raise ValueError(f'{key} must be finite and positive')
@@ -158,7 +167,8 @@ def main():
     config['datamodule'] = dict(
         train_set_name='gsv-cities', cities='all', batch_size=40, img_per_place=4,
         train_image_size=[280, 280], val_image_size=[280, 280],
-        val_set_names=['msls-val'], augmentation_mode='photometric',
+        val_set_names=(['msls-val', 'pitts30k-val'] if s.get('vpr_guidance', False)
+                       else ['msls-val']), augmentation_mode='photometric',
         num_workers=s['num_workers'], query_semantic_cache_dir=str(cache),
         query_semantic_selection='shuffled' if args.mode == 'shuffled' else 'aligned',
     )
@@ -182,6 +192,11 @@ def main():
                     manifest_sha256=_file_sha256(cache / 'manifest.json'),
                     init_descriptor_error=difference, smoke_test=args.smoke_test,
                     trainable=[n for n, p in model.named_parameters() if p.requires_grad])
+    if s.get('vpr_guidance', False):
+        root = Path(__file__).resolve().parents[1]
+        contract['source_sha256'] = {name: _file_sha256(root / name) for name in (
+            'scripts/train_seg_aux.py', 'src/models/seg_aux.py',
+            'src/models/vpr_guided_attention.py')}
     if args.resume:
         original = json.loads((output / 'contract.json').read_text(encoding='utf-8'))
         # JSON normalization handles YAML tuples in historical configurations.
@@ -189,6 +204,8 @@ def main():
         for key in ('config', 'cache_sha256', 'manifest_sha256', 'trainable', 'smoke_test'):
             if original.get(key) != normalized[key]:
                 raise ValueError(f'Resume contract mismatch: {key}; do not change experiment settings')
+        if s.get('vpr_guidance', False) and original.get('source_sha256') != contract['source_sha256']:
+            raise ValueError('Resume source hash mismatch; do not change implementation mid-run')
         state = torch.load(resume, map_location='cpu', weights_only=False)
         if json.loads(json.dumps(state.get('hyper_parameters'))) != normalized['config']:
             raise ValueError('Resume checkpoint configuration does not match this run')
@@ -231,6 +248,10 @@ def main():
         baseline = float(trainer.callback_metrics['msls-val/R1'])
         if abs(baseline - 675 / 740) > 1e-6:
             raise RuntimeError(f'RU baseline mismatch: {baseline}, expected 675/740')
+        if s.get('vpr_guidance', False):
+            pitts = float(trainer.callback_metrics['pitts30k-val/R1'])
+            if abs(pitts - 7160 / 7608) > 1e-6:
+                raise RuntimeError(f'Pitts RU baseline mismatch: {pitts}, expected 7160/7608')
         L.seed_everything(cfg['seed'], workers=True)
     trainer.fit(model, datamodule=dm, ckpt_path=str(resume) if args.resume else None)
     expected_steps = (2 if args.smoke_test else

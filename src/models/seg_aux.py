@@ -25,6 +25,13 @@ class SegAuxVPR(VPRFramework):
             nn.Conv2d(128, 150, 1),
         )
         self.target = QuerySemanticTarget('aligned', 150, cfg['min_confidence'])
+        self.vpr_guidance = None
+        if cfg.get('vpr_guidance', False):
+            from src.models.vpr_guided_attention import VPRGuidedAttention
+            if self.mode not in ('vpr_only', 'plain', 'guided'):
+                raise ValueError('Guidance screen requires vpr_only/plain/guided')
+            self.vpr_guidance = VPRGuidedAttention(
+                backbone.out_channels, cfg.get('attention_hidden', 32))
         self.backbone.requires_grad_(False)
         self.backbone.num_unfrozen_blocks = cfg['unfrozen_blocks']
         for block in self.backbone.dino.blocks[-cfg['unfrozen_blocks']:]:
@@ -41,16 +48,31 @@ class SegAuxVPR(VPRFramework):
             groups.append({'params': list(self.seg_head.parameters()),
                            'lr': self.hparams['seg_aux']['head_lr'],
                            'weight_decay': self.weight_decay})
+        if self.vpr_guidance is not None:
+            groups.append({'params': list(self.vpr_guidance.parameters()),
+                           'lr': self.hparams['seg_aux']['attention_lr'],
+                           'weight_decay': self.weight_decay})
         return groups
 
     def features_and_descriptor(self, images):
         features = self.backbone(images)
         if not isinstance(features, torch.Tensor) or features.ndim != 4:
             raise ValueError('SegAux requires a DINO spatial tensor, no CLS tuple')
-        gated, _, _ = self.semantic_region_gate(features)
+        retrieval_features = features
+        if self.vpr_guidance is not None:
+            retrieval_features = features * self.vpr_guidance(features)
+        gated, _, _ = self.semantic_region_gate(retrieval_features)
         output = self.aggregator(gated)
         descriptor = output[0] if isinstance(output, (tuple, list)) else output
         return features, descriptor
+
+    def semantic_logits(self, features):
+        if self.vpr_guidance is not None and self.mode == 'guided':
+            # Stop BOTH attention-parameter and attention-input gradients on
+            # this edge, but retain CE gradients through the shared features.
+            attention = self.vpr_guidance(features).detach()
+            features = features * attention
+        return self.seg_head(features)
 
     def forward(self, images):
         # Segmentation head is absent from the inference computation.
@@ -72,7 +94,7 @@ class SegAuxVPR(VPRFramework):
             effective_weight = self.semantic_weight_at_step(self.global_step)
             self.log('effective_seg_weight', effective_weight)
             # Deliberately NO detach: CE must update the shared DINO blocks.
-            logits = self.seg_head(features)
+            logits = self.semantic_logits(features)
             seg_loss, stats = self.target(
                 logits,
                 metadata['query_semantic_labels'].flatten(0, 1),
@@ -98,6 +120,21 @@ class SegAuxVPR(VPRFramework):
                 self.log('vpr_shared_grad_norm', nv)
                 self.log('weighted_seg_vpr_grad_ratio', effective_weight * ns / nv.clamp_min(1e-12))
                 self.log('seg_vpr_grad_cosine', (gv * gs).sum() / (nv * ns).clamp_min(1e-12))
+                if self.vpr_guidance is not None:
+                    projection = self.vpr_guidance.output.weight
+                    av = torch.autograd.grad(vpr_loss, projection, retain_graph=True)[0]
+                    ase = torch.autograd.grad(
+                        seg_loss, projection, retain_graph=True, allow_unused=True)[0]
+                    if ase is not None:
+                        raise RuntimeError('Semantic gradient leaked into VPR attention')
+                    if not torch.isfinite(av).all() or (self.global_step == 0 and av.norm() == 0):
+                        raise RuntimeError('VPR attention gradient is invalid or initially zero')
+                    with torch.no_grad():
+                        attention = self.vpr_guidance(features.detach())
+                        self.log('attention_std', attention.std())
+                        self.log('attention_min', attention.min())
+                        self.log('attention_max', attention.max())
+                    self.log('attention_vpr_grad_norm', av.norm())
         if not torch.isfinite(total):
             raise RuntimeError('Nonfinite SegAux loss')
         self.log('loss', total, prog_bar=True)

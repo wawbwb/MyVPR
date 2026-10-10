@@ -231,6 +231,17 @@ def load_inference_model_from_ckpt(ckpt_path, device):
             alpha=float(semantic_region_cfg.get("alpha", 0.2)),
         )
 
+    if config.get('seg_aux', {}).get('vpr_guidance', False):
+        # A generic RU loader would silently discard the learned attention.
+        # Reconstruct the complete training module and load STRICTLY instead.
+        from src.models.seg_aux import SegAuxVPR
+        if spatial_attn_head is not None or semantic_region_gate is None:
+            raise ValueError('Guided SegAux requires plain RU without spatial_attn_head')
+        model = SegAuxVPR(backbone, aggregator, semantic_region_gate,
+                          torch.nn.Identity(), config)
+        model.load_state_dict(strip_compiled_model_prefix(checkpoint['state_dict']), strict=True)
+        return model.to(device).eval()
+
     model = InferenceModel(
         backbone=backbone,
         aggregator=aggregator,
