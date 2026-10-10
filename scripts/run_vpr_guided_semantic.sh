@@ -7,7 +7,11 @@ PYTHON=/home/wt/.conda/envs/VPR/bin/python
 RU_CKPT='logs/dinov2_vitb14/BoQ_semantic_region_repeatability_uniqueness_only/version_0/checkpoints/epoch(26)_step(42201)_R1[0.9122]_R5[0.9514].ckpt'
 CONFIG=config/boq_dinov2_vpr_guided_semantic.yaml
 STAGE=${1:-smoke}
-case "$STAGE" in smoke|train) ;; *) echo 'Usage: bash scripts/run_vpr_guided_semantic.sh smoke|train'; exit 2 ;; esac
+case "$STAGE" in
+    all) bash "$0" smoke; exec bash "$0" train ;;
+    smoke|train) ;;
+    *) echo 'Usage: bash scripts/run_vpr_guided_semantic.sh smoke|train|all'; exit 2 ;;
+esac
 test -f "$RU_CKPT"
 mkdir -p logs/vpr_guided_semantic_v1
 exec 9>logs/query_relation_screen_v1.lock

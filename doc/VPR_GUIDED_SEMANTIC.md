@@ -39,6 +39,8 @@ bash scripts/run_vpr_guided_semantic.sh smoke
 bash scripts/run_vpr_guided_semantic.sh train
 ```
 
+也可用 `bash scripts/run_vpr_guided_semantic.sh all` 按 smoke→train 顺序运行，避免跨 SSH 拼接两条命令的引号问题。
+
 脚本使用物理卡1，因此 Python 内部 --device 0。脚本先在训练机运行旧/新单元测试；smoke 每组2个联合更新，不是正式训练。正式训练依赖三组 smoke 完成。每个日志路径唯一；已有完成运行跳过，未完成正式运行若存在 last.ckpt 则恢复。不会删除旧结果、权重、缓存。
 
 断点按已有 SegAux 的 epoch checkpoint 恢复优化器和学习率；不能精确恢复多进程数据 worker 的随机状态。中断次数应进入结果报告。若输出目录已存在但没有有效 checkpoint，先检查日志，不要删除或假装能够恢复。
