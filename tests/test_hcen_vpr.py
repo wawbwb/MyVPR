@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from src.hcen_protocol import POLICY,soft_tau,ranking_regularizer,training_schedule,paired_partitions
+from src.hcen_protocol import POLICY,soft_tau,ranking_regularizer,training_schedule,paired_partitions,benchmark_transform
 from src.models.hcen_vpr import HierarchicalNeck,HCENVPR,SASF,MODES
 
 
@@ -179,3 +179,30 @@ def test_launcher_is_lf_only_and_uses_existing_environment_lock():
     assert 'pip install' not in text and 'conda create' not in text
     assert 'for MODE in last_only hierarchy hierarchy_rank' in text
     assert POLICY['selection'].startswith('Fixed last')
+
+
+def test_benchmark_transform_matches_historical_tensor_resize_exactly():
+    from PIL import Image
+    from torchvision.transforms import v2 as T
+    image=Image.fromarray(np.random.default_rng(2).integers(0,256,(119,207,3),dtype=np.uint8))
+    historical=T.Compose([T.ToImage(),T.Resize((280,280),interpolation=T.InterpolationMode.BICUBIC,antialias=True),
+        T.ToDtype(torch.float32,scale=True),T.Normalize([.485,.456,.406],[.229,.224,.225])])
+    assert torch.equal(benchmark_transform()(image),historical(image))
+
+
+def test_pil_resize_cannot_be_silently_substituted_for_tensor_resize():
+    from PIL import Image
+    from torchvision import transforms as T
+    image=Image.fromarray(np.random.default_rng(2).integers(0,256,(119,207,3),dtype=np.uint8))
+    pil=T.Compose([T.Resize((280,280),interpolation=T.InterpolationMode.BICUBIC),T.ToTensor(),
+        T.Normalize([.485,.456,.406],[.229,.224,.225])])
+    assert not torch.equal(benchmark_transform()(image),pil(image))
+
+
+def test_evaluation_only_fix_preserves_original_training_function():
+    import ast
+    path=Path(__file__).resolve().parents[1]/'scripts/train_hcen_vpr.py'
+    tree=ast.parse(path.read_text())
+    train=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='train')
+    digest=hashlib.sha256(ast.dump(train,include_attributes=False).encode()).hexdigest()
+    assert digest=='1e629e782005381e7f503827394c967459ac9dea7ac66f0e3faf31493b0080f0'

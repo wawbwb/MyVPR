@@ -16,7 +16,7 @@ from scripts.train_slgd import RU_SHA,read,write,sha,code_hash,verify,seal,seed,
 from scripts.slgd_mid_screen import dataset,sources,load_visual,frozen_descriptor,open_contract,verify_cache_shards,current_code
 from scripts.audit_slgd_hard import PlannedPlaces,collate
 from src.models.hcen_vpr import HCENVPR,MODES
-from src.hcen_protocol import POLICY,training_schedule,ranking_regularizer,paired_partitions
+from src.hcen_protocol import POLICY,training_schedule,ranking_regularizer,paired_partitions,benchmark_transform
 from src.slgd_mid_supervision import gps_filtered_retrieval
 from src.slgd_hard_protocol import distance_metres
 
@@ -93,10 +93,13 @@ def benchmarks(model,data,output,workers):
     from tqdm import tqdm
     from src.dataloaders.valid.mapillary_sls import MapillarySLSDataset
     from src.dataloaders.valid.pittsburgh import PittsburghDataset
-    for ds in [MapillarySLSDataset(Path('datasets/msls-val'),data.transform),
-               PittsburghDataset(Path('datasets/pitts30k-val'),data.transform)]:
+    clean=benchmark_transform()
+    for ds in [MapillarySLSDataset(Path('datasets/msls-val'),clean),
+               PittsburghDataset(Path('datasets/pitts30k-val'),clean)]:
         path=output/(ds.dataset_name+'_final.json')
-        if path.exists():continue
+        if path.exists():
+            if read(path)['preprocessing']!=POLICY['benchmark_preprocessing']:raise ValueError('Saved benchmark preprocessing differs')
+            continue
         descriptor=[];reference=[]
         loader=DataLoader(ds,batch_size=16,num_workers=workers)
         with torch.inference_mode():
@@ -115,9 +118,13 @@ def benchmarks(model,data,output,workers):
                               correct=int(hits[:,0].sum()),recall=hits.mean(0).tolist())
             del all_,db
         if result['ru']['correct']!={'msls-val':675,'pitts30k-val':7160}[ds.dataset_name]:
+            write(output/'baseline_mismatch.json',dict(dataset=ds.dataset_name,observed=result['ru']['correct'],
+                expected={'msls-val':675,'pitts30k-val':7160}[ds.dataset_name],ru=result['ru'],
+                preprocessing=POLICY['benchmark_preprocessing']))
             raise ValueError('Standard benchmark frozen RU mismatch: '+ds.dataset_name)
         ru=np.asarray(result['ru']['outcomes']);st=np.asarray(result['student']['outcomes'])
         result['paired']=dict(corrections=int((~ru&st).sum()),regressions=int((ru&~st).sum()),net=int(st.sum())-int(ru.sum()))
+        result['preprocessing']=POLICY['benchmark_preprocessing']
         write(path,result)
 
 
@@ -271,7 +278,7 @@ def main():
     p.add_argument('--cache',type=Path,required=True)
     p.add_argument('--teacher',type=Path,default=Path('logs/slgd_v1/teacher_pilot'))
     p.add_argument('--dataset-root',type=Path,default=Path('datasets/gsv_cities'))
-    p.add_argument('--root',type=Path,default=Path('logs/hcen_vpr_v1'))
+    p.add_argument('--root',type=Path,default=Path('logs/hcen_vpr_v2'))
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--reference-paper',type=Path,required=True)
     p.add_argument('--workers',type=int,default=4)

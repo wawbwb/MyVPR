@@ -4,15 +4,23 @@ import torch
 from torch.nn import functional as F
 from src.slgd_hard_protocol import distance_metres
 
-POLICY=dict(revision=1,seed=42,layers=[8,10,12],dim=128,inner=32,state=4,
+POLICY=dict(revision=2,seed=42,layers=[8,10,12],dim=128,inner=32,state=4,
     microbatch=4,anchor_places_per_step=8,views=4,smoke_steps=4,pilot_steps=128,
     lr=1e-4,weight_decay=0.,clip=1.,precision='fp32',auxiliary_weight=.1,
     rank_weight=.02,rank_temperature=.02,rank_upper=.5,rank_reference_gap=.02,
     feature_relative_cap=.1,negative_exclusion_metres=25.,
+    benchmark_preprocessing='torchvision v2: ToImage -> uint8 Tensor Resize280 bicubic antialias -> ToDtype float32 scale -> ImageNet normalize',
     frozen='All original RU tensors: DINO, spatial gate and BoQ',
     sampling='Uniform stride across fixed training-only hard triplets; include 4 views of anchor and hard-negative places',
     selection='Fixed last only, no benchmark/weight selection; smoke mechanical gate then 128-step pilots',
     scope='ReID-inspired exploratory cross-depth VPR adaptation; not literal paper reproduction, independent final validation or a novelty claim')
+
+
+def benchmark_transform():
+    """Match historical RU MSLS/Pitts pixels; GSV retains its original PIL policy."""
+    from torchvision.transforms import v2 as T
+    return T.Compose([T.ToImage(),T.Resize((280,280),interpolation=T.InterpolationMode.BICUBIC,antialias=True),
+                      T.ToDtype(torch.float32,scale=True),T.Normalize([.485,.456,.406],[.229,.224,.225])])
 
 
 def soft_tau(left,right,mask,temperature=.02):

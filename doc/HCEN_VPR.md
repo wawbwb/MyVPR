@@ -50,7 +50,7 @@ G10/G12各有一个训练期256维均值池化投影头，使用现有GPS过滤�
 
 三组同初始化、参数量、零起点、样本顺序、辅助头和优化器。冻结RU为额外固定基准。测试先4步smoke，再每组128步pilot，AdamW lr1e-4、wd0、FP32、clip1、每步8个均匀抽取的训练锚地点+其硬负地点，每地点4张图，最多64张。每4张进行一次重计算以控制显存。复用旧8192地点训练缓存，仅读取其中硬负样本索引；不使用验证正误采训练样本。
 
-本轮是等预算可行性筛查，**不是论文160轮完整训练**。固定末步，不按MSLS/Pitts结果调权重或挑检查点。GSV6144查询/10240图库进行成对统计；另外MSLS740查询/18871图库、Pitts7608查询/10000图库均重算同图像RU基准和学生特征。要求原RU正确数分别675、7160。所有这些验证集已有历史曝光，不当作独立最终测试；若有正信号，再预注册更长训练和跨seed验证。
+本轮是等预算可行性筛查，**不是论文160轮完整训练**。固定末步，不按MSLS/Pitts结果调权重或挑检查点。GSV6144查询/10240图库进行成对统计；另外MSLS740查询/18871图库、Pitts7608查询/10000图库均重算同图像RU基准和学生特征。要求原RU正确数分别675、7160。GSV保持原历史PIL缩放；标准验证单独匹配历史torchvision v2 `ToImage -> Resize bicubic antialias -> float32/scale -> ImageNet normalize`。两种缩放不能混用。所有这些验证集已有历史曝光，不当作独立最终测试；若有正信号，再预注册更长训练和跨seed验证。
 
 ## 运行与结果
 
@@ -63,10 +63,18 @@ REFERENCE_PAPER=/tmp/vpr_reid_m4IkDH/paper.pdf bash scripts/run_hcen_vpr.sh all
 
 支持 `smoke`/`pilot`；已有同合同运行自动 `--resume`，从每16步保存的Adam/RNG检查点续跑，禁止改变合同。三组smoke机械检查通过才启动pilot。
 
-输出在 `logs/hcen_vpr_v1/`：每组 `initial.json`、`last.pt`、`gsv_final.json`、`summary.json`、`progress.json`、`completed.json`；pilot另有 `msls-val_final.json`、`pitts30k-val_final.json`。汇总 `compare_pilot/summary.json` 包含三组对RU、hierarchy对last_only、排序组对hierarchy的纠错/退化及分区结果。
+修正后的输出在 `logs/hcen_vpr_v2/`：每组 `initial.json`、`last.pt`、`gsv_final.json`、`summary.json`、`progress.json`、`completed.json`；pilot另有 `msls-val_final.json`、`pitts30k-val_final.json`。汇总 `compare_pilot/summary.json` 包含三组对RU、hierarchy对last_only、排序组对hierarchy的纠错/退化及分区结果。旧 `logs/hcen_vpr_v1/` 原样保留，不修改已存在的训练合同或检查点。
 
 `SMOKE_PASS`只表示零起点、冻结、梯度和保存恢复等机械检查；`PILOT_COMPLETE_NOT_FULL_TRAINING`只表示短程实验跑完。论文报告效果、本次机械通过、VPR检索改善必须分别记录，不可混同。
 
 2026-10-11 已在训练机执行76项相关测试，全部通过。本机未运行代码测试。三组真实图像4步smoke全部完成：初始化参数哈希及描述子哈希相同、零起点误差为0、原RU全部权重不变、保存恢复一致、SSM选择性参数有实际梯度；排序组也记录到非零排序梯度。三组可训练参数均为891,268。
 
-Smoke的48个GSV查询三组及RU均48个正确，其中没有预定义困难查询。这只证明实现能训练、机械对照匹配，不证明有效性。已自动进入三组每组128步的pilot及GSV/MSLS/Pitts评测；检索结果尚待生成，不能宣称有效或失败。
+Smoke的48个GSV查询三组及RU均48个正确，其中没有预定义困难查询。这只证明实现能训练、机械对照匹配，不证明有效性。
+
+### 2026-10-11 评测预处理修正
+
+v1仅L12对照已完成128步：GSV学生/RU均6030/6144，MSLS均675/740，两个数据集纠错和退化均为0。随后Pitts冻结RU未达到历史7160，队列按基线检查停止，后两组pilot未启动。这不是跨层方案失败证据。
+
+在完整17608张Pitts图像上固定RU权重、FP32和microbatch4，成对复核两种输入预处理：PIL bicubic为7158/7608，历史torchvision v2张量bicubic为7160/7608，差异来自2个查询。修复标准验证预处理，不更改任何学习模块、损失、训练采样或128步预算，也不降低基线检查阈值。
+
+新增回归测试精确比较历史输入像素、拒绝PIL替代，并验证 `train()` AST结构哈希仍为 `1e629e782005381e7f503827394c967459ac9dea7ac66f0e3faf31493b0080f0`。79项相关测试全部通过。v2在新目录重新执行同预算三组验证，v1训练和结果保留；完整跨层及排序组检索结果仍待生成。
