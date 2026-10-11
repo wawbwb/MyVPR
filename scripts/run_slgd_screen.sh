@@ -25,7 +25,9 @@ run_one() {
 }
 gate() {
     local report
-    report=$(mktemp -u "logs/slgd_v1/${1}_gate_XXXXXX.json")
+    local report_dir
+    report_dir=$(mktemp -d "logs/slgd_v1/${1}_gate_XXXXXX")
+    report="$report_dir/report.json"
     "$PYTHON" -u scripts/check_slgd_gate.py --root logs/slgd_v1 --stage "$1" --output "$report"
 }
 if test "$STAGE" != pilot; then
@@ -35,7 +37,7 @@ fi
 if test "$STAGE" != smoke; then
     "$PYTHON" -c 'from pathlib import Path; from scripts.check_slgd_gate import compare; assert compare(Path("logs/slgd_v1"),"smoke")["verdict"]=="PASS", "Run smoke first"'
     run_one teacher pilot
-    gate teacher
+    gate 'teacher'
     run_one retrieval pilot
     run_one local_distill pilot
     gate pilot
