@@ -10,3 +10,4 @@ scripts/run_candidate_set_pitts.sh text eol=lf
 scripts/run_slgd_screen.sh text eol=lf
 scripts/run_slgd_hard_audit.sh text eol=lf
 scripts/run_slgd_layers.sh text eol=lf
+scripts/run_slgd_mid_screen.sh text eol=lf
