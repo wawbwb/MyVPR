@@ -60,3 +60,32 @@ bash scripts/run_hcen_plain_base.sh all
 新PlainHCENVPR仅在读出前canonicalize布局，不新增权重或改变颈部结构；特征捕获输入也canonicalize，两对照同样处理。保留严格逐字节零起点及逐查询基线检查，不放宽阈值。失败启动目录将原样留存，修正后的实验使用新合同重新开始。
 
 2026-10-12执行记录：训练机118项相关测试全部通过，本机未测试；修正后的真实GPU严格零起点检查通过，已进入原版BoQ完整GSV独立评测。后台PID202112，日志`logs/hcen_plain_base_v1/run_20261012_134537.log`。第一次未训练的失败预检原样移至`logs/hcen_plain_base_v1_failed_layout_20261012_134537/`，没有删除任何数据或检查点。基线全部评测、两组smoke和512步训练结果仍待生成。
+
+## seed42完成结果
+
+固定基线、两组512步和最终汇总已全部封存，四份完成哈希及机械对照检查通过。
+
+| 模型 | GSV /6144 | MSLS /740 | Pitts /7608 |
+|---|---:|---:|---:|
+| 原版BoQ | 6028 | 675 | 7154 |
+| 加仅L12颈部 | 6027 | 674 | 7174 |
+| 加跨层颈部 | 6026 | 671 | 7191 |
+
+Pitts跨层相对原版基线纠错50/退化13、净增37（约+0.486个百分点）；相对同容量仅L12纠错22/退化5、净增17（约+0.223个百分点）。MSLS跨层相对仅L12没有纠错、新增退化362/410/545，净少3；相对基线少4。GSV整体相对仅L12少1，evaluation多1。原版BoQ上Pitts正信号初步复现，模型里不需要RU门控，但仍只是seed42、已曝光数据和历史RU-mined索引，不能宣称跨数据集稳定收益或完全摆脱RU训练历史。
+
+## 原版基座seed43/44初始化复核
+
+预先固定新增seed43、44，各跑仅L12/跨层两组、每组8步机械smoke再从原版检查点新初始化512步。只改变颈部初始化，冻结原版基线、全部训练图像/固定视图、历史硬负索引、步序、损失及预处理不变。辅助和排序仍为0；不新增模块、增加残差系数、重挖样本或延长预算。
+
+使用独立`src/hcen_plain_replication.py`、`scripts/hcen_plain_multiseed.py`、`scripts/run_hcen_plain_multiseed.sh`和`tests/test_hcen_plain_replication.py`，保留seed42代码原样。回归测试固定seed42脚本SHA256并验证新旧更新循环AST相同。复用已封存独立直接forward基线，不重复基线提取；新组末步仍重新提取同模型基线并要求逐查询预测完全一致。同一种子两颈部初始参数一致，三个种子初始参数不同，但初始描述子和冻结基线哈希必须全相同。
+
+先完成两个种子的全部smoke并机械校验，再依次四组512步和三套完整评测。最后汇总seed42/43/44每个种子的纠错/退化、跨层相对仅L12的净增量、均值及样本标准差，GSVcal/eval单独报告，同时披露MSLS负信号。不挑最高seed；复用同样查询不能把样本量乘3计算独立显著性。
+
+```bash
+cd /home/wt/workspace/OpenVPRLab
+bash scripts/run_hcen_plain_multiseed.sh all
+```
+
+只在训练机现有VPR环境、卡1测试及运行，共享实验锁。结果在`logs/hcen_plain_multiseed_v1/seed43/`、`seed44/`和`aggregate/summary.json`；同命令支持原合同恢复，已封存组校验后跳过。`PLAIN_REPLICATION_COMPLETE_NOT_STABLE_GAIN_PROOF`只是完成状态，不是稳定收益PASS。本轮新种子性能尚未知。
+
+2026-10-12启动记录：训练机127项相关测试全部通过，本机未测试。seed43/44两种颈部共四组真实图像8步smoke完成，两个种子汇总均`SMOKE_PASS`：同种子两组参数及描述子哈希一致、零起点与seed42相同、新初始化不同于seed42、原版基线冻结不变、有实际SSM/升维梯度、检查点恢复一致。后台PID383245，日志`logs/hcen_plain_multiseed_v1/run_20261012_153333.log`；随后自动进入四组固定512步正式队列，本记录不代表新性能收益确认。
