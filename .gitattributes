@@ -17,3 +17,4 @@ scripts/run_hcen_aux_ablation.sh text eol=lf
 scripts/run_hcen_multiseed.sh text eol=lf
 scripts/run_hcen_plain_base.sh text eol=lf
 scripts/run_hcen_plain_multiseed.sh text eol=lf
+scripts/run_hcen_module_ablation.sh text eol=lf

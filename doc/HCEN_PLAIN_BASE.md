@@ -89,3 +89,5 @@ bash scripts/run_hcen_plain_multiseed.sh all
 只在训练机现有VPR环境、卡1测试及运行，共享实验锁。结果在`logs/hcen_plain_multiseed_v1/seed43/`、`seed44/`和`aggregate/summary.json`；同命令支持原合同恢复，已封存组校验后跳过。`PLAIN_REPLICATION_COMPLETE_NOT_STABLE_GAIN_PROOF`只是完成状态，不是稳定收益PASS。本轮新种子性能尚未知。
 
 2026-10-12启动记录：训练机127项相关测试全部通过，本机未测试。seed43/44两种颈部共四组真实图像8步smoke完成，两个种子汇总均`SMOKE_PASS`：同种子两组参数及描述子哈希一致、零起点与seed42相同、新初始化不同于seed42、原版基线冻结不变、有实际SSM/升维梯度、检查点恢复一致。后台PID383245，日志`logs/hcen_plain_multiseed_v1/run_20261012_153333.log`；随后自动进入四组固定512步正式队列，本记录不代表新性能收益确认。
+
+后续完成记录：原版基座三seed六组均完成并通过封存校验。跨层对仅L12的Pitts净增17/13/15，MSLS净变化-3/0/-2，GSV整体-1/-1/+1。当前支持Pitts上对初始化一致的小幅跨层正信号，不支持跨数据集普遍改进。下一轮保持样本/预算，检验简单融合、卷积替换和SASF消融，见[HCEN_MODULE_ABLATION.md](HCEN_MODULE_ABLATION.md)，不更改任何封存实现。
