@@ -14,3 +14,4 @@ scripts/run_slgd_mid_screen.sh text eol=lf
 scripts/run_slgd_decomposition.sh text eol=lf
 scripts/run_hcen_vpr.sh text eol=lf
 scripts/run_hcen_aux_ablation.sh text eol=lf
+scripts/run_hcen_multiseed.sh text eol=lf
