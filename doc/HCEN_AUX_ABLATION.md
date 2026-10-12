@@ -104,3 +104,5 @@ bash scripts/run_hcen_multiseed.sh all
 新结果在`logs/hcen_multiseed_v1/seed43/`、`seed44/`；二者smoke均通过才开始新正式训练。每个种子正式四组固定末步完成后封存`compare_screen`，最后与seed42汇总到`logs/hcen_multiseed_v1/aggregate/summary.json`。重复同一命令支持原合同自动恢复，已完成的组只校验、不覆盖。汇总状态`REPLICATION_COMPLETE_NOT_STABLE_GAIN_PROOF`是完成标记，不是收益通过标记。
 
 2026-10-12在训练机执行106项相关测试，全部通过，本机未测试。回归测试固定校验seed42训练脚本SHA256，并验证新旧训练更新循环AST完全一致；新种子只改变颈部初始化，不使用seed42训练后权重。后台PID3873061，日志`logs/hcen_multiseed_v1/run_20261012_084847.log`；启动检查时seed43前两组8步smoke已完成，第三组在训练。新seed性能结果尚未知。
+
+后续完成记录：seed43/44八组正式运行及三seed汇总均已完成，连同seed42共12组全部封存校验通过。无辅助跨层相对仅L12的Pitts净增10/12/11、MSLS净增1/3/2；GSV evaluation三次均净少4。低辅助跨层Pitts增量5/3/-11，不能认定辅助路径带来稳定结构优势。完整边界及下一轮真正原版BoQ基座三组对照见[HCEN_PLAIN_BASE.md](HCEN_PLAIN_BASE.md)，不修改已封存RU代码或结果。
