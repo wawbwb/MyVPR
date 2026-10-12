@@ -51,6 +51,8 @@ bash scripts/run_hcen_module_ablation.sh all
 
 卡1当前有其他用户进程占约15GB，卡0也被占用。队列不会kill、重启或干预它们：先CPU回归测试，再在后台每15秒读取卡1状态；连续三次显存占用≤1500MiB且利用率≤5%后才启动smoke。等待期间不初始化或预留CUDA，状态写`logs/hcen_module_ablation_v1/gpu_wait.json`。共享实验锁仍有效。
 
-结果位置`logs/hcen_module_ablation_v1/seed{42,43,44}/{linear,conv,no_sasf}_{smoke,screen}/`，每seed比较`compare_screen/summary.json`，最终`aggregate/summary.json`。同合同支持续跑，不覆盖旧结果。新增九组仍待执行/完成。
+结果位置`logs/hcen_module_ablation_v1/seed{42,43,44}/{linear,conv,no_sasf}_{smoke,screen}/`，每seed比较`compare_screen/summary.json`，最终`aggregate/summary.json`。同合同支持续跑，不覆盖旧结果。
+
+2026-10-13完成核查：九组512步训练及全部评测均已完成，25份完成报告、131个文件SHA256校验通过。Pitts上full对linear净增6/2/2，对conv净增6/3/1（均值仅+0.043814pp），对no_sasf为-1/0/-1；MSLS/GSV的full与no_sasf逐查询正确性完全一致。相对原版，full平均Pitts+0.442517pp、MSLS-0.360360pp，仍不是普遍收益。不能宣称Mamba稳定优于卷积，SASF没有保留依据。完整数字归档及经用户同意的简化2048步配对后续见[HCEN_SIMPLIFIED_FOLLOWUP.md](HCEN_SIMPLIFIED_FOLLOWUP.md)。以下2026-10-12记录仅表示当时启动状态，不代表目前仍在等待。
 
 2026-10-12执行记录：训练机CPU上141项相关测试全部通过，本机未测试；验证了实际参数数量、各替代模块梯度、共用外层权重一致，以及CPU重建full颈部与三seed历史真实初始参数SHA256相同。后台等待队列PID667769，日志`logs/hcen_module_ablation_v1/run_20261012_174929.log`。启动核查时`gpu_wait.json`为`waiting_for_gpu1`，卡1占用15307MiB，训练进度文件为0；未新增CUDA进程，未操作其他用户任务。真实图像GPU smoke和九组正式训练均尚未开始，资源释放后脚本自动推进。
