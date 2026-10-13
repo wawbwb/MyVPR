@@ -19,3 +19,4 @@ scripts/run_hcen_plain_base.sh text eol=lf
 scripts/run_hcen_plain_multiseed.sh text eol=lf
 scripts/run_hcen_module_ablation.sh text eol=lf
 scripts/run_hcen_followup.sh text eol=lf
+scripts/run_conv_fusion_controls.sh text eol=lf
