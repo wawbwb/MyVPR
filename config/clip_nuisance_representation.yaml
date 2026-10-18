@@ -1,0 +1,19 @@
+schema: clip_nuisance_representation_diagnostic_v1
+seed: 42
+source_config: config/clip_nuisance.yaml
+cache: .cache/clip_nuisance_representation_v1/features
+output: logs/clip_nuisance_representation_v1
+batch_size: 4
+flush_rows: 128
+workers: 2
+hidden: 128
+probe_epochs: 8
+probe_batch: 256
+probe_lr: 0.001
+bootstrap_samples: 500
+projection_tolerance: 0.00005
+device: cuda:0
+cuda_memory_fraction: 0.20
+# Fixed before outcomes; diagnostic signals, not confirmatory significance.
+signal_min_r2: 0.01
+signal_min_aligned_shuffled_gap: 0.01
