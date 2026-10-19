@@ -1,0 +1,26 @@
+schema: spatial_adapter_repeat_v1
+seeds: [42, 43, 44]
+split_seed: 42
+dataset_root: datasets/gsv_cities
+plan: .cache/semantic_region_v1/plan
+official_cache: .cache/boq_official_v1
+dino_source: /home/wt/.cache/torch/hub/facebookresearch_dinov2_main
+runs: logs/spatial_adapter_repeat_v1
+train_places: 8192
+places_per_batch: 16
+views: 4
+epochs: 5
+student_size: 322
+hidden: 64
+adapter_gain: 0.1
+learning_rate: 0.0003
+keep_weight: 0.1
+gradient_clip: 1.0
+microbatch: 2
+workers: 2
+checkpoint_every: 16
+smoke_steps: 8
+device: cuda:0
+cuda_memory_fraction: 0.20
+precision: fp32
+primary_dataset: pitts30k-val
