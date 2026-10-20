@@ -1,0 +1,33 @@
+schema: cv_slot_teacher_audit_v1
+seed: 42
+dataset_root: datasets/gsv_cities
+plan: .cache/semantic_region_v1/plan
+official_cache: .cache/boq_official_v1
+dino_source: /home/wt/.cache/torch/hub/facebookresearch_dinov2_main
+clip_checkpoint: /home/wt/.cache/clip/ViT-B-16.pt
+output: logs/cv_slot_teacher_audit_v1
+# Read-only compatibility with the sealed original plan, NOT training settings.
+train_places: 8192
+places_per_batch: 16
+epochs: 5
+views: 4
+sample_per_split: 128
+grid: 14
+crop_canvas: 256
+crop_size: 224
+crop_shift_pixels: 32
+student_size: 322
+topk: 8
+dino_temperature: 0.1
+clip_temperature: 0.2
+negative_places: 4
+minimum_negatives: 2
+minimum_distance_m: 25.0
+device: cuda:0
+cuda_memory_fraction: 0.20
+thresholds:
+  min_geometry_places: 128
+  min_real_places: 120
+  min_probability_gain: 0.001
+  accuracy_tolerance: 0.002
+  real_pair_tolerance: 0.0
