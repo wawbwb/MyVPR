@@ -95,3 +95,11 @@ HIFI只是Heterogeneous Interleaved Feature Interaction的实验简称，不是�
 用户已授权运行；launcher条件链为CPU测试→只读文件准备→8步smoke→1024步三组正式训练→评测。任何机械/完整性失败停止。仅物理GPU1，分配上限20%，不安装新环境、不下载新权重、不杀其他任务，使用既有全项目训练互斥锁。
 
 进度入口：`.cache/hetero_interleave_launcher_v1/progress.json`；训练进度：`logs/hetero_interleave_v1/train/progress.json`；结果：`logs/hetero_interleave_v1/eval/summary.json`。运行前准备检查不是已开始训练的证明，最终结果以各阶段完成seal为准。
+
+### 2026-10-21实际启动记录
+
+六个新文件已SCP同步，代码本地提交`453e083`；没有上传私有PDF或覆盖旧源码。训练机VPR环境17项CPU测试通过，包含真实交错顺序、三组同参数同初值、LGGR式15、梯度缓存重放与直接反传一致、Adam下一步恢复等。
+
+00:34:20（Asia/Shanghai）启动后台条件链，launcher PID2701951，物理GPU1。8步真实图像smoke三组全部通过：零补充描述子误差均为0、全部新增参数出现非零梯度、骨干与创新点1不变、三融合器更新、保护源码不变。每组新增参数均为344083，初始融合器tensor hash均为`fc7bea5f418d6516a6be6c339ebd0863c0145481c1901e90bb8b525a953e6f50`。
+
+00:34:58条件链进入正式训练，重新加载冻结创新点1并重置新参数/Adam，不继承smoke。首次检查正式16/1024步正常，约2.7秒/步（一步内依次更新三个融合器），PyTorch累计峰值分配1694MiB，nvidia-smi约2589MiB。该时点估计训练剩余45分钟，后续评测预计使总剩余约1–1.5小时；受负载影响，不是完成承诺。尚无检索收益结论。
