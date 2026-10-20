@@ -195,7 +195,7 @@ def cache(a):
                     extractor = Extractor(a, c)
                 start = time.monotonic()
                 masks, cosine, risks, scale, raw_count = extractor(path)
-                arrays = {'image_sha': image_sha, 'path': paths[i], 'cosines': cosine, 'risks': risks,
+                arrays = {'image_sha': image_sha, 'image_path': paths[i], 'cosines': cosine, 'risks': risks,
                     'scale': scale, 'raw_count': raw_count,
                     'masks_packbits': np.packbits(masks.reshape(len(masks), 280**2), axis=1)}
                 stats = {'region_count': 0, 'dynamic_fragments': 0}

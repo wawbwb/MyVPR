@@ -91,7 +91,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q tests/test_sam_clip_prior.p
 python -u scripts/sam_clip_prior.py cache --checkpoint "${RU_CKPT:?}" --output .cache/sam_clip_prior_v1 --limit-images 4
 ```
 
-查看 `coverage.json` 的片段命中数、两种裁剪类别一致率和像素降权质量，确认没有全为零或异常的大面积惩罚。该文件只是描述统计，不新增“必须通过才允许训练”的教师门槛；本方案本来就没有训练。需要人工查看具体物体时，分片保留 `path / masks_packbits / cosines / risks` 可追溯原图。四图只能检查程序，不能评价总体语义质量。继续同一个缓存（参数不变，不覆盖旧实验）：
+查看 `coverage.json` 的片段命中数、两种裁剪类别一致率和像素降权质量，确认没有全为零或异常的大面积惩罚。该文件只是描述统计，不新增“必须通过才允许训练”的教师门槛；本方案本来就没有训练。需要人工查看具体物体时，分片保留 `image_path / masks_packbits / cosines / risks` 可追溯原图。四图只能检查程序，不能评价总体语义质量。继续同一个缓存（参数不变，不覆盖旧实验）：
 
 ```bash
 python -u scripts/sam_clip_prior.py cache --checkpoint "${RU_CKPT:?}" --output .cache/sam_clip_prior_v1 --resume

@@ -192,3 +192,20 @@ def test_empty_shard_is_valid_abstention(tmp_path):
     target = tmp_path/'empty.npz'
     np.savez_compressed(target, **arrays)
     validate_shard(target, 'image', 8)
+
+
+def test_atomic_shard_metadata_does_not_collide_with_writer_path(tmp_path):
+    from src.semantic_region_protocol import save_npz
+    target = tmp_path/'atomic.npz'
+    save_npz(target, image_path='cph/database/images/example.jpg', risks=np.empty(0))
+    with np.load(target, allow_pickle=False) as z:
+        assert str(z['image_path']) == 'cph/database/images/example.jpg'
+    from pathlib import Path
+    import ast
+    tree = ast.parse((Path(__file__).resolve().parents[1]/'scripts/sam_clip_prior.py').read_text(encoding='utf8'))
+    # Guard against reintroducing a path key in the pipeline arrays literal.
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'arrays' for t in node.targets):
+            if isinstance(node.value, ast.Dict):
+                keys = {k.value for k in node.value.keys if isinstance(k, ast.Constant)}
+                assert 'image_path' in keys and 'path' not in keys
