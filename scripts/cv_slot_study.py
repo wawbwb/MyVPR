@@ -1,7 +1,7 @@
 """Prepared four-arm study. Explicit authorization AND passed teacher required.
 
-No launcher is provided. Default command is plan (CPU/file-only). The current
-v1 teacher audit is NOT PASS, so this entry refuses smoke/train before CUDA.
+Default command is plan (CPU/file-only). Failed teacher reports always block
+updates. A separate hard-pool pipeline can proceed only on a verified v2 PASS.
 """
 import argparse
 import hashlib
@@ -31,7 +31,7 @@ from src.semantic_region_protocol import (owned_run, read, write, sha, save_torc
 
 SCHEMA = 'cv_slot_boq_v1'
 SOURCES = ('src/models/cv_slot_boq.py', 'scripts/cv_slot_study.py', 'config/cv_slot_boq.yaml',
-    'tests/test_cv_slot_boq.py')
+    'config/cv_slot_boq_hard.yaml', 'tests/test_cv_slot_boq.py')
 
 
 def configuration(path):
@@ -50,9 +50,21 @@ def configuration(path):
 
 def require_teacher(c):
     output = key.path(c, 'teacher_audit')
-    contract = audit.verify(output)
-    if contract['code'] != key.source_hashes(audit.SOURCES):
-        raise ValueError('Teacher audit implementation differs from sealed version')
+    completion = output/'completed.json'
+    if completion.exists() and read(completion).get('schema') == 'cv_slot_teacher_hard_v2':
+        from scripts import cv_slot_teacher_hard as hard
+        contract = hard.verify(output)
+        if (contract['hard_code'] != key.source_hashes(hard.SOURCES)
+                or contract['frozen_helpers'] != key.source_hashes((*audit.SOURCES, *hard.representation.SOURCES))):
+            raise ValueError('Hard teacher implementation differs from sealed version')
+        original = key.path(contract['config'], 'original_audit')
+        audit.verify(original)
+        if sha(original/'completed.json') != contract['original_completed_sha256']:
+            raise ValueError('Original teacher geometry source differs')
+    else:
+        contract = audit.verify(output)
+        if contract['code'] != key.source_hashes(audit.SOURCES):
+            raise ValueError('Teacher audit implementation differs from sealed version')
     summary = read(output/'summary.json')
     if (summary.get('verdict') != 'PASS'
             or not all(summary['partitions']['holdout']['checks'].values())):
@@ -83,9 +95,10 @@ def prepared(c):
 
 def identity(c):
     result = key.identity(c)
+    from scripts import cv_slot_teacher_hard as hard
     result.update(schema=SCHEMA, code=key.source_hashes(SOURCES),
         frozen_helpers=key.source_hashes((*key.SOURCES, *audit.SOURCES,
-            'scripts/cv_slot_teacher_audit.py')))
+            *hard.SOURCES, *hard.representation.SOURCES)))
     return result
 
 
