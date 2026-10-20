@@ -1,0 +1,17 @@
+{
+  "schema": "sam_clip_raw_prior_v1",
+  "seed": 42,
+  "image_size": 280,
+  "grid": 20,
+  "max_fragments": 64,
+  "minimum_pixels": 196,
+  "maximum_area_fraction": 0.8,
+  "neighbour_order": 1,
+  "strength": 0.5,
+  "confidence": 0.6,
+  "cosine_margin": 0.02,
+  "rerank_alpha": 0.02,
+  "crop_padding": 0.05,
+  "clip_batch": 16,
+  "memory_fraction": 0.2
+}
