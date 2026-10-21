@@ -1,0 +1,13 @@
+{
+  "schema": "complementary_covariance_v1",
+  "runs": "logs/complementary_covariance_v1",
+  "dim": 64,
+  "rank": 32,
+  "descriptor_dim": 512,
+  "complement_weight": 0.25,
+  "warmup_steps": 128,
+  "branch_loss_weight": 1.0,
+  "learning_rate": 0.0001,
+  "pilot_steps": 1024,
+  "smoke_steps": 8
+}
