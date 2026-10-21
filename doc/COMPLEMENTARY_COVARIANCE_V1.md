@@ -71,3 +71,12 @@ cat logs/complementary_covariance_v1/train/progress.json
 有限流水线：服务器CPU测试 -> 计划校验 -> 8步烟测 -> 全新1024步三组训练 -> 三集评测。断线不影响运行，异常以failed状态停止。每16步原子保存头、AdamW、RNG、游标和合同校验；意外重启后重用同一启动命令，从最近完整检查点恢复。已完成的阶段仅校验，不重复训练。
 
 代码：`src/models/complementary_covariance.py`；训练/评测：`scripts/complementary_covariance.py`；配置：`config/complementary_covariance.json`；单测：`tests/test_complementary_covariance.py`。本机不执行测试或训练，测试仅在训练机运行。
+
+## 6. 首次执行记录（2026-10-21）
+
+- 实现提交：`242b054`，已推送origin/main；6个新增文件以SCP同步到训练机，未合并/重置其独立工作区。
+- 服务器CPU新增/回归测试：56 passed。8步真实GPU烟测通过全部7项机械检查，包括冻结参数、受保护源码、旁路精确重现、相同容量、每个参数收到有效梯度。烟测头未用于正式训练初始化。
+- 每头649,408可训练参数；三组正式初始化SHA均为`040e5a81d70688d6abf99e9a6d44bb27e7c4b27c1c19633cef3603abd4dee944`。
+- 冻结完整anchor状态SHA：`85efdb822f8a805e5ba69dca0a27521c09954ce9cdee18e1c8cbc30d8212eee6`。
+- 有限流水线于北京时间20:44:16启动，launcher PID3352905。20:44:57进入正式训练，首次检查已达到5/1024步，约2.34秒/步，CUDA分配峰值约563.5MiB（不等于nvidia-smi完整进程显存）。
+- 截至此次记录，尚未完成训练/评测，不能将机械通过或分支训练损失下降写成检索收益。未来以封存的`eval/summary.json`及逐查询成对结果为准。
