@@ -73,3 +73,13 @@ RGB -> 单个冻结DINO -> 冻结创新点1 -> F1(768x23x23)
 cd /home/wt/workspace/OpenVPRLab
 /home/wt/.conda/envs/VPR/bin/python scripts/launch_structural_channel.py --allow-training --allow-shared-gpu
 ```
+
+## 7. 首次启动记录（2026-10-22，北京时间）
+
+实现提交`14ed7e4`已推送origin/main，6个新增文件通过SCP同步到训练机，未对其旧工作区执行拉取/合并/重置。服务器CPU新增及回归测试57 passed，本机未测试。
+
+07:22:57启动有限流水线，launcher PID2501158。8步真实GPU烟测全部7项机械检查通过：零初始化描述子误差四组均0，冻结anchor及保护源码不变、全部参数收到非零梯度、全部新适配器更新、三个条件组容量相同。烟测参数丢弃。
+
+07:23:32进入正式训练，首次检查8/2560步，每步2.318秒，累计CUDA分配峰值568.1MiB，nvidia-smi本任务约984MiB。冻结anchor状态SHA为`85efdb822f8a805e5ba69dca0a27521c09954ce9cdee18e1c8cbc30d8212eee6`。channel组99,264参数，三个门控组均102,416参数；额外3,152参数不能忽略，但结构组与global/scrambled比较已匹配。
+
+三门控组正式初始状态SHA均为`00f9f7eb202e6f31263896e2a2e9dc75bd0b5d974428de602fe83bc5dab44e3a`，普通channel为`8441aad7a296443a07cc408aac2759e715b8a3abeaa15ee4d05789abc566dc86`。预计训练约100分钟，训练加完整评测约2–2.5小时，受资源负载变化影响。此为启动记录，不是完成证明或检索收益结论；最终以固定末步封存评测结果为准。
