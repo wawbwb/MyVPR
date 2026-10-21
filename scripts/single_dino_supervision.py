@@ -27,7 +27,7 @@ from src.semantic_region_protocol import (read,write,sha,state_hash,owned_run,se
 SCHEMA='single_dino_supervision_v2'
 SOURCES=('src/models/single_dino_supervision.py','src/single_dino_grad_balance.py',
     'scripts/single_dino_supervision.py','config/single_dino_supervision.json',
-    'tests/test_single_dino_supervision.py')
+    'tests/test_single_dino_supervision.py','scripts/launch_single_dino_supervision.py')
 
 
 def configuration():
@@ -204,10 +204,22 @@ def evaluator():
     return module.evaluate
 
 
+def check_gpu_capacity(total,used,free,allow_shared=False,fraction=.2):
+    if min(total,used,free)<0 or total<=0 or not 0<fraction<=1:
+        raise ValueError('Invalid GPU memory report')
+    if used>4096 and not allow_shared:
+        raise RuntimeError('GPU1 busy; explicit --allow-shared-gpu needed; no tasks killed')
+    # Even with sharing approved, require room for our full allocator budget
+    # PLUS 2GiB slack. Existing users are never evicted or constrained.
+    if free<total*fraction+2048:
+        raise RuntimeError('Insufficient GPU1 headroom for capped budget plus 2GiB slack')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('command',choices=('plan','smoke','train','eval'))
     p.add_argument('--allow-training',action='store_true');p.add_argument('--resume',action='store_true')
+    p.add_argument('--allow-shared-gpu',action='store_true',help='Explicit consent to share physicalGPU1; allocator cap and free-memory guard remain')
     a=p.parse_args();c=configuration()
     # Guard before identity verification, locks, directories or CUDA work.
     if a.command in ('smoke','train') and not a.allow_training:p.error('Explicit --allow-training required')
@@ -222,8 +234,8 @@ def main():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         old.require_ready(ROOT,c)
         import subprocess
-        used=subprocess.check_output(['nvidia-smi','-i','1','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True,timeout=20)
-        if int(used.strip())>4096:raise RuntimeError('GPU1 busy; no other tasks killed')
+        memory=subprocess.check_output(['nvidia-smi','-i','1','--query-gpu=memory.total,memory.used,memory.free','--format=csv,noheader,nounits'],text=True,timeout=20)
+        check_gpu_capacity(*map(int,memory.strip().split(',')),a.allow_shared_gpu,c['cuda_memory_fraction'])
         torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
         torch.backends.cudnn.allow_tf32=False;torch.backends.cudnn.benchmark=False
         if a.command=='eval':evaluator()(c,a)

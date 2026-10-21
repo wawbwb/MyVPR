@@ -164,3 +164,30 @@ def test_training_uses_one_combined_clip_and_no_scalar_total_loss_backward():
     assert text.index('combine(')<text.index('clip_grad_norm_(')<text.index('optimizers[arm].step()')
     assert text.count('clip_grad_norm_(')==1
     assert 'loss.backward()' not in text
+
+
+def test_shared_gpu_requires_explicit_consent():
+    from scripts.single_dino_supervision import check_gpu_capacity
+    with pytest.raises(RuntimeError,match='explicit'):check_gpu_capacity(24576,5961,18164)
+    check_gpu_capacity(24576,5961,18164,True)
+
+
+def test_sharing_never_bypasses_remaining_memory_guard():
+    from scripts.single_dino_supervision import check_gpu_capacity
+    with pytest.raises(RuntimeError,match='headroom'):check_gpu_capacity(24576,20000,4576,True)
+
+
+def test_launcher_is_finite_ordered_and_passes_shared_flag_only_to_gpu_stages():
+    from scripts.launch_single_dino_supervision import commands
+    stages=commands('python',True)
+    assert [s for s,c in stages]==['cpu_tests','plan','smoke','train','eval']
+    for s,c in stages:
+        assert ('--allow-shared-gpu' in c)==(s in ('smoke','train','eval'))
+        assert ('--allow-training' in c)==(s in ('smoke','train'))
+
+
+def test_launcher_refuses_start_without_authorization(monkeypatch):
+    from scripts import launch_single_dino_supervision as launch
+    monkeypatch.setattr('sys.argv',['launch_single_dino_supervision.py'])
+    with pytest.raises(SystemExit) as e:launch.main()
+    assert e.value.code==2

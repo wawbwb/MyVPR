@@ -2,7 +2,7 @@
 
 ## 状态
 
-代码准备和同步，不启动真实图像smoke、训练、评测或自动队列。原V1与双编码器已完成，创新点1及这些实验的代码和权重继续保留。
+初始版本只准备和同步；2026-10-21用户随后授权启动，并在明确GPU1已有其他用户进程后确认仍使用GPU1。新增显式共享许可和有限阶段launcher，按CPU测试→准备检查→8步smoke→重新初始化1024步训练→评测执行。原V1与双编码器已完成，创新点1及这些实验的代码和权重继续保留。
 
 ## 修改依据与不变项
 
@@ -49,9 +49,17 @@ GAP仍可能对路由不敏感，本改动是否改善交互必须由三组对�
 
 CPU准备检查：`python scripts/single_dino_supervision.py plan`。
 
-真实图像smoke和正式训练均必须显式传`--allow-training`；没有launcher、cron或queue自动调用本版本。共享原GPU锁，只允许物理GPU1，20%显存预算；不杀其它进程、不安装环境、不下载权重。
+真实图像smoke和正式训练均必须显式传`--allow-training`。初始准备阶段无自动启动；后续新增`launch_single_dino_supervision.py`用于获授权后的有限流水线，不是循环调度或自动追加训练。共享原GPU锁，只允许物理GPU1，20%显存预算；不杀其它进程、不安装环境、不下载权重。
 
-未来人工授权后的顺序为`smoke --allow-training`、`train --allow-training`、`eval`。恢复现有同合同输出才加`--resume`。本次只执行CPU合成测试和CPU/file-only plan，不执行上述三个GPU阶段。
+获得人工授权后的顺序为`smoke --allow-training`、`train --allow-training`、`eval`。恢复现有同合同输出才加`--resume`。初次准备时只执行CPU合成测试和CPU/file-only plan；后续GPU启动授权见下一节。
+
+### 后续启动授权与GPU共享
+
+用户已授权GPU阶段。GPU1原有约5.5GiB的其他用户任务，本实验不终止它。显式`--allow-shared-gpu`只豁免原“已用显存不超过4GiB”的独占倾向检查，仍要求空闲显存不少于本实验完整20%分配预算加2GiB余量。该许可不改变模型、损失、学习率、采样或科学预算，也不限制其他进程。资源竞争和磁盘读取可能降低吞吐，不能保证启动时显存余量永久不变。
+
+启动状态与分阶段日志位于`.cache/single_dino_supervision_v2_launcher/`。任一步失败停止，不自动修改参数、不绕过失败的smoke、不杀任务。再次调用launcher只可在原源码/共享策略一致时恢复；已完成不重跑。
+
+2026-10-21 09:55:37（Asia/Shanghai）已登记后台流水线，PID3916947，显式允许共享物理GPU1。启动时GPU1空闲18164MiB，满足4915.2MiB预算加2048MiB余量；其它用户进程保持运行。该登记不是正式训练已经开始的证明，实际阶段以launcher/progress.json及train/progress.json为准。
 
 ## 准备验证记录
 
