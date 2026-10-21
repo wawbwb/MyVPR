@@ -1,0 +1,11 @@
+{
+  "schema": "structural_channel_v1",
+  "runs": "logs/structural_channel_v1",
+  "hidden": 64,
+  "gate_rank": 16,
+  "adapter_gain": 0.1,
+  "learning_rate": 0.0003,
+  "pilot_steps": 2560,
+  "smoke_steps": 8,
+  "keep_weight": 0.1
+}
