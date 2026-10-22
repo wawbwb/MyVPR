@@ -1,0 +1,11 @@
+{
+  "schema": "channel_preservation_v1",
+  "runs": "logs/channel_preservation_v1",
+  "warm_run": "logs/structural_channel_v1/train",
+  "warm_arm": "structure_gate",
+  "pilot_steps": 512,
+  "smoke_steps": 8,
+  "learning_rate": 0.0003,
+  "rank_weight": 0.1,
+  "rank_cap": 0.05
+}

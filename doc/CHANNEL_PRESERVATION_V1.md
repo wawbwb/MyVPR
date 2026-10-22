@@ -1,0 +1,52 @@
+# 通道分支纠错—保真机制验证
+
+## 前序结果与本轮问题
+
+上一轮四组于2026-10-22 09:37完成。冻结创新点1在GSV/MSLS/Pitts的正确数为3049/695/7276；普通channel为3049/693/7271；全局门控3047/693/7270；结构门控3047/693/7273；打乱门控3048/693/7270。结构组在Pitts纠错13、退化16，MSLS纠错0、退化2，未满足预注册成功标准。
+
+旧官方基线上的channel三种子在Pitts纠正15–16条，其中9条已被创新点1覆盖，但仍有6–7条未覆盖。说明收益部分重叠，不证明两模块不可组合，也不保证重训可以保住互补错误。
+
+只读oracle配对：若能够由GT决定何时采用创新点1/结构分支，Pitts最高可保留7276+13=7289个正确，MSLS仍只有695个，GSV最高3050。**这不是实际方法、可部署选择器或收益承诺**；本轮不会把这些评测查询ID、GT或oracle决策用于训练，也不训练评测集选择器。四组共同退化在MSLS为312/690，在Pitts共10条，提示训练共同目标的副作用值得单独验证。
+
+## 依据与假设
+
+已有每图描述子余弦保持损失，只限制向量漂移；它不直接保护检索正负排序，较小的漂移也可能改变近边界结果。本轮不继续更改结构或增加门控，专门验证“按可靠性选择训练关系保持”能否改善现有分支的纠错/退化平衡。
+
+参考关系/排序蒸馏的已知思想：
+
+- Park等，Relational Knowledge Distillation，CVPR2019：https://openaccess.thecvf.com/content_CVPR_2019/html/Park_Relational_Knowledge_Distillation_CVPR_2019_paper.html 。关系结构不同于单图特征对齐。
+- Chen等，DarkRank: Accelerating Deep Metric Learning via Cross Sample Similarities Transfer，AAAI2018：https://ojs.aaai.org/index.php/AAAI/article/view/11783 。跨样本相似度和排序迁移已有先例。
+
+本轮不是两篇方法的忠实复现，不称“关系保持/教师正确性筛选”本身为首创，也不将训练目标修复预先包装为新网络创新点。待有增量后再讨论方法贡献。
+
+## 三组严格同网络实验
+
+三组均从`logs/structural_channel_v1/train/last.pt`的固定structure_gate最终头开始，102,416参数，创新点1/DINO/BoQ全部冻结。头的初始tensor哈希必须完全相同，优化器均全新重置；不是继续旧Adam，也不继承烟测更新。
+
+|组别|损失|回答问题|
+|---|---|---|
+|cosine_only|原MS检索+.1余弦保持|仅额外优化512步能否解释变化|
+|all_margin|上述损失+.1无选择教师排序保持|普通教师保持是否也保留错误|
+|correct_margin|上述损失+.1仅教师排对的训练关系保持|选择可靠教师关系是否有额外作用|
+
+“教师”是冻结创新点1，不是CLIP/ResNet，也不是评测标签。仅在当前64张GSV训练图片内，同地点其他视图为正，异地点且GPS距离≥25米为有效负；自身不入检索。如果缺少正或安全负，则该查询不约束。根据教师正样本最高相似度与负样本最高相似度之差m0，m0>0才视为教师在该**小训练批次**排对；这不等同于全库排对、MSLS排对或真实部署可靠性。
+
+学生m为其当前批内best-positive减best-negative。teacher目标t=min(abs(m0),.05)，符号s=sign(m0)。排序损失`mean_batch(mask * relu(t - s*m)/.05)`。correct_margin仅mask掉m0≤0，允许教师错误关系由主检索监督纠正；all_margin保留所有非平局有效教师决策，也可能保持教师错误。统一全64查询作为分母，不因保护查询数不同更改归一化尺度。参考相似度、mask、符号及目标全部detach，不向冻结教师反传。不强行保持正样本之间的原排名。
+
+约束只在学生损害应保护的排序间隔时激活；绝不声称训练集约束能保证验证集召回不降。日志记录有效行数、教师正确数、保护/违反行数及非零约束步数。若约束未实际激活，不能把实验解释为验证了保护机制。
+
+## 固定预算与评测
+
+seed42、原封存8192个训练地点/四视图、P16×K4、322输入，固定再训练512步（重放原计划前一轮，仅训练地点，不使用留出）。lr3e-4、AdamW wd0、clip1、FP32、microbatch2；主MS和.1余弦保持不变。全批次挖掘/关系计算，再微批精确梯度回放。此为对固定已有头的修复实验，不是从零512步新架构实验，也不与上轮2560步混称同预算；三个修复对照均有相同额外预算。
+
+8步smoke丢弃，从同一个warm头重新开始正式512步。固定最终步，评测GSV留出、完整MSLS-val和Pitts30k-val。重新提取冻结创新点1和旧warm头，要求图像内容摘要与两者Top20完整复现上一轮，否则停止查实现。评测只发生在训练完成之后。
+
+主要端点Pitts：correct_margin必须严格胜过创新点1和两个继续训练对照；MSLS必须不低于创新点1及两个对照（计数保护，不是统计非劣效证明），并且训练中保护约束实际激活，才标记探索性信号。逐数据集完整报告R@1/5/10/20、纠错/退化、固定warm对比。既有开发数据被多次观察，单seed修复成功也不能声称稳定/独立泛化或新颖性。
+
+## 执行保护
+
+新文件`src/channel_rank_preservation.py`、`scripts/channel_preservation.py`、`scripts/launch_channel_preservation.py`、`config/channel_preservation.json`、`tests/test_channel_preservation.py`及本文。旧创新点1、上一轮源码、权重和结果全部只读；保留原版本不覆盖。
+
+CPU测试只在服务器；GPU1，20%显存分配上限，允许共享但须保留上限+2GiB空闲；不杀其他任务、不安装依赖。有限后台链CPU测试→plan→smoke→512步三组训练→评测，任何检查失败即停止，每16步原子保存新头、AdamW、RNG和游标。
+
+输出`logs/channel_preservation_v1/{smoke,train,eval}`；进度`.cache/channel_preservation_v1_launcher/progress.json`。不会因失败自动延长训练或扫描权重。
