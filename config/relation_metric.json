@@ -1,0 +1,14 @@
+{
+  "schema": "relation_metric_v1",
+  "runs": "logs/relation_metric_v1",
+  "metric_cache": ".cache/relation_metric_v1",
+  "pilot_steps": 512,
+  "smoke_steps": 8,
+  "pca_dim": 256,
+  "pca_oversampling": 16,
+  "pca_iterations": 2,
+  "metric_rank": 64,
+  "metric_hidden": 32,
+  "metric_cap": 0.05,
+  "learning_rate": 0.0003
+}
