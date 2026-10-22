@@ -36,6 +36,19 @@ def test_teacher_correct_mask_and_clipped_target():
     assert loss==0 and s['protected']==4 and s['violating']==0
 
 
+def test_zero_violation_boundary_has_zero_gradient_not_clamp_subgradient():
+    z,y,gps=batch()
+    t=teacher_contract(z,y,gps)
+    scores=z@z.T
+    # Force an exact boundary for each valid row, below clipping concerns.
+    t['target']=scores.masked_fill(~t['positive'],-torch.inf).amax(1)-scores.masked_fill(~t['negative'],-torch.inf).amax(1)
+    for arm in ARMS:
+        student=z.clone().requires_grad_()
+        penalty,_=ranking_penalty(student,t,arm)
+        penalty.backward()
+        assert penalty==0 and torch.count_nonzero(student.grad)==0
+
+
 def test_wrong_teacher_not_protected_by_selective_but_all_margin_preserves_it():
     good,y,gps=batch();bad=good[[0,2,1,3]]
     t=teacher_contract(bad,y,gps)

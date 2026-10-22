@@ -4,6 +4,7 @@ Batch correctness is a proxy, not knowledge of validation correctness. Cross-
 sample ranking distillation is prior art; this is a constrained repair study.
 """
 import torch
+from torch.nn import functional as F
 
 ARMS=('cosine_only','all_margin','correct_margin')
 
@@ -48,7 +49,9 @@ def ranking_penalty(descriptors,teacher,arm):
     gap=torch.where(teacher['valid'],pos,torch.zeros_like(pos))-torch.where(teacher['valid'],neg,torch.zeros_like(neg))
     mask=(teacher['correct'] if arm=='correct_margin' else teacher['unambiguous'])
     if arm=='cosine_only':mask=torch.zeros_like(mask)
-    violation=(teacher['target']-teacher['sign']*gap).clamp_min(0)/teacher['scale']
+    # ReLU has zero derivative at the zero-violation boundary. clamp_min(0)
+    # would have derivative one at equality despite reporting zero loss.
+    violation=F.relu(teacher['target']-teacher['sign']*gap)/teacher['scale']
     # Same full-batch denominator in all groups; not mean over variable subsets.
     penalty=torch.where(mask,violation,torch.zeros_like(violation)).mean()
     stats=dict(valid=int(teacher['valid'].sum()),teacher_correct=int(teacher['correct'].sum()),

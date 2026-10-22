@@ -49,4 +49,10 @@ seed42、原封存8192个训练地点/四视图、P16×K4、322输入，固定�
 
 CPU测试只在服务器；GPU1，20%显存分配上限，允许共享但须保留上限+2GiB空闲；不杀其他任务、不安装依赖。有限后台链CPU测试→plan→smoke→512步三组训练→评测，任何检查失败即停止，每16步原子保存新头、AdamW、RNG和游标。
 
-输出`logs/channel_preservation_v1/{smoke,train,eval}`；进度`.cache/channel_preservation_v1_launcher/progress.json`。不会因失败自动延长训练或扫描权重。
+有效修正版输出`logs/channel_preservation_v2/{smoke,train,eval}`；进度`.cache/channel_preservation_v2_launcher/progress.json`。不会因失败自动延长训练或扫描权重。
+
+### 启动边界修正
+
+实现提交`c1e3a94`首次在10:14:28启动，42项服务器CPU测试和8步机械烟测通过。但检查发现`clamp_min(0)`在零违规边界的导数为1，不符合“仅违反时惩罚”的约定；损失为0不一定表示未有梯度。该初始版本仅本轮进程停止，保留`logs/channel_preservation_v1`现场，不作有效实验结果。
+
+修正版改为ReLU，新增精确零违规边界必须零梯度的回归测试，同时记录排序损失对描述子的梯度范数及非零步数。改用v2独立输出、从同一前序warm头和全新Adam重新开始，不继承被中止版本或烟测参数，不覆盖旧现场。超参数和512步预算不变。教师全对的批次里all_margin与correct_margin目标相同，这是数据性质，不能把它误读成选择策略已经受到充分检验。

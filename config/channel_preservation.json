@@ -1,6 +1,6 @@
 {
-  "schema": "channel_preservation_v1",
-  "runs": "logs/channel_preservation_v1",
+  "schema": "channel_preservation_v2",
+  "runs": "logs/channel_preservation_v2",
   "warm_run": "logs/structural_channel_v1/train",
   "warm_arm": "structure_gate",
   "pilot_steps": 512,

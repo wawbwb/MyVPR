@@ -11,7 +11,7 @@ import sys
 from zoneinfo import ZoneInfo
 
 ROOT=Path(__file__).resolve().parents[1]
-STATE=ROOT/'.cache/channel_preservation_v1_launcher'
+STATE=ROOT/'.cache/channel_preservation_v2_launcher'
 FILES=('src/channel_rank_preservation.py','scripts/channel_preservation.py',
     'scripts/launch_channel_preservation.py','config/channel_preservation.json','tests/test_channel_preservation.py')
 
@@ -48,7 +48,7 @@ def worker(shared):
                 write(STATE/'progress.json',status);raise RuntimeError(stage+' failed; see '+status['log'])
             done.append(stage);print(now(),'DONE',stage,flush=True)
         write(STATE/'progress.json',dict(phase='complete',completed_stages=done,updated_at=now(),
-            output='logs/channel_preservation_v1/eval',allow_shared_gpu=shared))
+            output='logs/channel_preservation_v2/eval',allow_shared_gpu=shared))
 
 
 def main():

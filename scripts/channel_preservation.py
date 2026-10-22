@@ -19,7 +19,7 @@ from src.channel_rank_preservation import ARMS,teacher_contract,ranking_penalty
 from src.semantic_region_protocol import (read,write,sha,state_hash,owned_run,seed_all,
     save_torch,rng_state,restore_rng,gps_retrieval)
 
-SCHEMA='channel_preservation_v1'
+SCHEMA='channel_preservation_v2'
 SOURCES=('src/channel_rank_preservation.py','scripts/channel_preservation.py',
     'scripts/launch_channel_preservation.py','tests/test_channel_preservation.py','config/channel_preservation.json',
     *prior.SOURCES)
@@ -27,7 +27,7 @@ SOURCES=('src/channel_rank_preservation.py','scripts/channel_preservation.py',
 
 def configuration():
     extra=read(ROOT/'config/channel_preservation.json')
-    expected=dict(schema=SCHEMA,runs='logs/channel_preservation_v1',warm_run='logs/structural_channel_v1/train',
+    expected=dict(schema=SCHEMA,runs='logs/channel_preservation_v2',warm_run='logs/structural_channel_v1/train',
         warm_arm='structure_gate',pilot_steps=512,smoke_steps=8,learning_rate=.0003,rank_weight=.1,rank_cap=.05)
     if extra!=expected:raise ValueError('Registered repair protocol differs')
     return dict(prior.configuration(),**extra)
@@ -141,14 +141,16 @@ def train(c,args):
                 losses=dict(main=gps_retrieval(lossfn,leaf,labels,coords),
                     keep=c['keep_weight']*(1-(leaf*reference).sum(1)).clamp_min(0).mean(),rank=c['rank_weight']*rank)
                 if not all(bool(torch.isfinite(v)) for v in losses.values()):raise ValueError('Nonfinite loss')
+                rank_gradient=torch.autograd.grad(losses['rank'],leaf,retain_graph=True)[0]
+                rank_gradient_norm=float(rank_gradient.norm().detach())
                 gradients=torch.autograd.grad(sum(losses.values()),leaf)[0]
                 optimizers[arm].zero_grad(set_to_none=True);prior.replay(m,chunks,seeds,gradients)
                 for name,p in m.adapter.named_parameters():state['gradients'][arm][name]|=p.grad is not None and bool((p.grad!=0).any())
                 norm=torch.nn.utils.clip_grad_norm_(m.adapter.parameters(),c['gradient_clip'],error_if_nonfinite=True)
                 optimizers[arm].step()
                 row[arm]=dict(losses={n:float(v.detach()) for n,v in losses.items()},gradient_norm=float(norm),
-                    relative_delta_mean=float(relative.mean()),ranking=stats)
-                del leaf,losses,gradients
+                    relative_delta_mean=float(relative.mean()),ranking=stats,rank_descriptor_gradient_norm=rank_gradient_norm)
+                del leaf,losses,gradients,rank_gradient
             torch.cuda.synchronize();state['step']+=1
             row.update(step=state['step'],seconds=time.monotonic()-start,peak_cuda_mib=torch.cuda.max_memory_allocated()/2**20)
             state['history'].append(row);write(output/'progress.json',dict(phase='training',total=total,**row))
@@ -162,7 +164,8 @@ def train(c,args):
             innovation1_sources_unchanged=prior.old.key.source_hashes(prior.old.key.PROTECTED)==contract['protected_sources'])
         activity={a:dict(protected_rows=sum(v[a]['ranking']['protected'] for v in state['history']),
             violating_rows=sum(v[a]['ranking']['violating'] for v in state['history']),
-            nonzero_penalty_steps=sum(v[a]['losses']['rank']>0 for v in state['history'])) for a in ARMS}
+            nonzero_penalty_steps=sum(v[a]['losses']['rank']>0 for v in state['history']),
+            nonzero_rank_gradient_steps=sum(v[a]['rank_descriptor_gradient_norm']>0 for v in state['history'])) for a in ARMS}
         write(output/'summary.json',dict(checks=checks,steps=state['step'],warm_start_errors=errors,penalty_activity=activity,
             final_adapter_sha256={a:state_hash(m.adapter) for a,m in models.items()},parameters=initial['parameters'],
             encoder_count=1,descriptor_dimensions=12288,verdict='SMOKE_DISCARD' if args.command=='smoke' else 'TRAINED_NOT_EVALUATED'))
