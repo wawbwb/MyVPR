@@ -1,0 +1,10 @@
+{
+  "schema": "image_negative_v1",
+  "runs": "logs/image_negative_v1",
+  "pair_cache": ".cache/image_negative_v1",
+  "pilot_steps": 512,
+  "smoke_steps": 8,
+  "pair_weight": 0.1,
+  "pair_margin": 0.05,
+  "pair_temperature": 0.05
+}
