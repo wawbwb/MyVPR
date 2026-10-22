@@ -1,0 +1,10 @@
+{
+  "schema": "hard_channel_v1",
+  "runs": "logs/hard_channel_v1",
+  "mining_cache": ".cache/hard_channel_v1",
+  "pilot_steps": 512,
+  "smoke_steps": 8,
+  "neighbor_count": 64,
+  "cache_places_per_shard": 16,
+  "graph_query_chunk": 128
+}
