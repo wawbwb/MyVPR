@@ -1,0 +1,17 @@
+{
+  "schema": "anchor_deficit_v1",
+  "runs": "logs/anchor_deficit_v1",
+  "cache": ".cache/anchor_deficit_v1",
+  "seed": 42,
+  "steps": 512,
+  "smoke_steps": 8,
+  "pca_dim": 256,
+  "side_dim": 128,
+  "hidden": 256,
+  "score_weight": 0.1,
+  "goal": 0.01,
+  "target_cap": 1.8,
+  "hard_threshold": 0.05,
+  "hard_extra": 16,
+  "learning_rate": 0.0003
+}
