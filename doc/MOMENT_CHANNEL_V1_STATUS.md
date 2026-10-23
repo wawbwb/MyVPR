@@ -1,5 +1,7 @@
 # Moment Channel V1 启动状态（2026-10-23）
 
+**后续更新：实验于15:01:14全部完成；16:00独立复核通过。候选结果为GSV3050、MSLS693、Pitts7271，未达到预注册标准。详见[MOMENT_CHANNEL_V1_RESULT.md](MOMENT_CHANNEL_V1_RESULT.md)。以下保留原始启动记录。**
+
 方案见[MOMENT_CHANNEL_V1.md](MOMENT_CHANNEL_V1.md)。实现提交fbc0585，六个新文件通过SCP归档同步至服务器；GitHub推送先前受403权限限制，本轮未将“已同步服务器”表述为“已推送远端”。创新点1与旧实验源码未改。
 
 北京时间12:47:04启动有限流水线，PID1984971；CPU测试57 passed；计划核验通过；8步smoke通过7项机械检查并独立核验封存文件散列。四组描述子零起点误差均为0，所有参数收到非零梯度，冻结anchor与受保护源码不变。
