@@ -1,0 +1,8 @@
+{
+  "schema": "spatial_resample_v1",
+  "runs": "logs/spatial_resample_v1",
+  "learning_rate": 0.0003,
+  "pilot_steps": 1024,
+  "smoke_steps": 8,
+  "keep_weight": 0.0
+}
