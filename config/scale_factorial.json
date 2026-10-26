@@ -1,0 +1,13 @@
+{
+  "schema": "scale_factorial_v1",
+  "runs": "logs/scale_factorial_v1",
+  "cache": ".cache/scale_factorial_v1",
+  "seeds": [43, 44, 45],
+  "pilot_steps": 1024,
+  "smoke_steps": 8,
+  "learning_rate": 0.001,
+  "microbatch": 2,
+  "shard_size": 64,
+  "bootstrap_repetitions": 2000,
+  "bootstrap_seed": 20261026
+}
