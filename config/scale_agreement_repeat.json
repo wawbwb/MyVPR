@@ -1,0 +1,10 @@
+{
+  "schema": "scale_agreement_repeat_v1",
+  "runs": "logs/scale_agreement_repeat_v1",
+  "seeds": [43, 44, 45],
+  "pilot_steps": 1024,
+  "smoke_steps": 8,
+  "learning_rate": 0.001,
+  "bootstrap_repetitions": 2000,
+  "bootstrap_seed": 20261026
+}
