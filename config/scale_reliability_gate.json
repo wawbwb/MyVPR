@@ -1,0 +1,12 @@
+{
+  "schema": "scale_reliability_gate_v1",
+  "runs": "logs/scale_reliability_gate_v1",
+  "seeds": [43, 44, 45],
+  "pilot_steps": 1024,
+  "smoke_steps": 8,
+  "learning_rate": 0.001,
+  "quality_weight": 0.1,
+  "teacher_temperature": 0.1,
+  "bootstrap_repetitions": 2000,
+  "bootstrap_seed": 20261026
+}
