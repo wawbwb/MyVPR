@@ -1,0 +1,454 @@
+{
+  "schema": "local_experiment_cleanup_v1",
+  "workspace": "D:\\Desktop\\MyVPR",
+  "date": "2026-10-29",
+  "reviewed": true,
+  "remote_cleanup": false,
+  "protected_directories": [
+    "doc/创新点1",
+    "doc/patent_drafts",
+    "doc/pairvpr_official_paired_audit_v1",
+    "doc/scale_agreement_fusion_v1_server",
+    "doc/scale_agreement_repeat_v1_server",
+    "doc/scale_factorial_v1_server",
+    "doc/scale_gate_patent_handoff_v1",
+    "doc/scale_reliability_gate_v1_server",
+    "doc/cross_resolution_detail_v1_server",
+    "doc/cross_resolution_detail_v1_partial_server",
+    "doc/dynamic_mechanism_cases_v1",
+    "doc/candidate_set_plan_v1",
+    "doc/dynamic_invariance_train_v1"
+  ],
+  "targets": [
+    {
+      "path": "doc/adaptive_pair_budget_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/ag_slrd_phase0_audit",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/anchor_deficit_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/boq_baseline_dynamic_attention_audit",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/candidate_hard_exploratory_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_hard_last_diagnostic_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_hard_mining_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_margin_cap_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_margin_preserve_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_multiview_budget_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_reference_graph_audit_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_reference_oracle_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_set_pitts_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_set_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_top44_eval_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_top44_pitts_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/candidate_training_audit_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/channel_rank_fusion_v1",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/channel_reliability_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/clip_competition_audit_server_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_competition_audit_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_dynamic_localization_v2",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_dynamic_msls_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_dynamic_screen_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_external_positive_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_external_screen_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_failure_cases_local_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_failure_cases_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_token_cross_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/clip_token_drop_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/competitive_query_audit_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/consensus_evidence_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/crop_semantic_film_runs",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_category_mask_audit_full_db_condition_union",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v2",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v2",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_invariance_msls_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_invariance_plan_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_invariance_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_mask_only_audit_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_mask_regions_audit_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/dynamic_mechanism_probe_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/full_gallery_supervision_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/image_negative_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/joint_local_refine_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/key_value_coadapt_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/moment_channel_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/original_channel_transfer_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/pair_budget_diagnostic_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_candidate_union_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_case_review_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_cls_diagnostic_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_local_matches_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_match_geometry_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pairvpr_metadata_audit_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pitts_pair_admission_report_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pitts_top44_confirmation_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pmd_mechanism_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pmd_rejection_audit_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/pmd_score_curves_v1",
+      "category": "候选与重排序"
+    },
+    {
+      "path": "doc/region_pair_lite_diagnostic_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/region_vlad_msls_20260909_143829",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/relation_metric_train_audit_v1",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/relation_metric_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/rscd_runs",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/seg_aux_aligned_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/seg_aux_warm_v2",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/segvlad_case_review_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/segvlad_gt_protocols_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/segvlad_vote_diagnostic_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/semantic_region_counterfactual_batch0",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/semantic_region_delta_batch0_clean",
+      "category": "语义与区域"
+    },
+    {
+      "path": "doc/single_dino_diagnosis_v1",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/spatial_resample_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/spatial_sampling_audit_v1_server",
+      "category": "结构适配与训练"
+    },
+    {
+      "path": "doc/static_evidence_report_v1",
+      "category": "语义与区域"
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_code.tar",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/channel_reliability_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/channel_reliability_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/moment_channel_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/moment_channel_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/relation_metric_audit_code.tar",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/relation_metric_train_audit_v1.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/relation_metric_v1_code.tar",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/relation_metric_v1_fix.tar",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/relation_metric_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/spatial_resample_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/spatial_resample_v1_reports.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_code.tar.gz",
+      "category": "重复传输包"
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_reports.tar.gz",
+      "category": "重复传输包"
+    }
+  ],
+  "curated_archives": [
+    {
+      "path": "doc/历史实验归档/语义与区域指标.json",
+      "experiments": 37
+    },
+    {
+      "path": "doc/历史实验归档/候选与重排序指标.json",
+      "experiments": 28
+    },
+    {
+      "path": "doc/历史实验归档/结构适配与训练指标.json",
+      "experiments": 14
+    }
+  ]
+}

@@ -1,0 +1,1166 @@
+{
+  "date": "2026-10-29",
+  "scope": "local_workspace_only",
+  "before": {
+    "approx_total_mib": 1115.97,
+    "doc_mib": 565.47,
+    "git_mib": 373.02,
+    "root_markdown": 208
+  },
+  "after": {
+    "directories": [
+      {
+        "Name": "__pycache__",
+        "Files": 3,
+        "Bytes": 113142
+      },
+      {
+        "Name": ".agents",
+        "Files": 0,
+        "Bytes": 0
+      },
+      {
+        "Name": ".cache",
+        "Files": 17,
+        "Bytes": 89099
+      },
+      {
+        "Name": ".git",
+        "Files": 50,
+        "Bytes": 280575011
+      },
+      {
+        "Name": ".vscode",
+        "Files": 1,
+        "Bytes": 135
+      },
+      {
+        "Name": "config",
+        "Files": 97,
+        "Bytes": 144924
+      },
+      {
+        "Name": "data",
+        "Files": 2,
+        "Bytes": 0
+      },
+      {
+        "Name": "doc",
+        "Files": 431,
+        "Bytes": 91131062
+      },
+      {
+        "Name": "image",
+        "Files": 2,
+        "Bytes": 164827
+      },
+      {
+        "Name": "logs",
+        "Files": 8,
+        "Bytes": 59191408
+      },
+      {
+        "Name": "notebooks",
+        "Files": 1,
+        "Bytes": 7919
+      },
+      {
+        "Name": "scripts",
+        "Files": 360,
+        "Bytes": 4525648
+      },
+      {
+        "Name": "src",
+        "Files": 239,
+        "Bytes": 1940744
+      },
+      {
+        "Name": "tests",
+        "Files": 254,
+        "Bytes": 1506609
+      },
+      {
+        "Name": "tmp",
+        "Files": 10,
+        "Bytes": 198373
+      }
+    ],
+    "root_files_bytes": 103586,
+    "total_bytes": 439692487,
+    "root_doc_markdown": 22,
+    "broken_current_links": []
+  },
+  "git_compaction": {
+    "command": "git -c gc.reflogExpire=never -c gc.reflogExpireUnreachable=never gc --no-prune",
+    "head_unchanged": true,
+    "refs_unchanged": true,
+    "reflogs_unchanged": true,
+    "index_unchanged": true,
+    "history_rewritten": false
+  },
+  "archive_verification": {
+    "zips": 7,
+    "all_member_sha256_verified_before_removing_expanded": true,
+    "zip_sha256_verified_after": true,
+    "innovation1_original_manifest": {
+      "files": 103,
+      "mismatches": 0
+    },
+    "innovation2_original_handoff_manifest": {
+      "files": 52,
+      "mismatches": 0
+    },
+    "compatibility_protocol_documents": {
+      "files": 19,
+      "mismatches": 0
+    }
+  },
+  "organization": {
+    "phase": "organized",
+    "deleted_expanded_copies": [
+      "doc/scale_factorial_v1_server",
+      "doc/scale_agreement_repeat_v1_server",
+      "doc/scale_agreement_fusion_v1_server",
+      "doc/scale_reliability_gate_v1_server",
+      "doc/cross_resolution_detail_v1_server",
+      "doc/cross_resolution_detail_v1_partial_server"
+    ],
+    "moved": [
+      {
+        "source": "doc/创新点1.md",
+        "destination": "doc/创新点1/方法说明.md",
+        "sha256": "9036e5248bd2f88a55f739bc8940a9ee49f7b253b505be2f76baa1c6fcff696a"
+      },
+      {
+        "source": "doc/复现结果.md",
+        "destination": "doc/历史实验归档/04_项目记录/复现结果.md",
+        "sha256": "e7563c4d5a3fbae9136aca65c2c516e95c28c7535a6a02f8f16141f1da81ff21"
+      },
+      {
+        "source": "doc/基于异构特征交互的双分支行人重识别网络.pdf",
+        "destination": "doc/参考论文/基于异构特征交互的双分支行人重识别网络.pdf",
+        "sha256": "98034e48211800766f4aa0230560315660182636ae50858187c2933ceebac63c"
+      },
+      {
+        "source": "doc/A2结果.md",
+        "destination": "doc/历史实验归档/04_项目记录/A2结果.md",
+        "sha256": "83955438d90cb84691958b76fc5c5c95a2421c7e271d0a0afe4e585c2471c775"
+      },
+      {
+        "source": "doc/ADAPTIVE_PAIR_BUDGET.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/ADAPTIVE_PAIR_BUDGET.md",
+        "sha256": "3832b673c7b25dea2c14623ce4e1a8b7012967836a2bb261d255d528c4830515"
+      },
+      {
+        "source": "doc/ANCHOR_DEFICIT_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/ANCHOR_DEFICIT_V1.md",
+        "sha256": "707d3ed43d7ba00748a9fc6339fe0f1830822e7410f7b042b906692707b02d8a"
+      },
+      {
+        "source": "doc/annotations_validated.json",
+        "destination": "doc/历史实验归档/保留输入/annotations_validated.json",
+        "sha256": "0464b4713aefa8f41a97a50b42e0f69f1813b74b931b1a8f88ab9547d236827e"
+      },
+      {
+        "source": "doc/annotations_validation_changes.json",
+        "destination": "doc/历史实验归档/保留输入/annotations_validation_changes.json",
+        "sha256": "1c24aec9286b6ff2493270b2db3267ef9f8d67c50641e76c088bb059494f6ae6"
+      },
+      {
+        "source": "doc/annotations.json",
+        "destination": "doc/历史实验归档/保留输入/annotations.json",
+        "sha256": "d67fa68d67f64279f10ea448e1113939867e425e7870a78dc7299194e3b8ede3"
+      },
+      {
+        "source": "doc/B1.md",
+        "destination": "doc/历史实验归档/04_项目记录/B1.md",
+        "sha256": "658e1a06323270d8a86b33309b15ba38f1331deb98786c5942d49baa45ffab8d"
+      },
+      {
+        "source": "doc/B2_0.01.md",
+        "destination": "doc/历史实验归档/04_项目记录/B2_0.01.md",
+        "sha256": "5e4ae8c45cd02d9dac9c7d7c4c899acc6134dbff112a629eb36fb65e28e501ac"
+      },
+      {
+        "source": "doc/B2_0.05.md",
+        "destination": "doc/历史实验归档/04_项目记录/B2_0.05.md",
+        "sha256": "305106617712add88fb8bac208f91bb3fede575d15220910414e9c5a4db9d900"
+      },
+      {
+        "source": "doc/B2_0.1.md",
+        "destination": "doc/历史实验归档/04_项目记录/B2_0.1.md",
+        "sha256": "9992a47fd6b0777fa04e249cafbe405abe9f0e86a90aa026150e49675b41ca83"
+      },
+      {
+        "source": "doc/B2_0.2.md",
+        "destination": "doc/历史实验归档/04_项目记录/B2_0.2.md",
+        "sha256": "b227125041cc93ef0637c74d64e63f2473ddf4d5fee2c49aa15a342eabe85eaa"
+      },
+      {
+        "source": "doc/B2609209 (修改稿).pdf",
+        "destination": "doc/参考论文/B2609209 (修改稿).pdf",
+        "sha256": "6bb336eac52a89823ba67f3f3ebf047e4d19e573382ea686c1653dcb0502aa0e"
+      },
+      {
+        "source": "doc/C2.md",
+        "destination": "doc/历史实验归档/04_项目记录/C2.md",
+        "sha256": "a89782a25c8f782556458792ea836beb94f93ad0c05b035af6ad86d5479c02fe"
+      },
+      {
+        "source": "doc/C3_0.01.md",
+        "destination": "doc/历史实验归档/04_项目记录/C3_0.01.md",
+        "sha256": "2bbd3ba300a2dd8fba74f90db8419dc123c7060e9eb1aac587e90396668649f0"
+      },
+      {
+        "source": "doc/C3_0.05.md",
+        "destination": "doc/历史实验归档/04_项目记录/C3_0.05.md",
+        "sha256": "bb698128bad39e734838f3edbaa4f506ed03b9fca129444b44fe57a10f80d1ee"
+      },
+      {
+        "source": "doc/C3_0.1.md",
+        "destination": "doc/历史实验归档/04_项目记录/C3_0.1.md",
+        "sha256": "44745f779e3ddb19909c71b64bc795ac4cd48313a82f32fc1d2f27c245b068c0"
+      },
+      {
+        "source": "doc/C3_0.2.md",
+        "destination": "doc/历史实验归档/04_项目记录/C3_0.2.md",
+        "sha256": "a03ec4af36b041493c54488b18d577ee11e14e5f4afa72200b9098bfb75e910e"
+      },
+      {
+        "source": "doc/CANDIDATE_HARD_EXPLORATORY.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_HARD_EXPLORATORY.md",
+        "sha256": "0c2c19626466934386032e3a66836a68f9b3b9cb5075922e3076ab928743c581"
+      },
+      {
+        "source": "doc/CANDIDATE_HARD_LAST_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_HARD_LAST_DIAGNOSTIC.md",
+        "sha256": "8fbbe210cc1c31785c506b147750ac8ae9ad978a4a9ca8b8ad3e6f8ece021287"
+      },
+      {
+        "source": "doc/CANDIDATE_HARD_SCREEN.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_HARD_SCREEN.md",
+        "sha256": "c71e21aa8798b82924cfbc6ab63b68991870ce5f7d1939008cfc6453d39ed899"
+      },
+      {
+        "source": "doc/CANDIDATE_MARGIN_CAP.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_MARGIN_CAP.md",
+        "sha256": "32e78efc37c5a43e43b242ee3ecb9675b0fb690a6af2d268b16fd3f20a8a9edb"
+      },
+      {
+        "source": "doc/CANDIDATE_MARGIN_PRESERVE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_MARGIN_PRESERVE.md",
+        "sha256": "7b79fe28c5e9e3ea5c160d578bc988fd8bbf71f4d22e7c49b45570cad4d2038c"
+      },
+      {
+        "source": "doc/CANDIDATE_MULTIVIEW_BUDGET.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_MULTIVIEW_BUDGET.md",
+        "sha256": "54d11fe7dc199252cd707275fe7080172525941291c71aa476b11236be27ab0d"
+      },
+      {
+        "source": "doc/candidate_multiview_dev_summary.json",
+        "destination": "doc/历史实验归档/保留输入/candidate_multiview_dev_summary.json",
+        "sha256": "1d505a950d438162f8930b2574e4e3156ee710174277dea7d44f636b6db77259"
+      },
+      {
+        "source": "doc/CANDIDATE_MULTIVIEW_SCREEN.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_MULTIVIEW_SCREEN.md",
+        "sha256": "7730c420b5214f771745a8b88998f052da6815c7520c4f380b041e40cb381005"
+      },
+      {
+        "source": "doc/candidate_multiview_train_summary.json",
+        "destination": "doc/历史实验归档/保留输入/candidate_multiview_train_summary.json",
+        "sha256": "58b1d6429210a415f5d75f8658e74cc201ac24e2064e8b0feed91f17c6723830"
+      },
+      {
+        "source": "doc/CANDIDATE_REFERENCE_GRAPH_AUDIT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_REFERENCE_GRAPH_AUDIT.md",
+        "sha256": "de1460e36c6c9066d85db5d5462c9c66e009e88135274a4417b3271143cd8ff3"
+      },
+      {
+        "source": "doc/CANDIDATE_REFERENCE_ORACLE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_REFERENCE_ORACLE.md",
+        "sha256": "7b4cd32668a6892fd7c3c7ab963e24d57cec133da16ac85440c938dcd3efd792"
+      },
+      {
+        "source": "doc/CANDIDATE_RESULTS_ARCHIVE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_RESULTS_ARCHIVE.md",
+        "sha256": "ab2a6843394423dd54d92ed8ea95be87fcc6681436bac9068505d9d531eafe12"
+      },
+      {
+        "source": "doc/CANDIDATE_SET_PITTS.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_SET_PITTS.md",
+        "sha256": "a445f91a70276cb4aeb561b9325c69f8fecc66edd65769a08bd4108053b3e2a0"
+      },
+      {
+        "source": "doc/CANDIDATE_SET_SCREEN.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_SET_SCREEN.md",
+        "sha256": "0a16d6962397e21c1f4dce66c957513030cb1fa143691596ba0ef415ea60784e"
+      },
+      {
+        "source": "doc/CANDIDATE_TOP44_EVAL.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_TOP44_EVAL.md",
+        "sha256": "89d81c8b423fce4a49aae1e6ec136240f62c33568611663559afc2956cbb2612"
+      },
+      {
+        "source": "doc/CANDIDATE_TOP44_PITTS.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_TOP44_PITTS.md",
+        "sha256": "4918d8baaeaac601543e49dfdf991f667be7b3778d7f6ed0bba6b4e3d36b9527"
+      },
+      {
+        "source": "doc/CANDIDATE_TRAINING_AUDIT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CANDIDATE_TRAINING_AUDIT.md",
+        "sha256": "e81253c8c12329ea0fe7725953f4ef5aa636109ad6937e5d65ffe65f8e258d84"
+      },
+      {
+        "source": "doc/CC_LSA_RESULTS_ARCHIVE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CC_LSA_RESULTS_ARCHIVE.md",
+        "sha256": "11782e4085071adc41d2384a52cc6fec5e132b98c017de33565354ee387cb12d"
+      },
+      {
+        "source": "doc/CHANNEL_PRESERVATION_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CHANNEL_PRESERVATION_V1.md",
+        "sha256": "cf32bffae62474840c31bbb7cb59037791b1104217b1ac64525984006608a05d"
+      },
+      {
+        "source": "doc/CHANNEL_RANK_FUSION_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CHANNEL_RANK_FUSION_V1_RESULT.md",
+        "sha256": "a2eea0b6f927b4a7fe9187f98362bf8fce70d4d41d30c1157d0f9cd0d7e0864f"
+      },
+      {
+        "source": "doc/CHANNEL_RELIABILITY_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CHANNEL_RELIABILITY_V1_RESULT.md",
+        "sha256": "042b494ecf548a796f3bd026f06856afaa355e1119a42f10a3b9453e1bbb31bd"
+      },
+      {
+        "source": "doc/CHANNEL_RELIABILITY_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CHANNEL_RELIABILITY_V1_STATUS.md",
+        "sha256": "dcc2c7f9ceeab2540fb70cbe2d0d03ef2c18b1003e857c3927349dfbd87e7bb3"
+      },
+      {
+        "source": "doc/CLIP_COMPETITION_AUDIT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_COMPETITION_AUDIT.md",
+        "sha256": "f85faef24d59df0690317a4daee9b2bbeb3919653cb5da5e35e147212af9a9c4"
+      },
+      {
+        "source": "doc/CLIP_DYNAMIC_INVARIANCE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_DYNAMIC_INVARIANCE.md",
+        "sha256": "32a981285fbbe8a80b43e8db4700848edda750c456677f05ced3079c5db6909e"
+      },
+      {
+        "source": "doc/CLIP_DYNAMIC_LOCALIZATION_V2.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_DYNAMIC_LOCALIZATION_V2.md",
+        "sha256": "34a7dc30bcc6014d6d4c3d6ff62762d87d51a836561a97ca584202b69f5efeb5"
+      },
+      {
+        "source": "doc/CLIP_DYNAMIC_SCREEN.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_DYNAMIC_SCREEN.md",
+        "sha256": "f2e084f671c1aa432f07230cd8b73baacc8e4d111657bcd8be369dadcdfe9ff0"
+      },
+      {
+        "source": "doc/CLIP_EXTERNAL_SCREEN.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_EXTERNAL_SCREEN.md",
+        "sha256": "134ec0b1489c1e28c2c98134162f688c044938e1f02a1b2136d0cd5e6e1582bc"
+      },
+      {
+        "source": "doc/CLIP_FAILURE_CASES.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_FAILURE_CASES.md",
+        "sha256": "fb40b73c5d59d6415548019ae77beeffa52bf977eab39577aaa0d4806c64720f"
+      },
+      {
+        "source": "doc/CLIP_KEY_BOQ_EVALUATION.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_KEY_BOQ_EVALUATION.md",
+        "sha256": "75bfaaa568e0c40017dbd4145cf5d026dd71fd7c0fabfb0db3865dba557e4a89"
+      },
+      {
+        "source": "doc/CLIP_KEY_BOQ_STUDY.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_KEY_BOQ_STUDY.md",
+        "sha256": "5d607cd74687f4e161c943f31e72b196cb6c0c7939ecd8946db451820f232ef4"
+      },
+      {
+        "source": "doc/CLIP_NUISANCE_REPRESENTATION_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_NUISANCE_REPRESENTATION_DIAGNOSTIC.md",
+        "sha256": "173ee99894a9a372e2ab6d39c569a74af701b9fc7ab2909fc2da1fac0f802316"
+      },
+      {
+        "source": "doc/CLIP_NUISANCE_STUDY.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_NUISANCE_STUDY.md",
+        "sha256": "b13179f13f852b3f0cfc7967d13d83be37cb7c78d905affb60f77bdb58814125"
+      },
+      {
+        "source": "doc/CLIP_PAIRVPR_CLS_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_PAIRVPR_CLS_DIAGNOSTIC.md",
+        "sha256": "dbee419e711246d39cc82db56ecb9ec97579da2f3b6c4255e5e5175b2016e1c0"
+      },
+      {
+        "source": "doc/CLIP_PAIRVPR_INTERFACE_AUDIT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_PAIRVPR_INTERFACE_AUDIT.md",
+        "sha256": "dd5a4fa7c927a521fa45ded009ea70c92095aff6728649f22b58303f71ac4b98"
+      },
+      {
+        "source": "doc/CLIP_PREBOQ_VARIATION_STUDY.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_PREBOQ_VARIATION_STUDY.md",
+        "sha256": "27172634a139b00e53150f2390e79c9f3ac12d0c3193452710795879dc87eab4"
+      },
+      {
+        "source": "doc/CLIP_SEMANTIC_ALIAS.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_SEMANTIC_ALIAS.md",
+        "sha256": "cc3609bbccc3b1ec19ba9ec8c4990d8c5284abc86082691762c9b58e2cb898bc"
+      },
+      {
+        "source": "doc/CLIP_SEMANTIC_POSITIVE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_SEMANTIC_POSITIVE.md",
+        "sha256": "033d4a0faf3ba9db9f9dcea5f74f04afc5519fc91bcf3c657b3719e4bff934d1"
+      },
+      {
+        "source": "doc/CLIP_TOKEN_CROSS.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_TOKEN_CROSS.md",
+        "sha256": "ae276c883ddae6959b852085274bf43a75492541072c824ece859006197b39e0"
+      },
+      {
+        "source": "doc/CLIP_TOKEN_DROP.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CLIP_TOKEN_DROP.md",
+        "sha256": "32ae0b4a4b1b007f07d5e46d5ddbbfedc5b988de9d85cfb243d12c3238e0962b"
+      },
+      {
+        "source": "doc/CODE_CHANGES.md",
+        "destination": "doc/历史实验归档/04_项目记录/CODE_CHANGES.md",
+        "sha256": "677cb8f4ea9b3f0dc0eee40b5eb6c8dbd484efdb325d7e995ce89ea846f182b9"
+      },
+      {
+        "source": "doc/COMPETITIVE_MECHANISM_AUDIT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/COMPETITIVE_MECHANISM_AUDIT.md",
+        "sha256": "915ff33f1f8db97db1c906d756671e9969f3c367e5595d2ed036a8516ff49687"
+      },
+      {
+        "source": "doc/COMPETITIVE_QUERY_SCREEN.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/COMPETITIVE_QUERY_SCREEN.md",
+        "sha256": "551fa301886d6455d8a96a709c34246c9c703a440623947776d686344b9103ef"
+      },
+      {
+        "source": "doc/COMPLEMENTARY_COVARIANCE_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/COMPLEMENTARY_COVARIANCE_V1.md",
+        "sha256": "55d78da1473cbf8e1fa9c40f76ec54bb87d2e4dcebca0ecc56c7e9b3394066fe"
+      },
+      {
+        "source": "doc/CONDITIONAL_COMPLEMENT_VPR.md",
+        "destination": "doc/创新点1/说明/CONDITIONAL_COMPLEMENT_VPR.md",
+        "sha256": "29a7f8960e7ef582281933f87caab937996cf8cb09bedbcdf01b15817c4c6226"
+      },
+      {
+        "source": "doc/CONSENSUS_EVIDENCE_AUDIT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CONSENSUS_EVIDENCE_AUDIT.md",
+        "sha256": "06ce37a66d2060a0c88e5b7e756e37af8e1a78874b866017bdc12d05d295ed83"
+      },
+      {
+        "source": "doc/CONSENSUS_MATCHING_PROPOSAL.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/CONSENSUS_MATCHING_PROPOSAL.md",
+        "sha256": "e621677c0e888928c74d2c04e4f111fbdc47f5d9168716697362fd4824de0edc"
+      },
+      {
+        "source": "doc/CONV_FUSION_CONTROLS.md",
+        "destination": "doc/创新点1/说明/CONV_FUSION_CONTROLS.md",
+        "sha256": "2db08e633c2e1641449b4b17bc5988dfea7c4c5bf3dc8189d6ef19f1e6662781"
+      },
+      {
+        "source": "doc/CONV_OFFICIAL_ADAPTATION.md",
+        "destination": "doc/创新点1/说明/CONV_OFFICIAL_ADAPTATION.md",
+        "sha256": "ffd9217ff1d7d2659a16291cf3484cecc9a0d0c5c1d32c110201eb78202eb7d5"
+      },
+      {
+        "source": "doc/CONV_OFFICIAL_BOQ_TRANSFER.md",
+        "destination": "doc/创新点1/说明/CONV_OFFICIAL_BOQ_TRANSFER.md",
+        "sha256": "31ed8b2a4681674178acc45b4b9177dfd2debe5b9a646d6d858e0bdb0ead236a"
+      },
+      {
+        "source": "doc/CONV_OFFICIAL_CAUSE_REVIEW.md",
+        "destination": "doc/创新点1/说明/CONV_OFFICIAL_CAUSE_REVIEW.md",
+        "sha256": "f9425129ee416afcfd5a3d7daf00ee8f01121dadf4f2eb09207189a1d36a0ce2"
+      },
+      {
+        "source": "doc/CONV_OFFICIAL_FIVE_CHECKS.md",
+        "destination": "doc/创新点1/说明/CONV_OFFICIAL_FIVE_CHECKS.md",
+        "sha256": "4323b1dde3dfe3c5ed5640a8c1e16a62fe301efd144ae7e27a39be234ef9eafe"
+      },
+      {
+        "source": "doc/CONV_OFFICIAL_LAYER_SELECTION.md",
+        "destination": "doc/创新点1/说明/CONV_OFFICIAL_LAYER_SELECTION.md",
+        "sha256": "3591fb1de43c25e82825fbb461aa34a289cbf7802719e83788943f0946df496c"
+      },
+      {
+        "source": "doc/CONV_RESIDUAL_ABLATION.md",
+        "destination": "doc/创新点1/说明/CONV_RESIDUAL_ABLATION.md",
+        "sha256": "33278ce3a3444d86fc0f2f154a176ed5a5ba2e4769347c840624a05b681a5c3f"
+      },
+      {
+        "source": "doc/CROP_CLS_SEMANTIC_FILM_BOQ.md",
+        "destination": "doc/历史实验归档/01_语义与区域/CROP_CLS_SEMANTIC_FILM_BOQ.md",
+        "sha256": "431b3ef96b0e16d1a4085251f49d82b1b2539aca549abc03e9dae0956c0a69e4"
+      },
+      {
+        "source": "doc/CROSS_RESOLUTION_DETAIL_V1_INTERIM.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CROSS_RESOLUTION_DETAIL_V1_INTERIM.md",
+        "sha256": "9bc0f9c00365e3fe8a21fde6a751697be6df5fb265eca8ef12aa62c1ccc0bd1c"
+      },
+      {
+        "source": "doc/CROSS_RESOLUTION_DETAIL_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CROSS_RESOLUTION_DETAIL_V1_RESULT.md",
+        "sha256": "9b7e95dd5af18279527ca4e1b8a2ac4850b9f916f64791aa9e256f85f65ed138"
+      },
+      {
+        "source": "doc/CROSS_RESOLUTION_DETAIL_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CROSS_RESOLUTION_DETAIL_V1_STATUS.md",
+        "sha256": "60e35ab617a384a521fb90db74891084256ac9ef98ecae14ee45aa5a659d3347"
+      },
+      {
+        "source": "doc/CV_SLOT_BOQ_PREPARED.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CV_SLOT_BOQ_PREPARED.md",
+        "sha256": "fbd3246bdfc2bf40da0a814f3b3a4df0e484ca3e7d16c42489fd10b90a0c4811"
+      },
+      {
+        "source": "doc/CV_SLOT_HARD_EXPERIMENT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CV_SLOT_HARD_EXPERIMENT.md",
+        "sha256": "e40f0f18e333aaecb98473c712559f41b81b2e744284d3a2f218917e74f49195"
+      },
+      {
+        "source": "doc/CV_SLOT_TEACHER_AUDIT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/CV_SLOT_TEACHER_AUDIT.md",
+        "sha256": "5f363de47dba74bc17a8846fdfd0119a58b8f4e0619fdc06e3ba32d84d06c7d3"
+      },
+      {
+        "source": "doc/D1.md",
+        "destination": "doc/历史实验归档/04_项目记录/D1.md",
+        "sha256": "896a176c306d412098754b517985b1c790a54b96c45016dc5117e439e0b3c8c4"
+      },
+      {
+        "source": "doc/D2.md",
+        "destination": "doc/历史实验归档/04_项目记录/D2.md",
+        "sha256": "0bfc405f00acfcc93b93e54ebe437a53fa6d9109ca0fc85b2de833a2844741b9"
+      },
+      {
+        "source": "doc/DC_VLAQ_LITE_EXPERIMENT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DC_VLAQ_LITE_EXPERIMENT.md",
+        "sha256": "c3d308c649f76b8d81fed9d46f59f0750d215f18ff41501bbcb90fa87e325e6c"
+      },
+      {
+        "source": "doc/DEPTH_QUERY_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/DEPTH_QUERY_SCREEN.md",
+        "sha256": "45a765db383112ef13436df6292666baa0eff2f57e8687c46edf5ef3bf78a31a"
+      },
+      {
+        "source": "doc/DISCRIMINATIVE_SUBSPACE_ADAPTATION_PROPOSAL.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/DISCRIMINATIVE_SUBSPACE_ADAPTATION_PROPOSAL.md",
+        "sha256": "13b54ed2afc67b2fccb031427fc3c2d69b9c1133f847551f19741005ccd0c8a6"
+      },
+      {
+        "source": "doc/DSA_PHASE0.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/DSA_PHASE0.md",
+        "sha256": "4b3099ba26001998e0219545e539415ef75869b8e030a23aa0882c27946fc53c"
+      },
+      {
+        "source": "doc/DSA_RETRIEVAL_CHECK.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/DSA_RETRIEVAL_CHECK.md",
+        "sha256": "501759b2bdf3275c9c32e04a2a567a42508fb4edb043a0a4abe053ec72d9e7f1"
+      },
+      {
+        "source": "doc/DSA_TRAINING_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/DSA_TRAINING_SCREEN.md",
+        "sha256": "e0a91e494ccdc62cfb21c5599c70e811b36c35714f10d1bbadea66a1107e50c2"
+      },
+      {
+        "source": "doc/DYNAMIC_CATEGORY_PRIOR_SCREEN.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_CATEGORY_PRIOR_SCREEN.md",
+        "sha256": "a982c2eac06a06a95a34b8df7561facbe3831af1de41316850fad87db336c39b"
+      },
+      {
+        "source": "doc/DYNAMIC_CHALLENGE_V2.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_CHALLENGE_V2.md",
+        "sha256": "674954c58caf6de71e702f714f6a3917693be542b63662ceb44891984f263fe0"
+      },
+      {
+        "source": "doc/DYNAMIC_CHALLENGE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_CHALLENGE.md",
+        "sha256": "3ca911eeece6d2dde85c57bc1fa348303b58ba5f793dca1c5983396039a7f6e8"
+      },
+      {
+        "source": "doc/DYNAMIC_INVARIANCE_MSLS.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_INVARIANCE_MSLS.md",
+        "sha256": "8c790d1f59f6f085a157c0510a27a4e2cda215d8044c67299096154339656f74"
+      },
+      {
+        "source": "doc/DYNAMIC_INVARIANCE_REASSESSMENT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_INVARIANCE_REASSESSMENT.md",
+        "sha256": "490c946e7127f143289499e75ec627a21030ded58519347be242c733bcb1f22b"
+      },
+      {
+        "source": "doc/DYNAMIC_MASK_REGIONS_AUDIT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_MASK_REGIONS_AUDIT.md",
+        "sha256": "4d3d596a4561eb1a765d287f3b399e76734cdccbf8a69ff48d2fb158fc5d3edc"
+      },
+      {
+        "source": "doc/DYNAMIC_MASK_VISUAL_REVIEW.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_MASK_VISUAL_REVIEW.md",
+        "sha256": "2f80c17f029ff6f757a91e462c999ba911a0250443f11d8694866e3c5ed39612"
+      },
+      {
+        "source": "doc/DYNAMIC_MECHANISM_PROBE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/DYNAMIC_MECHANISM_PROBE.md",
+        "sha256": "46d3bc19337c3b25a53509446d1281cc3e8cd498737693a5bb10863b2a0cdcac"
+      },
+      {
+        "source": "doc/empty_regions.json",
+        "destination": "doc/历史实验归档/保留输入/empty_regions.json",
+        "sha256": "bfcf4fdb90ee68cae5b34ce6a95c2d42a7e733856439b321608906419554f7b9"
+      },
+      {
+        "source": "doc/EXPERIMENT_GUIDE.md",
+        "destination": "doc/历史实验归档/04_项目记录/EXPERIMENT_GUIDE.md",
+        "sha256": "7fe6fa0a5cdbd17d2345ba0fed77e43b947e0eba998b40d24d7a2cc0ec49da04"
+      },
+      {
+        "source": "doc/FULL_GALLERY_SUPERVISION_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/FULL_GALLERY_SUPERVISION_V1_RESULT.md",
+        "sha256": "5d6c59eabfb1d34311d152d9e749ed959a6d327525f6ece7e6ea8c6098dd221b"
+      },
+      {
+        "source": "doc/FULL_GALLERY_SUPERVISION_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/FULL_GALLERY_SUPERVISION_V1_STATUS.md",
+        "sha256": "60c720bab2d21cca3cae31045e9dbfd26645c9e1839d5838b89daf84006877d2"
+      },
+      {
+        "source": "doc/HARD_CHANNEL_BATCH_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/HARD_CHANNEL_BATCH_V1.md",
+        "sha256": "00c71ab613a0111a10188aad08a817a85a0c23f89e4b2bc1793335f68f111424"
+      },
+      {
+        "source": "doc/HCEN_AUX_ABLATION.md",
+        "destination": "doc/创新点1/说明/HCEN_AUX_ABLATION.md",
+        "sha256": "fa37360366fa8a2015b6231a820b3bf33b8890d77290e778ffed1a1551f908d9"
+      },
+      {
+        "source": "doc/HCEN_MODULE_ABLATION.md",
+        "destination": "doc/创新点1/说明/HCEN_MODULE_ABLATION.md",
+        "sha256": "6ef7409b137d66234ed6c2e1af4286bfc531f6eb07cedf7310d6e89f935bd23b"
+      },
+      {
+        "source": "doc/HCEN_PLAIN_BASE.md",
+        "destination": "doc/创新点1/说明/HCEN_PLAIN_BASE.md",
+        "sha256": "7fead8b656f0b420a6b050a5658d0e9e74d604dcc5a44cbb3ba8bf212ca466e9"
+      },
+      {
+        "source": "doc/HCEN_SIMPLIFIED_FOLLOWUP.md",
+        "destination": "doc/创新点1/说明/HCEN_SIMPLIFIED_FOLLOWUP.md",
+        "sha256": "e3d09f8dc791663321e81a4003f63b84a90d17016baf6487693a67e6f99ac0f9"
+      },
+      {
+        "source": "doc/HCEN_VPR.md",
+        "destination": "doc/创新点1/说明/HCEN_VPR.md",
+        "sha256": "f7ebeac0a221c318b63bcc85fa23a7a14be35e6976b5738ae07eb37f9d1d91cb"
+      },
+      {
+        "source": "doc/HETERO_INTERLEAVE_VPR.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/HETERO_INTERLEAVE_VPR.md",
+        "sha256": "ff06056d0592f3512ca937648397eb07a0c2c84b18d2050fe33dd1314f25a5a4"
+      },
+      {
+        "source": "doc/IMAGE_NEGATIVE_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/IMAGE_NEGATIVE_V1.md",
+        "sha256": "246176f9920de68680cc94c00905a35d0c8c0ccd548f3f28f8cf46fc6925a142"
+      },
+      {
+        "source": "doc/JOINT_LOCAL_REFINE_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/JOINT_LOCAL_REFINE_V1_RESULT.md",
+        "sha256": "5d4e7e116a9d82f3d7056c9184b0e6dd5bfe77b758e97ff0292b511969658d93"
+      },
+      {
+        "source": "doc/JOINT_LOCAL_REFINE_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/JOINT_LOCAL_REFINE_V1_STATUS.md",
+        "sha256": "f255bbc76b57aac598a1598e994f597b8dbfef4fdb145ad141e9f764da3c70a6"
+      },
+      {
+        "source": "doc/KEY_VALUE_COADAPT_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/KEY_VALUE_COADAPT_V1_RESULT.md",
+        "sha256": "f51020677c08b5794e10ef6f3c5be88ce7fd9fa289f79bbe27b3de3442ada232"
+      },
+      {
+        "source": "doc/KEY_VALUE_COADAPT_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/KEY_VALUE_COADAPT_V1_STATUS.md",
+        "sha256": "06b39f343ffe21082e15f5d37a7ef9b69a41612e9092f3ce7b8a74dd53d5f5f3"
+      },
+      {
+        "source": "doc/LOCAL_CONTRAST_VALUE_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/LOCAL_CONTRAST_VALUE_SCREEN.md",
+        "sha256": "ae84de61c63a248450dbc8f501bf8fbb4c93c627b63c18afe8d24b00cbad1a23"
+      },
+      {
+        "source": "doc/LOCAL_VALUE_INITIALIZATION_REPEAT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/LOCAL_VALUE_INITIALIZATION_REPEAT.md",
+        "sha256": "d277502af5e7e45878153bb8dbb676b10dfe81a7b997de8eaa119523b4fa6fe4"
+      },
+      {
+        "source": "doc/mask_audit.json",
+        "destination": "doc/历史实验归档/保留输入/mask_audit.json",
+        "sha256": "44eeaf236674076f611d057b3d1bf164ea32b6c549f45f2595da5b181459b9a6"
+      },
+      {
+        "source": "doc/MOMENT_CHANNEL_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/MOMENT_CHANNEL_V1_RESULT.md",
+        "sha256": "b6b56575dd6b7ce66be8dbe2c345a8f23d3e353780e027c97452a057fd5753c9"
+      },
+      {
+        "source": "doc/MOMENT_CHANNEL_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/MOMENT_CHANNEL_V1_STATUS.md",
+        "sha256": "1aef5bdac48af74afa48c5b1022c0721aacba04d51a4c2a76111cee2b6810ccc"
+      },
+      {
+        "source": "doc/NONSEMANTIC_VPR_RESEARCH_DIRECTIONS.md",
+        "destination": "doc/历史实验归档/04_项目记录/NONSEMANTIC_VPR_RESEARCH_DIRECTIONS.md",
+        "sha256": "61183f707606e3f1b35642abb749fbe7842fd9e8cca146148e758a8742c8950c"
+      },
+      {
+        "source": "doc/ORIGINAL_CHANNEL_TRANSFER_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/ORIGINAL_CHANNEL_TRANSFER_V1_RESULT.md",
+        "sha256": "efbf0eafd4a7fc6de46ce63f2f784607ba6657e5ed1f74c87cf45239150dd704"
+      },
+      {
+        "source": "doc/ORIGINAL_CHANNEL_TRANSFER_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/ORIGINAL_CHANNEL_TRANSFER_V1_STATUS.md",
+        "sha256": "72b66f0a09712656cd1285daa499a9af261a1a123cab0f09693d697acbd8230d"
+      },
+      {
+        "source": "doc/PAIR_VPR_CANDIDATE_UNION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_CANDIDATE_UNION.md",
+        "sha256": "65ca197d741d740a42aa0bd62e730d71cb499716591e4a7430839b48b723da13"
+      },
+      {
+        "source": "doc/PAIR_VPR_CASE_REVIEW.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_CASE_REVIEW.md",
+        "sha256": "a941d6854657789a3e4406ce9fa00527d33b48bc1699c7d0f238714546e5e855"
+      },
+      {
+        "source": "doc/PAIR_VPR_GEOMETRY_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_GEOMETRY_DIAGNOSTIC.md",
+        "sha256": "ce778d339676d0ecdf42ad30ea8b2f5bc3d2eb252e0d1a0fadf2e900a35cb6e4"
+      },
+      {
+        "source": "doc/PAIR_VPR_LOCAL_MATCH_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_LOCAL_MATCH_DIAGNOSTIC.md",
+        "sha256": "c836c30485a5795c0ff43e04d64097f26ff362d3991d5f28ae5a73e93099cecd"
+      },
+      {
+        "source": "doc/PAIR_VPR_OFFICIAL_REPRODUCTION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_OFFICIAL_REPRODUCTION.md",
+        "sha256": "15067b4a0720b3418768d1b3b5e32489345b594b9bf3509cfbf9f2abc641952d"
+      },
+      {
+        "source": "doc/PAIR_VPR_PAIRED_AUDIT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_PAIRED_AUDIT.md",
+        "sha256": "e92941739ae061d388fb8c4bde9aba4aca9b7d7f6065dcebcface6fb1a73d0a5"
+      },
+      {
+        "source": "doc/PAIR_VPR_VISUAL_REVIEW_NOTES.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PAIR_VPR_VISUAL_REVIEW_NOTES.md",
+        "sha256": "48662a4db5caedae8784cf5e7d79f98c85bdf90607b4a6a8daa6da2e2fcd8f4a"
+      },
+      {
+        "source": "doc/PARTIAL_MATCHING_DECODER.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PARTIAL_MATCHING_DECODER.md",
+        "sha256": "a55b0e355f3874d17bd5499370befb8b4b309d9df606614f7c2cbe32f5b3e213"
+      },
+      {
+        "source": "doc/PITTS_PAIR_ADMISSION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PITTS_PAIR_ADMISSION.md",
+        "sha256": "68be7b728713d61926dba8cbb0176919cc0919575dbd295d743d73f3844d4097"
+      },
+      {
+        "source": "doc/PITTS_TOP44_CONFIRMATION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PITTS_TOP44_CONFIRMATION.md",
+        "sha256": "6d05ce69feeef29935ff3d985005eb4819c5deaebc0c8923ad882029aad9780e"
+      },
+      {
+        "source": "doc/PMD_CORRESPONDENCE_GATE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PMD_CORRESPONDENCE_GATE.md",
+        "sha256": "f89dd2a678d6c931105f7d70126df4e5b343715c84c1b95f0c7925da81ec4bf0"
+      },
+      {
+        "source": "doc/PMD_DECOUPLED_GATE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/PMD_DECOUPLED_GATE.md",
+        "sha256": "0d5c4532b11db58b2420f416138bd9b07bc5eea4d75e31d165f8e22cfbf2479e"
+      },
+      {
+        "source": "doc/PROTECTED_MAMBA_BOQ.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/PROTECTED_MAMBA_BOQ.md",
+        "sha256": "3fdcf78369c51fd3e20f858676b55cc2ea4aa112e846b302febfe58e074381bf"
+      },
+      {
+        "source": "doc/QUERY_CONDITIONED_SEMANTIC_BOQ.md",
+        "destination": "doc/历史实验归档/01_语义与区域/QUERY_CONDITIONED_SEMANTIC_BOQ.md",
+        "sha256": "b338f7fc262a00766f82a56bb19c93c720ac38b51aea5e2323a2d1b2706f1d24"
+      },
+      {
+        "source": "doc/QUERY_PROTOCOL_LOSS_AUDIT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/QUERY_PROTOCOL_LOSS_AUDIT.md",
+        "sha256": "832032de193a5dfa4062ec07d6929c1c8305498fa1e0ae020dcbae74eb6b5a6d"
+      },
+      {
+        "source": "doc/QUERY_PROTOCOL_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/QUERY_PROTOCOL_SCREEN.md",
+        "sha256": "ff3e62437cb5af2195813ff6c1770b49508af80e4f184ad496711b0932f734eb"
+      },
+      {
+        "source": "doc/QUERY_RELATION_BOQ_PROPOSAL.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/QUERY_RELATION_BOQ_PROPOSAL.md",
+        "sha256": "ae1a1d013bbe4be41fb30b3d143601cf3058cd8cc23859c0173b815b68ef19ec"
+      },
+      {
+        "source": "doc/QUERY_RELATION_FIXED_LAST_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/QUERY_RELATION_FIXED_LAST_SCREEN.md",
+        "sha256": "fde73d2dccc6f86642825336213e7e41a17bc1e039ca03b1e3d24e7926e6d3a8"
+      },
+      {
+        "source": "doc/REGION_PAIR_LITE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/REGION_PAIR_LITE.md",
+        "sha256": "cb31a79526e42b81fa85c8b5f1086422ebd6005d17bea873665933b53a64715d"
+      },
+      {
+        "source": "doc/RELATION_METRIC_TRAIN_AUDIT_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/RELATION_METRIC_TRAIN_AUDIT_V1.md",
+        "sha256": "11d81e967871724f8d46f58dd44860cbe96b067aa7f3f89b3ff7d21c5d8fc6a3"
+      },
+      {
+        "source": "doc/RELATION_METRIC_V1_PROPOSAL.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/RELATION_METRIC_V1_PROPOSAL.md",
+        "sha256": "36cd60d5608277dae211b0b6eb343d17100f35b4bb028460e34bb5c36b1ed4e5"
+      },
+      {
+        "source": "doc/RELATION_METRIC_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/RELATION_METRIC_V1_RESULT.md",
+        "sha256": "907fa69ae42bb1cb5175bdce99a2f35fb951784b5f397359bc41ca485cfae944"
+      },
+      {
+        "source": "doc/RESNET_MODULE_TRANSFER.md",
+        "destination": "doc/创新点1/说明/RESNET_MODULE_TRANSFER.md",
+        "sha256": "717efeacb687df83778241da960e48f0ad1a51591a7405a273619e3752a4773e"
+      },
+      {
+        "source": "doc/RSCD_BOQ_EXPERIMENT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/RSCD_BOQ_EXPERIMENT.md",
+        "sha256": "3628c64e42ac02b0e2547652e7eac03c68f64025ccf5cc7617af02c6b60d9534"
+      },
+      {
+        "source": "doc/SAM_CLIP_RAW_PRIOR.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SAM_CLIP_RAW_PRIOR.md",
+        "sha256": "947a45edb146fa962f51c57beac67575ce634561f6c93e22594ba40d12a15f5d"
+      },
+      {
+        "source": "doc/SCALE_AGREEMENT_FUSION_V1_RESULT.md",
+        "destination": "doc/创新点2/说明/SCALE_AGREEMENT_FUSION_V1_RESULT.md",
+        "sha256": "c7f7b3252f76465f303f1b115a2e71efaf666108c22918bd7b566721e893cd55"
+      },
+      {
+        "source": "doc/SCALE_AGREEMENT_FUSION_V1_STATUS.md",
+        "destination": "doc/创新点2/说明/SCALE_AGREEMENT_FUSION_V1_STATUS.md",
+        "sha256": "7d5b7da6d05bf02a8263fe6d4c20bf49f4b1b56846d9e5ed827849e34f66d8b0"
+      },
+      {
+        "source": "doc/SCALE_AGREEMENT_REPEAT_V1_RESULT.md",
+        "destination": "doc/创新点2/说明/SCALE_AGREEMENT_REPEAT_V1_RESULT.md",
+        "sha256": "4b287ab8697620f768476594aadb8a7eaf41d84e61706a4fb483faffa154e9d4"
+      },
+      {
+        "source": "doc/SCALE_AGREEMENT_REPEAT_V1_STATUS.md",
+        "destination": "doc/创新点2/说明/SCALE_AGREEMENT_REPEAT_V1_STATUS.md",
+        "sha256": "7deea0af2e3c73971945c8b17a459198c857cb6cb477d871023b6ae74ed4eb92"
+      },
+      {
+        "source": "doc/SCALE_FACTORIAL_V1_RESULT.md",
+        "destination": "doc/创新点2/说明/SCALE_FACTORIAL_V1_RESULT.md",
+        "sha256": "629575a8e922dee3705e498b0a06da8799bc158f717f8632a886177b74b67227"
+      },
+      {
+        "source": "doc/SCALE_FACTORIAL_V1_STATUS.md",
+        "destination": "doc/创新点2/说明/SCALE_FACTORIAL_V1_STATUS.md",
+        "sha256": "f09258dda5452dfdfb80dbdf304242af027df75812ad775ce464838a24ac38b4"
+      },
+      {
+        "source": "doc/SCALE_GATE_AI_HANDOFF_V1.md",
+        "destination": "doc/创新点2/说明/SCALE_GATE_AI_HANDOFF_V1.md",
+        "sha256": "b8dbd68980c1be221b2fbc371a235e85472038daf679929f289bab07665ccdd6"
+      },
+      {
+        "source": "doc/SCALE_GATE_PATENT_DRAFT_V1.md",
+        "destination": "doc/创新点2/说明/SCALE_GATE_PATENT_DRAFT_V1.md",
+        "sha256": "e4a6386be062caa665be412984332d300ffed18d61ee05d3aa3b56b6cceb888c"
+      },
+      {
+        "source": "doc/scale_gate_patent_handoff_v1.zip",
+        "destination": "doc/创新点2/说明/scale_gate_patent_handoff_v1.zip",
+        "sha256": "b993c1f3ffa217852891a414e56ed3a3b1d59202342a9a0d1aec4ac483e9e9ae"
+      },
+      {
+        "source": "doc/SCALE_GATE_PRIOR_ART_NOTES_V1.md",
+        "destination": "doc/创新点2/说明/SCALE_GATE_PRIOR_ART_NOTES_V1.md",
+        "sha256": "37de0f123088b1afd4a1a01c4d59797d3c0ecb6df1ec431a03af13c8145cdb7a"
+      },
+      {
+        "source": "doc/SCALE_GATE_TECHNICAL_DISCLOSURE_V1.md",
+        "destination": "doc/创新点2/说明/SCALE_GATE_TECHNICAL_DISCLOSURE_V1.md",
+        "sha256": "d336dc4d9c4e9d58748aa277b00a295a14e732a83527e07e198dd89aca78aa99"
+      },
+      {
+        "source": "doc/SCALE_RELIABILITY_GATE_V1_RESULT.md",
+        "destination": "doc/创新点2/说明/SCALE_RELIABILITY_GATE_V1_RESULT.md",
+        "sha256": "b234aeb98624f1f0527bacdb9144d0c5a64f9f5c6ab40887bf548a0b1ce5baf1"
+      },
+      {
+        "source": "doc/SCALE_RELIABILITY_GATE_V1_STATUS.md",
+        "destination": "doc/创新点2/说明/SCALE_RELIABILITY_GATE_V1_STATUS.md",
+        "sha256": "e8c7cc5743965548a30b44a2662f5532087d11277a5500d99e5cb188fc8c7cf1"
+      },
+      {
+        "source": "doc/SCAN_MAMBA_BOQ.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SCAN_MAMBA_BOQ.md",
+        "sha256": "acd0521d4990d22e67ef6419ee8a8c57a41e55ee875dac733f5a6f1b632ea5e0"
+      },
+      {
+        "source": "doc/SCENE_TEXT_IDENTITY_PAIR_VPR.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/SCENE_TEXT_IDENTITY_PAIR_VPR.md",
+        "sha256": "34be7da2be644b280a0df7a28361433a3d49ec9eaccb4c85b10d5eab964ac51d"
+      },
+      {
+        "source": "doc/SECOND_ORDER_QUERY_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SECOND_ORDER_QUERY_SCREEN.md",
+        "sha256": "323ed239c43b473bbeaa1ef00f83265207d2ee6367225c76cf260afdb54587fa"
+      },
+      {
+        "source": "doc/SECOND_ORDER_TRAINING_AUDIT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SECOND_ORDER_TRAINING_AUDIT.md",
+        "sha256": "cc29f58bf80d6a0b15a47928ad235bc660d07718f179020901522e5def165779"
+      },
+      {
+        "source": "doc/SEG_AUX_BOQ.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEG_AUX_BOQ.md",
+        "sha256": "052236133b8b0ffab720bbd56635081a87449b8dbcee368f4759268de3b2d3d8"
+      },
+      {
+        "source": "doc/SEG_AUX_RESULTS_ARCHIVE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEG_AUX_RESULTS_ARCHIVE.md",
+        "sha256": "b4b07d1fcdede2860bf39e2b523a25c6196989be11a710e31e083ca98a5c315f"
+      },
+      {
+        "source": "doc/SEGVLAD_OFFICIAL_CHECK.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEGVLAD_OFFICIAL_CHECK.md",
+        "sha256": "555e477ff9cd900cf1b718956ab63624737977133c98649ed5d2f731c86ab3e8"
+      },
+      {
+        "source": "doc/SEGVLAD_PAIRED.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEGVLAD_PAIRED.md",
+        "sha256": "83f6dd2be84ffc129cb2d85ee1a262f91ebf448660237b69d2b4f44f22afb46b"
+      },
+      {
+        "source": "doc/SEMANTIC_REGION_EXPERIMENT.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEMANTIC_REGION_EXPERIMENT.md",
+        "sha256": "1d481b8c8cf09fa89a63287f0d7c810a74257b574aae7e206df2ca6edce72105"
+      },
+      {
+        "source": "doc/SEMANTIC_REGION_STUDY.md",
+        "destination": "doc/历史实验归档/01_语义与区域/SEMANTIC_REGION_STUDY.md",
+        "sha256": "29fcd741283063adb1d198769d7a93e310ad7686280d6894f4ae219d9982b6f6"
+      },
+      {
+        "source": "doc/SINGLE_DINO_CENTERED_V2_EVAL.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SINGLE_DINO_CENTERED_V2_EVAL.md",
+        "sha256": "31067904a072ee68dd7cec1d4b0ba6475af99bd6b9d9b4d7b634e343942e4b5d"
+      },
+      {
+        "source": "doc/SINGLE_DINO_DIAGNOSIS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SINGLE_DINO_DIAGNOSIS.md",
+        "sha256": "ada1478ce6f28895914cb307372df2ea6ed19930b5be31136f7d46d51341014b"
+      },
+      {
+        "source": "doc/SINGLE_DINO_INTERACTION.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SINGLE_DINO_INTERACTION.md",
+        "sha256": "920a8d012b532f244e55a409c11c2d9b235a4c2f8e7a7e1e99049e11ef1cf19d"
+      },
+      {
+        "source": "doc/SINGLE_DINO_SUPERVISION_V2.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SINGLE_DINO_SUPERVISION_V2.md",
+        "sha256": "03bd2a31c67b997b59710c1e8876a20533d374e0a5812904e1153c3925744309"
+      },
+      {
+        "source": "doc/SLGD_DECOMPOSITION.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SLGD_DECOMPOSITION.md",
+        "sha256": "8564a06beffb1992014ec6d987d5d80da9f8c4b3a57cc5f8665948bd0b84fe1c"
+      },
+      {
+        "source": "doc/SLGD_HARD_AUDIT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SLGD_HARD_AUDIT.md",
+        "sha256": "1c36efb4b6d8243cb51f589e31716566a85bea6409a715a6885c96298d770e62"
+      },
+      {
+        "source": "doc/SLGD_LAYER_DIAGNOSTIC.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SLGD_LAYER_DIAGNOSTIC.md",
+        "sha256": "ce090a44bff21af9e3f7f070d1ed9bec9878330d5b52fd9c123a747c05c157e5"
+      },
+      {
+        "source": "doc/SLGD_MID_SUPERVISION.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SLGD_MID_SUPERVISION.md",
+        "sha256": "6d779ffa70b10fcffb4108835e733e64de8f60cf98b666bb7f32155bbb92ada5"
+      },
+      {
+        "source": "doc/SLGD_SCREEN.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SLGD_SCREEN.md",
+        "sha256": "a7cb8eb9e9ed10170134086aca93789e988441ecb6b4ce3bbd4fa95f832dd381"
+      },
+      {
+        "source": "doc/SPATIAL_ADAPTER_REPEAT_STUDY.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SPATIAL_ADAPTER_REPEAT_STUDY.md",
+        "sha256": "2a27027351129c768e18ba3f4b35889ee97ee73a9f1b0a04a84ebf7ee6ea389f"
+      },
+      {
+        "source": "doc/SPATIAL_RESAMPLE_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SPATIAL_RESAMPLE_V1_RESULT.md",
+        "sha256": "317c0d54be478f9cc7a9f2b57ee234972a6757f8780ca64d434bc5e0926af0ba"
+      },
+      {
+        "source": "doc/SPATIAL_RESAMPLE_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SPATIAL_RESAMPLE_V1_STATUS.md",
+        "sha256": "e948a806071dc63774e814bca2cd440ce969dc4c90acc953f1f87d7b21b7a1b1"
+      },
+      {
+        "source": "doc/SPATIAL_SAMPLING_AUDIT_V1_RESULT.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SPATIAL_SAMPLING_AUDIT_V1_RESULT.md",
+        "sha256": "47157a015cb089f96e2c2fec25b629cc19a28abcb5dcfe24db51643dca71a644"
+      },
+      {
+        "source": "doc/SPATIAL_SAMPLING_AUDIT_V1_STATUS.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/SPATIAL_SAMPLING_AUDIT_V1_STATUS.md",
+        "sha256": "70fd68d873d568fa0ada7639c8b57159a37008d0d606efd2018c2612918fba56"
+      },
+      {
+        "source": "doc/STATIC_EVIDENCE.md",
+        "destination": "doc/历史实验归档/01_语义与区域/STATIC_EVIDENCE.md",
+        "sha256": "d864174cf0f63e9bcec936cbf50eda0edc6ffc913783766e56f17525e87b925f"
+      },
+      {
+        "source": "doc/STRUCTURAL_CHANNEL_V1.md",
+        "destination": "doc/历史实验归档/03_结构适配与训练/STRUCTURAL_CHANNEL_V1.md",
+        "sha256": "c0f1a98f79369fc6210071bf8db33066d3e1174d29325142daac575f33b8a5c2"
+      },
+      {
+        "source": "doc/VISUAL_FIRST_SEMANTIC_PAIR_VERIFICATION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/VISUAL_FIRST_SEMANTIC_PAIR_VERIFICATION.md",
+        "sha256": "ff749eae523df932525440bd2ed975b8973063014a46d6e813a86b1dd5535a69"
+      },
+      {
+        "source": "doc/VISUAL_PAIR_HARD_SCREEN.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/VISUAL_PAIR_HARD_SCREEN.md",
+        "sha256": "cddd19c702c020d93c0c178cd0c8b71d101a5eea81e687595e69c6c785d39fc0"
+      },
+      {
+        "source": "doc/VISUAL_PAIR_RESULTS_ARCHIVE.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/VISUAL_PAIR_RESULTS_ARCHIVE.md",
+        "sha256": "ac15b67751ffaa0371757bc39d5c4183983ed9e11e4cde22e434810b6920c611"
+      },
+      {
+        "source": "doc/VISUAL_PAIR_RUNBOOK.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/VISUAL_PAIR_RUNBOOK.md",
+        "sha256": "f5cbaf404ed174a8df7cc74ba49a426e94e468949a05f8bc4ea11d389b0b29b0"
+      },
+      {
+        "source": "doc/VPR_AI_HANDOFF_20260915.md",
+        "destination": "doc/历史实验归档/04_项目记录/VPR_AI_HANDOFF_20260915.md",
+        "sha256": "9ed6204769b232ea23e1f848453cd01f23c2d27efa0ad8ff1b5ebf62d1a27279"
+      },
+      {
+        "source": "doc/VPR_GUIDED_SEMANTIC.md",
+        "destination": "doc/历史实验归档/01_语义与区域/VPR_GUIDED_SEMANTIC.md",
+        "sha256": "4668cebd6fb176275858005dcb9a51e7a219ceb972ddc24b0e2f265585458f82"
+      },
+      {
+        "source": "doc/VPR_Plan.md",
+        "destination": "doc/历史实验归档/04_项目记录/VPR_Plan.md",
+        "sha256": "ae85616a89657f59cb72a1538d1d224255369448ccce071afc03c948d31aea7c"
+      },
+      {
+        "source": "doc/VPR_SEMANTIC_RELIABILITY.md",
+        "destination": "doc/历史实验归档/01_语义与区域/VPR_SEMANTIC_RELIABILITY.md",
+        "sha256": "8719b3bed198793ecb74a2f7e27281ef336f641ba2c7f4cc8c256286eb6fe12c"
+      },
+      {
+        "source": "doc/WPPR_EXTENSION.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/WPPR_EXTENSION.md",
+        "sha256": "7cd680c40283e3cb38b5dd2bd55a800618b49f7735b138cf7ad747e2f15d13ce"
+      },
+      {
+        "source": "doc/WPPR_PILOT.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/WPPR_PILOT.md",
+        "sha256": "00f5b777bed0092c03304461f369c5b753cb33a453135ed29f7eb835d0ae83ff"
+      },
+      {
+        "source": "doc/WPPR_PITTS_TRANSFER.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/WPPR_PITTS_TRANSFER.md",
+        "sha256": "a00173a4c15c8b9c73743ee92f9422d93ae2113edd15550731fd041b3a728a07"
+      },
+      {
+        "source": "doc/WPPR_RUNTIME.md",
+        "destination": "doc/历史实验归档/02_候选与重排序/WPPR_RUNTIME.md",
+        "sha256": "9c4fe5e81850d876f6d869beb9f5d7a8659084262b5dc2b54a7ae80e0b127160"
+      },
+      {
+        "source": "doc/scale_gate_patent_handoff_v1",
+        "destination": "doc/创新点2/交接包",
+        "sha256": ""
+      },
+      {
+        "source": "doc/candidate_set_plan_v1",
+        "destination": "doc/历史实验归档/保留输入/candidate_set_plan_v1",
+        "sha256": ""
+      },
+      {
+        "source": "doc/dynamic_mechanism_cases_v1",
+        "destination": "doc/历史实验归档/保留输入/dynamic_mechanism_cases_v1",
+        "sha256": ""
+      },
+      {
+        "source": "doc/dynamic_invariance_train_v1",
+        "destination": "doc/历史实验归档/保留权重/dynamic_invariance_train_v1",
+        "sha256": ""
+      }
+    ],
+    "remote_touched": false,
+    "source_code_changed": false,
+    "git_history_rewritten": false
+  },
+  "link_adjustments": {
+    "moved_documents_with_relative_link_adjustments": 18,
+    "broken_current_links": 0,
+    "legacy_hashed_protocols_untouched": true
+  },
+  "additional_cleanup": {
+    "duplicate_report_transfers": 6,
+    "duplicate_old_git_bundle": {
+      "path": ".cache/sync/cc_lsa_0c4ad6c.bundle",
+      "bytes": 36537507,
+      "all_advertised_refs_retained_in_head": true
+    },
+    "regenerable_test_dependency_cache": {
+      "path": ".cache/cc_lsa_test_deps",
+      "bytes": 11961154
+    },
+    "generated_pdf_pngs": {
+      "count": 12,
+      "bytes": 6846569,
+      "source_pdf_files_retained": true
+    },
+    "early_raw_markdown_logs": {
+      "count": 14,
+      "original_content_retained_in_verified_root_docs_zip": true
+    }
+  },
+  "recovery_note": "本次已验证完整ZIP为恢复依据。当前未找到初次清理匹配回收站记录，撤回初次回收站恢复保证。",
+  "trained": false,
+  "local_model_tests_run": false,
+  "original_model_code_changed": false,
+  "training_machine_touched": false,
+  "committed_or_pushed": false
+}

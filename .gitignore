@@ -30,3 +30,38 @@ logs/
 config/data/config.yaml 
 
 datasets/
+
+# Experiment artifacts stay local. Keep authored root documentation in Git.
+# Do not force-add raw report directories: publish curated findings as Markdown.
+/doc/*
+!/doc/*.md
+# Required by frozen Pair-VPR loaders; retain this complete provenance bundle.
+!/doc/pairvpr_official_paired_audit_v1/
+
+# Curated historical findings only; raw run directories remain ignored.
+!/doc/历史实验归档/
+/doc/历史实验归档/**
+!/doc/历史实验归档/*.md
+!/doc/历史实验归档/*指标.json
+!/doc/历史实验归档/清理计划.json
+!/doc/历史实验归档/清理清单.json
+!/doc/历史实验归档/清理回执.json
+!/doc/历史实验归档/**/
+!/doc/历史实验归档/**/*.md
+!/doc/历史实验归档/二次整理*.json
+
+# Authored innovation notes are versioned; evidence ZIPs and private PDFs are local.
+!/doc/创新点1/
+/doc/创新点1/*
+!/doc/创新点1/*.md
+!/doc/创新点1/说明/
+!/doc/创新点1/说明/*.md
+!/doc/创新点2/
+/doc/创新点2/*
+!/doc/创新点2/*.md
+!/doc/创新点2/说明/
+/doc/创新点2/说明/*
+!/doc/创新点2/说明/*.md
+!/doc/创新点2/证据包/
+/doc/创新点2/证据包/*
+!/doc/创新点2/证据包/README.md

@@ -1,0 +1,859 @@
+{
+  "schema": "local_experiment_cleanup_manifest_v1",
+  "date": "2026-10-29",
+  "workspace": "D:\\Desktop\\MyVPR",
+  "mode": "Windows_Recycle_Bin",
+  "remote_touched": false,
+  "summary_scope": "Curated metrics retain counts and notes, not raw query evidence or original completion seals",
+  "targets": [
+    {
+      "path": "doc/anchor_deficit_v1_server",
+      "category": "结构适配与训练",
+      "files": 21,
+      "bytes": 20601931,
+      "summary_files": 5,
+      "note_files": 0
+    },
+    {
+      "path": "doc/channel_rank_fusion_v1",
+      "category": "结构适配与训练",
+      "files": 7,
+      "bytes": 19932517,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/channel_reliability_v1_server",
+      "category": "结构适配与训练",
+      "files": 19,
+      "bytes": 167051,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/full_gallery_supervision_v1_server",
+      "category": "结构适配与训练",
+      "files": 25,
+      "bytes": 20046191,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/image_negative_v1_server",
+      "category": "结构适配与训练",
+      "files": 13,
+      "bytes": 23961672,
+      "summary_files": 2,
+      "note_files": 1
+    },
+    {
+      "path": "doc/joint_local_refine_v1_server",
+      "category": "结构适配与训练",
+      "files": 25,
+      "bytes": 20032047,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/key_value_coadapt_v1_server",
+      "category": "结构适配与训练",
+      "files": 25,
+      "bytes": 20048910,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/moment_channel_v1_server",
+      "category": "结构适配与训练",
+      "files": 24,
+      "bytes": 20029241,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/original_channel_transfer_v1_server",
+      "category": "结构适配与训练",
+      "files": 24,
+      "bytes": 20030483,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/relation_metric_train_audit_v1",
+      "category": "结构适配与训练",
+      "files": 5,
+      "bytes": 18368021,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/relation_metric_v1_server",
+      "category": "结构适配与训练",
+      "files": 16,
+      "bytes": 23970933,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/single_dino_diagnosis_v1",
+      "category": "结构适配与训练",
+      "files": 5,
+      "bytes": 146567,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/spatial_resample_v1_server",
+      "category": "结构适配与训练",
+      "files": 25,
+      "bytes": 16047549,
+      "summary_files": 3,
+      "note_files": 0
+    },
+    {
+      "path": "doc/spatial_sampling_audit_v1_server",
+      "category": "结构适配与训练",
+      "files": 20,
+      "bytes": 31994677,
+      "summary_files": 2,
+      "note_files": 0
+    },
+    {
+      "path": "doc/static_evidence_report_v1",
+      "category": "语义与区域",
+      "files": 8,
+      "bytes": 1828667,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/adaptive_pair_budget_v1",
+      "category": "候选与重排序",
+      "files": 5,
+      "bytes": 3677486,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_hard_exploratory_report_v1",
+      "category": "候选与重排序",
+      "files": 14,
+      "bytes": 7610174,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_hard_last_diagnostic_v1",
+      "category": "候选与重排序",
+      "files": 13,
+      "bytes": 4939402,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_hard_mining_v1",
+      "category": "候选与重排序",
+      "files": 6,
+      "bytes": 6352993,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_margin_cap_report_v1",
+      "category": "候选与重排序",
+      "files": 23,
+      "bytes": 18018605,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_margin_preserve_report_v1",
+      "category": "候选与重排序",
+      "files": 23,
+      "bytes": 18019581,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_multiview_budget_v1",
+      "category": "候选与重排序",
+      "files": 4,
+      "bytes": 3547674,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_reference_graph_audit_v1",
+      "category": "候选与重排序",
+      "files": 9,
+      "bytes": 16347128,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_reference_oracle_v1",
+      "category": "候选与重排序",
+      "files": 8,
+      "bytes": 10728222,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_set_pitts_report_v1",
+      "category": "候选与重排序",
+      "files": 13,
+      "bytes": 1821393,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/candidate_set_report_v1",
+      "category": "候选与重排序",
+      "files": 4,
+      "bytes": 14547,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/candidate_top44_eval_v1",
+      "category": "候选与重排序",
+      "files": 4102,
+      "bytes": 5055120,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_top44_pitts_v1",
+      "category": "候选与重排序",
+      "files": 2054,
+      "bytes": 4881453,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/candidate_training_audit_v1",
+      "category": "候选与重排序",
+      "files": 4,
+      "bytes": 2428557,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/competitive_query_audit_v1",
+      "category": "候选与重排序",
+      "files": 5,
+      "bytes": 2765049,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/consensus_evidence_v1",
+      "category": "候选与重排序",
+      "files": 5,
+      "bytes": 595443,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pair_budget_diagnostic_v1",
+      "category": "候选与重排序",
+      "files": 4,
+      "bytes": 186744,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pairvpr_candidate_union_v1",
+      "category": "候选与重排序",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pairvpr_case_review_v1",
+      "category": "候选与重排序",
+      "files": 385,
+      "bytes": 14240373,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pairvpr_cls_diagnostic_v1",
+      "category": "候选与重排序",
+      "files": 6,
+      "bytes": 2134950,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/pairvpr_local_matches_v1",
+      "category": "候选与重排序",
+      "files": 11,
+      "bytes": 7405857,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pairvpr_match_geometry_v1",
+      "category": "候选与重排序",
+      "files": 11,
+      "bytes": 614041,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pairvpr_metadata_audit_v1",
+      "category": "候选与重排序",
+      "files": 1,
+      "bytes": 5275356,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pitts_pair_admission_report_v1",
+      "category": "候选与重排序",
+      "files": 7,
+      "bytes": 2877612,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/pitts_top44_confirmation_v1",
+      "category": "候选与重排序",
+      "files": 7,
+      "bytes": 3887804,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pmd_mechanism_v1",
+      "category": "候选与重排序",
+      "files": 5,
+      "bytes": 822130,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pmd_rejection_audit_v1",
+      "category": "候选与重排序",
+      "files": 4,
+      "bytes": 1675650,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/pmd_score_curves_v1",
+      "category": "候选与重排序",
+      "files": 12,
+      "bytes": 25096322,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/ag_slrd_phase0_audit",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/boq_baseline_dynamic_attention_audit",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/clip_competition_audit_server_v1",
+      "category": "语义与区域",
+      "files": 4,
+      "bytes": 900843,
+      "summary_files": 1,
+      "note_files": 2
+    },
+    {
+      "path": "doc/clip_competition_audit_v1",
+      "category": "语义与区域",
+      "files": 2,
+      "bytes": 915652,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_dynamic_localization_v2",
+      "category": "语义与区域",
+      "files": 807,
+      "bytes": 8761194,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_dynamic_msls_v1",
+      "category": "语义与区域",
+      "files": 764,
+      "bytes": 2709245,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/clip_dynamic_screen_v1",
+      "category": "语义与区域",
+      "files": 785,
+      "bytes": 748576735,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_external_positive_v1",
+      "category": "语义与区域",
+      "files": 3,
+      "bytes": 338712,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/clip_external_screen_v1",
+      "category": "语义与区域",
+      "files": 785,
+      "bytes": 281786774,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_failure_cases_local_v1",
+      "category": "语义与区域",
+      "files": 40,
+      "bytes": 1540416,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/clip_failure_cases_v1",
+      "category": "语义与区域",
+      "files": 169,
+      "bytes": 6527954,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_token_cross_report_v1",
+      "category": "语义与区域",
+      "files": 6,
+      "bytes": 4230496,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/clip_token_drop_report_v1",
+      "category": "语义与区域",
+      "files": 6,
+      "bytes": 1945824,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/crop_semantic_film_runs",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_category_mask_audit_full_db_condition_union",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v1",
+      "category": "语义与区域",
+      "files": 67,
+      "bytes": 430948,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v2",
+      "category": "语义与区域",
+      "files": 67,
+      "bytes": 3164865,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v1",
+      "category": "语义与区域",
+      "files": 7,
+      "bytes": 5436321,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v2",
+      "category": "语义与区域",
+      "files": 7,
+      "bytes": 6202224,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/dynamic_invariance_msls_report_v1",
+      "category": "语义与区域",
+      "files": 9,
+      "bytes": 3442576,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/dynamic_invariance_plan_v1",
+      "category": "语义与区域",
+      "files": 15,
+      "bytes": 1085213,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_invariance_report_v1",
+      "category": "语义与区域",
+      "files": 5,
+      "bytes": 368400,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/dynamic_mask_only_audit_v1",
+      "category": "语义与区域",
+      "files": 155,
+      "bytes": 12804734,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/dynamic_mask_regions_audit_v1",
+      "category": "语义与区域",
+      "files": 142,
+      "bytes": 24049041,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/dynamic_mechanism_probe_v1",
+      "category": "语义与区域",
+      "files": 10,
+      "bytes": 7869775,
+      "summary_files": 1,
+      "note_files": 1
+    },
+    {
+      "path": "doc/region_pair_lite_diagnostic_v1",
+      "category": "语义与区域",
+      "files": 5,
+      "bytes": 14880815,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/region_vlad_msls_20260909_143829",
+      "category": "语义与区域",
+      "files": 2,
+      "bytes": 316601,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/rscd_runs",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/seg_aux_aligned_v1",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/seg_aux_warm_v2",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/segvlad_case_review_v1",
+      "category": "语义与区域",
+      "files": 77,
+      "bytes": 2018314,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/segvlad_gt_protocols_v1",
+      "category": "语义与区域",
+      "files": 4,
+      "bytes": 736008,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/segvlad_vote_diagnostic_v1",
+      "category": "语义与区域",
+      "files": 5,
+      "bytes": 538867,
+      "summary_files": 1,
+      "note_files": 0
+    },
+    {
+      "path": "doc/semantic_region_counterfactual_batch0",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "doc/semantic_region_delta_batch0_clean",
+      "category": "语义与区域",
+      "files": 0,
+      "bytes": 0,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_code.tar",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 39936,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2919680,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 4472,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2201719,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/channel_reliability_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 8419,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/channel_reliability_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 92154,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 12834,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2240987,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 13166,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2239247,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 16101,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2256897,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/moment_channel_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 12765,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/moment_channel_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2242652,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 11795,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2243637,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/relation_metric_audit_code.tar",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 12800,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/relation_metric_train_audit_v1.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 6125785,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/relation_metric_v1_code.tar",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 51712,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/relation_metric_v1_fix.tar",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 34304,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/relation_metric_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 2785557,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/spatial_resample_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 12934,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/spatial_resample_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 1802175,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_code.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 9304,
+      "summary_files": 0,
+      "note_files": 0
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_reports.tar.gz",
+      "category": "重复传输包",
+      "files": 1,
+      "bytes": 3574004,
+      "summary_files": 0,
+      "note_files": 0
+    }
+  ],
+  "total_files": 10980,
+  "total_bytes": 1600769706,
+  "protected_directories": [
+    "doc/创新点1",
+    "doc/patent_drafts",
+    "doc/pairvpr_official_paired_audit_v1",
+    "doc/scale_agreement_fusion_v1_server",
+    "doc/scale_agreement_repeat_v1_server",
+    "doc/scale_factorial_v1_server",
+    "doc/scale_gate_patent_handoff_v1",
+    "doc/scale_reliability_gate_v1_server",
+    "doc/cross_resolution_detail_v1_server",
+    "doc/cross_resolution_detail_v1_partial_server",
+    "doc/dynamic_mechanism_cases_v1",
+    "doc/candidate_set_plan_v1",
+    "doc/dynamic_invariance_train_v1"
+  ]
+}

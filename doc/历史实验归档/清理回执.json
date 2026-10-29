@@ -1,0 +1,573 @@
+{
+  "completed_at": "2026-10-29T10:27:40.8393994+08:00",
+  "mode": "Windows_Recycle_Bin",
+  "remote_touched": false,
+  "removed": [
+    {
+      "path": "doc/adaptive_pair_budget_v1",
+      "files": 5,
+      "bytes": 3677486
+    },
+    {
+      "path": "doc/ag_slrd_phase0_audit",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/anchor_deficit_v1_server",
+      "files": 21,
+      "bytes": 20601931
+    },
+    {
+      "path": "doc/boq_baseline_dynamic_attention_audit",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/candidate_hard_exploratory_report_v1",
+      "files": 14,
+      "bytes": 7610174
+    },
+    {
+      "path": "doc/candidate_hard_last_diagnostic_v1",
+      "files": 13,
+      "bytes": 4939402
+    },
+    {
+      "path": "doc/candidate_hard_mining_v1",
+      "files": 6,
+      "bytes": 6352993
+    },
+    {
+      "path": "doc/candidate_margin_cap_report_v1",
+      "files": 23,
+      "bytes": 18018605
+    },
+    {
+      "path": "doc/candidate_margin_preserve_report_v1",
+      "files": 23,
+      "bytes": 18019581
+    },
+    {
+      "path": "doc/candidate_multiview_budget_v1",
+      "files": 4,
+      "bytes": 3547674
+    },
+    {
+      "path": "doc/candidate_reference_graph_audit_v1",
+      "files": 9,
+      "bytes": 16347128
+    },
+    {
+      "path": "doc/candidate_reference_oracle_v1",
+      "files": 8,
+      "bytes": 10728222
+    },
+    {
+      "path": "doc/candidate_set_pitts_report_v1",
+      "files": 13,
+      "bytes": 1821393
+    },
+    {
+      "path": "doc/candidate_set_report_v1",
+      "files": 4,
+      "bytes": 14547
+    },
+    {
+      "path": "doc/candidate_top44_eval_v1",
+      "files": 4102,
+      "bytes": 5055120
+    },
+    {
+      "path": "doc/candidate_top44_pitts_v1",
+      "files": 2054,
+      "bytes": 4881453
+    },
+    {
+      "path": "doc/candidate_training_audit_v1",
+      "files": 4,
+      "bytes": 2428557
+    },
+    {
+      "path": "doc/channel_rank_fusion_v1",
+      "files": 7,
+      "bytes": 19932517
+    },
+    {
+      "path": "doc/channel_reliability_v1_server",
+      "files": 19,
+      "bytes": 167051
+    },
+    {
+      "path": "doc/clip_competition_audit_server_v1",
+      "files": 4,
+      "bytes": 900843
+    },
+    {
+      "path": "doc/clip_competition_audit_v1",
+      "files": 2,
+      "bytes": 915652
+    },
+    {
+      "path": "doc/clip_dynamic_localization_v2",
+      "files": 807,
+      "bytes": 8761194
+    },
+    {
+      "path": "doc/clip_dynamic_msls_v1",
+      "files": 764,
+      "bytes": 2709245
+    },
+    {
+      "path": "doc/clip_dynamic_screen_v1",
+      "files": 785,
+      "bytes": 748576735
+    },
+    {
+      "path": "doc/clip_external_positive_v1",
+      "files": 3,
+      "bytes": 338712
+    },
+    {
+      "path": "doc/clip_external_screen_v1",
+      "files": 785,
+      "bytes": 281786774
+    },
+    {
+      "path": "doc/clip_failure_cases_local_v1",
+      "files": 40,
+      "bytes": 1540416
+    },
+    {
+      "path": "doc/clip_failure_cases_v1",
+      "files": 169,
+      "bytes": 6527954
+    },
+    {
+      "path": "doc/clip_token_cross_report_v1",
+      "files": 6,
+      "bytes": 4230496
+    },
+    {
+      "path": "doc/clip_token_drop_report_v1",
+      "files": 6,
+      "bytes": 1945824
+    },
+    {
+      "path": "doc/competitive_query_audit_v1",
+      "files": 5,
+      "bytes": 2765049
+    },
+    {
+      "path": "doc/consensus_evidence_v1",
+      "files": 5,
+      "bytes": 595443
+    },
+    {
+      "path": "doc/crop_semantic_film_runs",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/dynamic_category_mask_audit_full_db_condition_union",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/dynamic_category_prior_screen_b0.5_full_db_condition_queries",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v1",
+      "files": 67,
+      "bytes": 430948
+    },
+    {
+      "path": "doc/dynamic_challenge_donors_v2",
+      "files": 67,
+      "bytes": 3164865
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v1",
+      "files": 7,
+      "bytes": 5436321
+    },
+    {
+      "path": "doc/dynamic_challenge_report_v2",
+      "files": 7,
+      "bytes": 6202224
+    },
+    {
+      "path": "doc/dynamic_invariance_msls_report_v1",
+      "files": 9,
+      "bytes": 3442576
+    },
+    {
+      "path": "doc/dynamic_invariance_plan_v1",
+      "files": 15,
+      "bytes": 1085213
+    },
+    {
+      "path": "doc/dynamic_invariance_report_v1",
+      "files": 5,
+      "bytes": 368400
+    },
+    {
+      "path": "doc/dynamic_mask_only_audit_v1",
+      "files": 155,
+      "bytes": 12804734
+    },
+    {
+      "path": "doc/dynamic_mask_regions_audit_v1",
+      "files": 142,
+      "bytes": 24049041
+    },
+    {
+      "path": "doc/dynamic_mechanism_probe_v1",
+      "files": 10,
+      "bytes": 7869775
+    },
+    {
+      "path": "doc/full_gallery_supervision_v1_server",
+      "files": 25,
+      "bytes": 20046191
+    },
+    {
+      "path": "doc/image_negative_v1_server",
+      "files": 13,
+      "bytes": 23961672
+    },
+    {
+      "path": "doc/joint_local_refine_v1_server",
+      "files": 25,
+      "bytes": 20032047
+    },
+    {
+      "path": "doc/key_value_coadapt_v1_server",
+      "files": 25,
+      "bytes": 20048910
+    },
+    {
+      "path": "doc/moment_channel_v1_server",
+      "files": 24,
+      "bytes": 20029241
+    },
+    {
+      "path": "doc/original_channel_transfer_v1_server",
+      "files": 24,
+      "bytes": 20030483
+    },
+    {
+      "path": "doc/pair_budget_diagnostic_v1",
+      "files": 4,
+      "bytes": 186744
+    },
+    {
+      "path": "doc/pairvpr_candidate_union_v1",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/pairvpr_case_review_v1",
+      "files": 385,
+      "bytes": 14240373
+    },
+    {
+      "path": "doc/pairvpr_cls_diagnostic_v1",
+      "files": 6,
+      "bytes": 2134950
+    },
+    {
+      "path": "doc/pairvpr_local_matches_v1",
+      "files": 11,
+      "bytes": 7405857
+    },
+    {
+      "path": "doc/pairvpr_match_geometry_v1",
+      "files": 11,
+      "bytes": 614041
+    },
+    {
+      "path": "doc/pairvpr_metadata_audit_v1",
+      "files": 1,
+      "bytes": 5275356
+    },
+    {
+      "path": "doc/pitts_pair_admission_report_v1",
+      "files": 7,
+      "bytes": 2877612
+    },
+    {
+      "path": "doc/pitts_top44_confirmation_v1",
+      "files": 7,
+      "bytes": 3887804
+    },
+    {
+      "path": "doc/pmd_mechanism_v1",
+      "files": 5,
+      "bytes": 822130
+    },
+    {
+      "path": "doc/pmd_rejection_audit_v1",
+      "files": 4,
+      "bytes": 1675650
+    },
+    {
+      "path": "doc/pmd_score_curves_v1",
+      "files": 12,
+      "bytes": 25096322
+    },
+    {
+      "path": "doc/region_pair_lite_diagnostic_v1",
+      "files": 5,
+      "bytes": 14880815
+    },
+    {
+      "path": "doc/region_vlad_msls_20260909_143829",
+      "files": 2,
+      "bytes": 316601
+    },
+    {
+      "path": "doc/relation_metric_train_audit_v1",
+      "files": 5,
+      "bytes": 18368021
+    },
+    {
+      "path": "doc/relation_metric_v1_server",
+      "files": 16,
+      "bytes": 23970933
+    },
+    {
+      "path": "doc/rscd_runs",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/seg_aux_aligned_v1",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/seg_aux_warm_v2",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/segvlad_case_review_v1",
+      "files": 77,
+      "bytes": 2018314
+    },
+    {
+      "path": "doc/segvlad_gt_protocols_v1",
+      "files": 4,
+      "bytes": 736008
+    },
+    {
+      "path": "doc/segvlad_vote_diagnostic_v1",
+      "files": 5,
+      "bytes": 538867
+    },
+    {
+      "path": "doc/semantic_region_counterfactual_batch0",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/semantic_region_delta_batch0_clean",
+      "files": 0,
+      "bytes": 0
+    },
+    {
+      "path": "doc/single_dino_diagnosis_v1",
+      "files": 5,
+      "bytes": 146567
+    },
+    {
+      "path": "doc/spatial_resample_v1_server",
+      "files": 25,
+      "bytes": 16047549
+    },
+    {
+      "path": "doc/spatial_sampling_audit_v1_server",
+      "files": 20,
+      "bytes": 31994677
+    },
+    {
+      "path": "doc/static_evidence_report_v1",
+      "files": 8,
+      "bytes": 1828667
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_code.tar",
+      "files": 1,
+      "bytes": 39936
+    },
+    {
+      "path": "tmp/anchor_deficit_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2919680
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 4472
+    },
+    {
+      "path": "tmp/channel_rank_fusion_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2201719
+    },
+    {
+      "path": "tmp/channel_reliability_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 8419
+    },
+    {
+      "path": "tmp/channel_reliability_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 92154
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 12834
+    },
+    {
+      "path": "tmp/full_gallery_supervision_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2240987
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 13166
+    },
+    {
+      "path": "tmp/joint_local_refine_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2239247
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 16101
+    },
+    {
+      "path": "tmp/key_value_coadapt_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2256897
+    },
+    {
+      "path": "tmp/moment_channel_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 12765
+    },
+    {
+      "path": "tmp/moment_channel_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2242652
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 11795
+    },
+    {
+      "path": "tmp/original_channel_transfer_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2243637
+    },
+    {
+      "path": "tmp/relation_metric_audit_code.tar",
+      "files": 1,
+      "bytes": 12800
+    },
+    {
+      "path": "tmp/relation_metric_train_audit_v1.tar.gz",
+      "files": 1,
+      "bytes": 6125785
+    },
+    {
+      "path": "tmp/relation_metric_v1_code.tar",
+      "files": 1,
+      "bytes": 51712
+    },
+    {
+      "path": "tmp/relation_metric_v1_fix.tar",
+      "files": 1,
+      "bytes": 34304
+    },
+    {
+      "path": "tmp/relation_metric_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 2785557
+    },
+    {
+      "path": "tmp/spatial_resample_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 12934
+    },
+    {
+      "path": "tmp/spatial_resample_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 1802175
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_code.tar.gz",
+      "files": 1,
+      "bytes": 9304
+    },
+    {
+      "path": "tmp/spatial_sampling_audit_v1_reports.tar.gz",
+      "files": 1,
+      "bytes": 3574004
+    }
+  ],
+  "protected_files": 1538,
+  "protected_unchanged": true,
+  "changed": [],
+  "added": [],
+  "code_tests_run": false,
+  "git_history_rewritten": false,
+  "curated_summary_files": 78,
+  "curated_analysis_files": 21,
+  "curated_archives": [
+    {
+      "path": "doc/历史实验归档/语义与区域指标.json",
+      "experiments": 37
+    },
+    {
+      "path": "doc/历史实验归档/候选与重排序指标.json",
+      "experiments": 28
+    },
+    {
+      "path": "doc/历史实验归档/结构适配与训练指标.json",
+      "experiments": 14
+    }
+  ],
+  "post_checks": {
+    "innovation1_archive": {
+      "files": 103,
+      "mismatches": 0
+    },
+    "innovation2_handoff": {
+      "files": 52,
+      "mismatches": 0
+    },
+    "innovation2_factorial_snapshot": {
+      "files": 136,
+      "mismatches": 0
+    },
+    "new_index_broken_links": 0,
+    "removed_targets_still_present": 0,
+    "curated_files_accidentally_ignored": 0
+  },
+  "note": "初次原路径已移除，但当前未找到匹配回收站记录，不保证回收站恢复。方法说明与精简指标仍保留；两项创新完整证据按二次核验保留。",
+  "recovery_verification": {
+    "date": "2026-10-29",
+    "matching_project_recycle_records_found": 0,
+    "recycle_recovery_guaranteed": false,
+    "note": "Windows_Recycle_Bin为初次API请求选项，不是已证实落点；撤回可从回收站恢复的保证。"
+  }
+}
